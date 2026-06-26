@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-nexus-primary: #6366f1;
+  --color-nexus-primary-light: #818cf8;
+  --color-nexus-primary-dark: #4f46e5;
+  --color-nexus-bg: #0f0f23;
+  --color-nexus-surface: #1a1a2e;
+  --color-nexus-surface-hover: #242444;
+  --color-nexus-surface-active: #2d2d52;
+  --color-nexus-border: #2a2a4a;
+  --color-nexus-text: #e2e8f0;
+  --color-nexus-text-muted: #94a3b8;
+  --color-nexus-text-dim: #64748b;
+  --color-nexus-unread: #1e1b4b;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a4a transparent;
+}
+
+body {
+  background: #0f0f23;
+  color: #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.2s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.15s ease-out;
+}
