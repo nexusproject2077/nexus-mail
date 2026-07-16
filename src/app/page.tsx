@@ -8,13 +8,16 @@ import {
   RefreshCw,
   CheckSquare,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import EmailList from "@/components/EmailList";
 import EmailView from "@/components/EmailView";
 import ComposeModal from "@/components/ComposeModal";
 import SearchBar from "@/components/SearchBar";
+import SecurityPanel from "@/components/SecurityPanel";
 import { threads as allThreads } from "@/lib/mock-data";
+import { useVault } from "@/lib/vault";
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
@@ -28,9 +31,12 @@ export default function NexusMail() {
     messageId?: string;
   } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const { identity, isUnlocked, messages: vaultMessages } = useVault();
 
   const filteredThreads = useMemo(() => {
-    let filtered = allThreads;
+    let filtered: Thread[] =
+      activeFolder === "vault" ? vaultMessages : allThreads;
 
     if (activeFolder === "starred") {
       filtered = filtered.filter((t) => t.isStarred);
@@ -53,7 +59,7 @@ export default function NexusMail() {
     }
 
     return filtered;
-  }, [activeFolder, searchQuery]);
+  }, [activeFolder, searchQuery, vaultMessages]);
 
   const unreadCount = allThreads.filter(
     (t) => t.isUnread && t.labels.includes("INBOX")
@@ -84,6 +90,7 @@ export default function NexusMail() {
     drafts: "Brouillons",
     trash: "Corbeille",
     all: "Tous les messages",
+    vault: "Coffre-fort chiffré",
   };
 
   return (
@@ -109,6 +116,24 @@ export default function NexusMail() {
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
 
         <div className="flex items-center gap-1 ml-auto">
+          <button
+            onClick={() => setSecurityOpen(true)}
+            title="Chiffrement & clés"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-medium ${
+              identity && isUnlocked
+                ? "text-green-400 hover:bg-green-500/10"
+                : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"
+            }`}
+          >
+            <ShieldCheck size={16} />
+            <span className="hidden sm:inline">
+              {identity
+                ? isUnlocked
+                  ? "Chiffré"
+                  : "Verrouillé"
+                : "Activer E2EE"}
+            </span>
+          </button>
           <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
             <RefreshCw size={18} />
           </button>
@@ -134,7 +159,9 @@ export default function NexusMail() {
               setSelectedThread(null);
             }}
             onCompose={handleCompose}
+            onOpenSecurity={() => setSecurityOpen(true)}
             unreadCount={unreadCount}
+            vaultCount={vaultMessages.length}
           />
         )}
 
@@ -177,6 +204,7 @@ export default function NexusMail() {
                 thread={selectedThread}
                 onBack={() => setSelectedThread(null)}
                 onReply={handleReply}
+                onNeedUnlock={() => setSecurityOpen(true)}
               />
             </div>
           ) : (
@@ -204,6 +232,12 @@ export default function NexusMail() {
           setReplyTo(null);
         }}
         replyTo={replyTo || undefined}
+        onNeedUnlock={() => setSecurityOpen(true)}
+      />
+
+      <SecurityPanel
+        isOpen={securityOpen}
+        onClose={() => setSecurityOpen(false)}
       />
     </div>
   );

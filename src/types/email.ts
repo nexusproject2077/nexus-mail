@@ -15,6 +15,8 @@ export interface Email {
   isStarred: boolean;
   isImportant: boolean;
   hasAttachment?: boolean;
+  /** Present when `body` holds a Nexus encrypted envelope. */
+  encryption?: "pgp" | "confidential";
 }
 
 export interface Thread {
@@ -35,4 +37,4 @@ export interface Label {
   count?: number;
 }
 
-export type Folder = 'inbox' | 'starred' | 'sent' | 'drafts' | 'trash' | 'all';
+export type Folder = 'inbox' | 'starred' | 'sent' | 'drafts' | 'trash' | 'all' | 'vault';
