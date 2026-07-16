@@ -9,6 +9,8 @@ import {
   CheckSquare,
   ChevronDown,
   ShieldCheck,
+  ServerCog,
+  Loader2,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import EmailList from "@/components/EmailList";
@@ -16,8 +18,10 @@ import EmailView from "@/components/EmailView";
 import ComposeModal from "@/components/ComposeModal";
 import SearchBar from "@/components/SearchBar";
 import SecurityPanel from "@/components/SecurityPanel";
+import AccountsPanel from "@/components/AccountsPanel";
 import { threads as allThreads } from "@/lib/mock-data";
 import { useVault } from "@/lib/vault";
+import { useMail, parseLiveId } from "@/lib/useMail";
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
@@ -32,16 +36,29 @@ export default function NexusMail() {
   } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [securityOpen, setSecurityOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
   const { identity, isUnlocked, messages: vaultMessages } = useVault();
+  const mail = useMail();
+
+  // A live IMAP account replaces the sample inbox with real mail.
+  const liveInbox = mail.configured && !!mail.activeAccountId;
 
   const filteredThreads = useMemo(() => {
-    let filtered: Thread[] =
-      activeFolder === "vault" ? vaultMessages : allThreads;
+    let filtered: Thread[];
 
-    if (activeFolder === "starred") {
-      filtered = filtered.filter((t) => t.isStarred);
-    } else if (activeFolder === "inbox") {
-      filtered = filtered.filter((t) => t.labels.includes("INBOX"));
+    if (activeFolder === "vault") {
+      filtered = vaultMessages;
+    } else if (liveInbox) {
+      if (activeFolder === "inbox") filtered = mail.threads;
+      else if (activeFolder === "starred")
+        filtered = mail.threads.filter((t) => t.isStarred);
+      else filtered = []; // sent/drafts/trash not yet backed by IMAP
+    } else {
+      filtered = allThreads;
+      if (activeFolder === "starred")
+        filtered = filtered.filter((t) => t.isStarred);
+      else if (activeFolder === "inbox")
+        filtered = filtered.filter((t) => t.labels.includes("INBOX"));
     }
 
     if (searchQuery.trim()) {
@@ -59,14 +76,32 @@ export default function NexusMail() {
     }
 
     return filtered;
-  }, [activeFolder, searchQuery, vaultMessages]);
+  }, [activeFolder, searchQuery, vaultMessages, liveInbox, mail.threads]);
 
-  const unreadCount = allThreads.filter(
-    (t) => t.isUnread && t.labels.includes("INBOX")
-  ).length;
+  const unreadCount = (
+    liveInbox
+      ? mail.threads
+      : allThreads.filter((t) => t.labels.includes("INBOX"))
+  ).filter((t) => t.isUnread).length;
+
+  // Live messages arrive as summaries; fetch the full body on selection.
+  const handleSelectThread = async (t: Thread | null) => {
+    setSelectedThread(t);
+    if (t && parseLiveId(t.id)) {
+      try {
+        const full = await mail.loadDetail(t);
+        setSelectedThread((cur) => (cur?.id === full.id ? full : cur));
+      } catch {
+        /* keep the summary view if the body fetch fails */
+      }
+    }
+  };
 
   const handleReply = (threadId: string, messageId: string) => {
-    const thread = allThreads.find((t) => t.id === threadId);
+    const thread =
+      selectedThread?.id === threadId
+        ? selectedThread
+        : allThreads.find((t) => t.id === threadId);
     if (!thread) return;
     const msg = thread.messages.find((m) => m.id === messageId);
     if (!msg) return;
@@ -134,8 +169,32 @@ export default function NexusMail() {
                 : "Activer E2EE"}
             </span>
           </button>
-          <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
-            <RefreshCw size={18} />
+          <button
+            onClick={() => setAccountsOpen(true)}
+            title="Comptes de messagerie"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-medium ${
+              liveInbox
+                ? "text-nexus-primary-light hover:bg-nexus-primary/10"
+                : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"
+            }`}
+          >
+            <ServerCog size={16} />
+            <span className="hidden md:inline max-w-[160px] truncate">
+              {mail.accounts.find((a) => a.id === mail.activeAccountId)?.email ??
+                "Comptes"}
+            </span>
+          </button>
+          <button
+            onClick={() => mail.refreshMessages()}
+            disabled={!liveInbox || mail.loading}
+            title="Actualiser"
+            className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40"
+          >
+            {mail.loading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <RefreshCw size={18} />
+            )}
           </button>
           <button className="relative p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
             <Bell size={18} />
@@ -189,10 +248,15 @@ export default function NexusMail() {
                 <ChevronDown size={12} />
               </div>
             </div>
+            {mail.error && liveInbox && (
+              <div className="mx-4 mt-3 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
+                Erreur de synchronisation : {mail.error}
+              </div>
+            )}
             <EmailList
               threads={filteredThreads}
               selectedId={selectedThread?.id || null}
-              onSelect={setSelectedThread}
+              onSelect={handleSelectThread}
               folder={activeFolder}
             />
           </div>
@@ -238,6 +302,13 @@ export default function NexusMail() {
       <SecurityPanel
         isOpen={securityOpen}
         onClose={() => setSecurityOpen(false)}
+      />
+
+      <AccountsPanel
+        isOpen={accountsOpen}
+        onClose={() => setAccountsOpen(false)}
+        accounts={mail.accounts}
+        onChanged={mail.refreshAccounts}
       />
     </div>
   );
