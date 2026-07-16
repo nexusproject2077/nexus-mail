@@ -10,7 +10,28 @@ function parseSender(sender: string): { name: string; email: string } {
   return { name, email: sender };
 }
 
+// Pre-encrypted Confidential Mode demo (AES-256 via OpenPGP). Passcode: nexus2077.
+// Generated client-side; the plaintext was never sent to any server.
+const DEMO_CONFIDENTIAL_BODY =
+  "{\"nexus\":\"e2ee\",\"v\":1,\"mode\":\"confidential\",\"armored\":\"-----BEGIN PGP MESSAGE-----\\n\\nwy4ECQMITDMc3RxGoDzgIEimOfw71m78bpa+2ezFb2cFFiMZJBe4lke766/B\\n+zNI0sDdAe8d3HEO9bwO7Em+ErLNKcHiEdPv1I1nFhiKz8FDlYbTcP0+jMf0\\n+4w/DUGY1/dKjYA/yc4xoffZcLdOQjMPSRgofnknXkKbvK5sTxMiVCmDDtVB\\nmitl80IoyiR5T10v6JDjF5LTaJGyiFwmAfVd+4zowUdkW/Bnn3fhG2p962/X\\nKNXoMtAjRSE3ueP4//22xOZAzmD6HIy6uYf4wwJdRm5KI8e7t/LZRfdiSsc3\\ngDlBKtLgkPPZhqEljEUFMzzeAhNuilesLGXU8fuSHbL/VgZXnCJNFGO1wunJ\\n5IIWkqi5u7grlyUcJHA/r2JT7PUI/2V+ORCj9GUPe5FOv/wiJSHtnFHXBTN7\\n0Z9Gyt01Csvpe2wck8y2DUKlTZX7IlZ/jKD+z4z7vKVV+r8+JwiGFBHxhDXk\\nIDK2xXUiLcmBQvXa1pNvTnOhkZG8ZBJEFg6Xxu3BYGQZqJUrIbRCkS3QdiqW\\nAeSSbSinKiH+LPjnfnfJ43VW8/GKVgN3SbckvwO0oWS5YDC562gRdmmzF1BJ\\n8cfcY9uYk93BRM1e55I=\\n=DVMh\\n-----END PGP MESSAGE-----\\n\",\"requiresPasscode\":true,\"recipientHint\":\"merickoken54@gmail.com\"}";
+
 const rawThreads = [
+  {
+    id: "demo_confidential_001",
+    messages: [
+      {
+        date: "2026-06-26T14:10:00Z",
+        id: "demo_confidential_001",
+        labelIds: ["UNREAD", "IMPORTANT", "Label_7", "INBOX"],
+        sender: "Nexus Security <security@nexusmail.app>",
+        snippet: "Message confidentiel chiffré — passcode requis pour ouvrir.",
+        subject: "🔐 Message confidentiel de démonstration",
+        toRecipients: ["merickoken54@gmail.com"],
+        body: DEMO_CONFIDENTIAL_BODY,
+        encryption: "confidential" as const,
+      },
+    ],
+  },
   {
     id: "19f0427490b6b757",
     messages: [
@@ -273,6 +294,10 @@ export const threads: Thread[] = rawThreads.map((t) => {
     id: t.id,
     messages: t.messages.map((m) => {
       const s = parseSender(m.sender);
+      const extra = m as typeof m & {
+        body?: string;
+        encryption?: "pgp" | "confidential";
+      };
       return {
         id: m.id,
         threadId: t.id,
@@ -282,11 +307,13 @@ export const threads: Thread[] = rawThreads.map((t) => {
         toRecipients: m.toRecipients,
         subject: m.subject,
         snippet: m.snippet,
+        body: extra.body,
         date: m.date,
         labelIds: m.labelIds,
         isUnread: m.labelIds.includes("UNREAD"),
         isStarred: m.labelIds.includes("STARRED"),
         isImportant: m.labelIds.includes("IMPORTANT"),
+        encryption: extra.encryption,
       };
     }),
     subject: lastMsg.subject,

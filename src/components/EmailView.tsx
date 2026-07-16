@@ -17,14 +17,22 @@ import {
   getAvatarColor,
   getLabelInfo,
 } from "@/lib/utils";
+import { isEncryptedBody } from "@/lib/crypto";
+import EncryptedMessage from "./EncryptedMessage";
 
 interface EmailViewProps {
   thread: Thread;
   onBack: () => void;
   onReply: (threadId: string, messageId: string) => void;
+  onNeedUnlock: () => void;
 }
 
-export default function EmailView({ thread, onBack, onReply }: EmailViewProps) {
+export default function EmailView({
+  thread,
+  onBack,
+  onReply,
+  onNeedUnlock,
+}: EmailViewProps) {
   const lastMsg = thread.messages[thread.messages.length - 1];
 
   return (
@@ -103,9 +111,16 @@ export default function EmailView({ thread, onBack, onReply }: EmailViewProps) {
               </div>
 
               <div className="pl-14">
-                <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap bg-nexus-surface-hover/30 rounded-xl p-4">
-                  {msg.snippet}
-                </div>
+                {msg.encryption || isEncryptedBody(msg.body) ? (
+                  <EncryptedMessage
+                    body={msg.body as string}
+                    onNeedUnlock={onNeedUnlock}
+                  />
+                ) : (
+                  <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap bg-nexus-surface-hover/30 rounded-xl p-4">
+                    {msg.body ?? msg.snippet}
+                  </div>
+                )}
               </div>
             </div>
           );

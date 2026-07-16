@@ -6,10 +6,10 @@ import {
   Send,
   FileEdit,
   Trash2,
-  Tag,
   Plus,
   ChevronDown,
-  Mail,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { labels } from "@/lib/mock-data";
 import type { Folder } from "@/types/email";
@@ -20,6 +20,7 @@ const folderIcons: Record<string, React.ReactNode> = {
   sent: <Send size={18} />,
   drafts: <FileEdit size={18} />,
   trash: <Trash2 size={18} />,
+  vault: <Lock size={18} />,
 };
 
 const folderLabels: Record<string, string> = {
@@ -28,22 +29,27 @@ const folderLabels: Record<string, string> = {
   sent: "Messages envoyés",
   drafts: "Brouillons",
   trash: "Corbeille",
+  vault: "Coffre-fort",
 };
 
 interface SidebarProps {
   activeFolder: Folder;
   onFolderChange: (folder: Folder) => void;
   onCompose: () => void;
+  onOpenSecurity: () => void;
   unreadCount: number;
+  vaultCount: number;
 }
 
 export default function Sidebar({
   activeFolder,
   onFolderChange,
   onCompose,
+  onOpenSecurity,
   unreadCount,
+  vaultCount,
 }: SidebarProps) {
-  const folders: Folder[] = ["inbox", "starred", "sent", "drafts", "trash"];
+  const folders: Folder[] = ["inbox", "starred", "sent", "drafts", "vault", "trash"];
   const userLabels = labels.filter(
     (l) => !["INBOX", "STARRED", "SENT", "DRAFT", "TRASH"].includes(l.id)
   );
@@ -86,6 +92,11 @@ export default function Sidebar({
                 {unreadCount}
               </span>
             )}
+            {folder === "vault" && vaultCount > 0 && (
+              <span className="text-xs font-semibold bg-nexus-primary/20 text-nexus-primary-light px-2 py-0.5 rounded-full">
+                {vaultCount}
+              </span>
+            )}
           </button>
         ))}
 
@@ -109,6 +120,18 @@ export default function Sidebar({
           </button>
         ))}
       </nav>
+
+      <div className="px-2 pb-2">
+        <button
+          onClick={onOpenSecurity}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-all"
+        >
+          <span className="text-nexus-primary-light">
+            <ShieldCheck size={18} />
+          </span>
+          <span className="flex-1 text-left">Sécurité &amp; clés</span>
+        </button>
+      </div>
 
       <div className="p-4 border-t border-nexus-border">
         <div className="flex items-center gap-3 px-2">
