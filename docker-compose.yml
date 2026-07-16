@@ -1,0 +1,40 @@
+# Self-hostable Nexus Mail: backend mail engine + static frontend.
+#
+#   cp .env.example .env   # set APP_SECRET
+#   docker compose up -d --build
+#   open http://localhost:3000
+#
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      PORT: "4000"
+      # Encrypts stored IMAP/SMTP credentials at rest. MUST be strong.
+      APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env}
+      DB_PATH: /data/nexus.db
+      CORS_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      NODE_ENV: production
+    volumes:
+      - nexus-data:/data
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Where the browser reaches the backend API.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        # Served at the root under Docker (empty base path).
+        NEXT_PUBLIC_BASE_PATH: ""
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  nexus-data:

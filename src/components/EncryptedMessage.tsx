@@ -38,6 +38,9 @@ export default function EncryptedMessage({
   const [result, setResult] = useState<DecryptResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Snapshot "now" once at mount for the expiry banner; decryption itself
+  // re-checks against the live clock (and the sealed expiry) in crypto.ts.
+  const [now] = useState(() => Date.now());
 
   if (!envelope) {
     return (
@@ -48,7 +51,7 @@ export default function EncryptedMessage({
   }
 
   const expired =
-    !!envelope.expiresAt && Date.now() > new Date(envelope.expiresAt).getTime();
+    !!envelope.expiresAt && now > new Date(envelope.expiresAt).getTime();
 
   const handleDecrypt = async () => {
     setError(null);

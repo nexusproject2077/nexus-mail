@@ -1,8 +1,9 @@
 # Nexus Mail
 
 A privacy-first, open-source email client with a clean, Gmail-like interface.
-This branch implements the crown jewel of **Phase 1: Zero-Access
-end-to-end encryption**, done entirely client-side.
+It pairs client-side **Zero-Access end-to-end encryption** with an optional,
+**self-hostable Node/IMAP/SMTP backend** so you can bring in real accounts
+(Gmail included) without vendor lock-in.
 
 ## Zero-Access E2EE (implemented)
 
@@ -45,16 +46,59 @@ The server (when one exists) only ever sees ciphertext.
 Core modules: [`src/lib/crypto.ts`](src/lib/crypto.ts) (OpenPGP wrapper) and
 [`src/lib/vault.ts`](src/lib/vault.ts) (identity + vault store).
 
+## Self-hostable mail engine — real Gmail/IMAP (implemented)
+
+A Node backend ([`backend/`](backend/)) connects to any IMAP/SMTP provider
+(Gmail included) so real mail lands in the inbox. It is optional: with no
+backend configured the app runs standalone with sample data + local E2EE.
+
+- **Backend** — Express + TypeScript. Fetches mail with
+  [`imapflow`](https://imapflow.com/) + [`mailparser`](https://nodemailer.com/extras/mailparser/),
+  sends with `nodemailer`, and stores accounts in SQLite. **IMAP/SMTP passwords
+  are encrypted at rest (AES-256-GCM)** with a key derived from `APP_SECRET`;
+  they are only unsealed in memory to open a connection.
+- **Frontend** — set `NEXT_PUBLIC_API_URL` to the backend. Add accounts via the
+  **Comptes** button (a Gmail preset is included), then the inbox shows live
+  mail with a refresh control. Message bodies are fetched on open. When no
+  account is configured the app falls back to the sample inbox.
+- **API** — `GET /api/health`, `GET/POST/DELETE /api/accounts`,
+  `GET /api/accounts/:id/messages`, `GET /api/accounts/:id/messages/:uid`,
+  `POST /api/accounts/:id/send`.
+
+> **Gmail:** enable 2-Step Verification and create an **App Password** — a normal
+> password will not authenticate over IMAP.
+
+### Self-host with Docker
+
+```bash
+cp .env.example .env      # set a strong APP_SECRET
+docker compose up -d --build
+# open http://localhost:3000  (backend on :4000)
+```
+
+`docker-compose.yml` builds the backend and serves the static frontend (nginx)
+with `NEXT_PUBLIC_API_URL` baked in and an empty base path. Account data lives in
+the `nexus-data` volume.
+
+### Run the backend directly
+
+```bash
+cd backend
+cp .env.example .env      # set APP_SECRET
+npm install
+npm run dev               # API on http://localhost:4000
+```
+
 ## Roadmap (from the product spec)
 
-Phase 1 #1 (E2EE + Confidential Mode) is implemented here. The remaining
-Phase 1 and Phase 2 items — self-hostable Docker backend with IMAP/SMTP, unified
-multi-account inbox, local AI/vector search, account recovery, spam killer,
-offline sync, teams, aliases, mobile apps — are future work and are **not** yet
-built. They require a backend service, which is out of scope for the current
-static-export deployment.
+Implemented: **Phase 1 #1** (E2EE + Confidential Mode) and the **self-hostable
+Node/IMAP/SMTP backend** with a unified live inbox and Docker Compose. Still
+future work: local AI/vector search, robust account recovery, spam killer,
+offline sync, teams/shared inboxes, aliases/burners, and native mobile apps.
+Current IMAP scope covers the inbox (fetch/read) and SMTP send; sent/drafts/trash
+folders and background sync are not backed by IMAP yet.
 
-## Getting Started
+## Getting Started (frontend)
 
 ```bash
 npm install
@@ -62,5 +106,5 @@ npm run dev      # http://localhost:3000
 npm run build    # static export to out/ (GitHub Pages)
 ```
 
-Built with Next.js (App Router, static export), React 19, Tailwind CSS v4, and
-OpenPGP.js.
+Built with Next.js (App Router, static export), React 19, Tailwind CSS v4,
+OpenPGP.js, and a Node/Express + imapflow backend.
