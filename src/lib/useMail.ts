@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   apiConfigured,
   getAccounts,
@@ -72,6 +72,8 @@ export function useMail(): UseMail {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pending = useRef(false);
+  const activeAccountRef = useRef<string | null>(null);
 
   const refreshAccounts = useCallback(async () => {
     if (!configured) return;
@@ -91,18 +93,26 @@ export function useMail(): UseMail {
       setThreads([]);
       return;
     }
+    if (pending.current) return;
+    pending.current = true;
     setLoading(true);
-    setError(null);
     try {
       const msgs = await getMessages(activeAccountId);
-      setThreads(msgs.map((m) => summaryToThread(activeAccountId, m)));
+      if (activeAccountRef.current === activeAccountId) {
+        setThreads(msgs.map((m) => summaryToThread(activeAccountId, m)));
+        setError(null);
+      }
     } catch (e) {
-      setError((e as Error).message);
-      setThreads([]);
+      if (activeAccountRef.current === activeAccountId) {
+        setError((e as Error).message);
+      }
     } finally {
+      pending.current = false;
       setLoading(false);
     }
   }, [configured, activeAccountId]);
+
+  activeAccountRef.current = activeAccountId;
 
   // Fetch accounts and messages on mount / when the active account changes.
   // The loading/error setState calls live in these fetch flows by design.
@@ -115,6 +125,26 @@ export function useMail(): UseMail {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshMessages();
   }, [refreshMessages]);
+
+  // Synchronize periodically while the tab is visible and when connectivity returns.
+  useEffect(() => {
+    if (!configured || !activeAccountId) return;
+    const sync = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        void refreshMessages();
+      }
+    };
+    const timer = window.setInterval(sync, 30000);
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("focus", sync);
+    window.addEventListener("online", sync);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("online", sync);
+    };
+  }, [configured, activeAccountId, refreshMessages]);
 
   const loadDetail = useCallback(
     async (thread: Thread): Promise<Thread> => {
