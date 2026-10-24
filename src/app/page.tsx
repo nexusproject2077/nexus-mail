@@ -148,7 +148,7 @@ export default function NexusMail() {
           </span>
         </div>
 
-        <div className="min-w-0 flex-1 sm:flex-initial"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
+        <div className="min-w-0 flex-1 max-w-2xl"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
 
         <div className="flex shrink-0 items-center gap-0 sm:gap-1 ml-auto">
           <button
@@ -224,26 +224,26 @@ export default function NexusMail() {
           />
         )}
 
-        <div className="flex-1 flex">
+        <div className="flex-1 flex min-w-0 min-h-0">
           {/* Email List Panel */}
           <div
-            className={`flex flex-col border-r border-nexus-border bg-nexus-bg ${
-              selectedThread ? "w-[380px]" : "flex-1"
+            className={`min-w-0 min-h-0 flex-col border-r border-nexus-border bg-nexus-bg ${
+              selectedThread ? "hidden lg:flex lg:w-[clamp(300px,32vw,420px)] lg:shrink-0" : "flex flex-1"
             }`}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-nexus-border">
+            <div className="flex min-w-0 items-center justify-between gap-2 px-3 sm:px-4 py-3 border-b border-nexus-border">
               <div className="flex items-center gap-3">
                 <button className="p-1 rounded hover:bg-nexus-surface-hover text-nexus-text-dim">
                   <CheckSquare size={16} />
                 </button>
-                <h1 className="text-sm font-semibold text-nexus-text">
+                <h1 className="text-sm font-semibold text-nexus-text truncate">
                   {folderTitle[activeFolder]}
                 </h1>
                 <span className="text-xs text-nexus-text-dim bg-nexus-surface-hover px-2 py-0.5 rounded-full">
                   {filteredThreads.length}
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-xs text-nexus-text-dim">
+              <div className="hidden sm:flex items-center gap-1 text-xs text-nexus-text-dim">
                 <span>Plus récent</span>
                 <ChevronDown size={12} />
               </div>
