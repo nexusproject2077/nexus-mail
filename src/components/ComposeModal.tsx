@@ -167,7 +167,7 @@ export default function ComposeModal({
 
   if (isMinimized) {
     return (
-      <div className="fixed bottom-0 right-6 z-50">
+      <div className="fixed bottom-0 right-0 sm:right-6 z-50">
         <button
           onClick={() => setIsMinimized(false)}
           className="flex items-center gap-2 bg-nexus-surface border border-nexus-border rounded-t-xl px-4 py-2.5 text-sm font-medium text-nexus-text hover:bg-nexus-surface-hover transition-colors shadow-xl"
@@ -181,8 +181,8 @@ export default function ComposeModal({
   }
 
   return (
-    <div className="fixed bottom-0 right-6 z-50 w-[520px] animate-fade-in">
-      <div className="bg-nexus-surface border border-nexus-border rounded-t-xl shadow-2xl shadow-black/50 flex flex-col max-h-[80vh]">
+    <div className="fixed bottom-0 right-6 z-50 w-full sm:w-[min(520px,calc(100vw-3rem))] animate-fade-in">
+      <div className="bg-nexus-surface border border-nexus-border rounded-t-xl shadow-2xl shadow-black/50 flex flex-col max-h-[100dvh] sm:max-h-[80dvh] min-w-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 bg-nexus-surface-active rounded-t-xl cursor-move">
           <span className="flex items-center gap-2 text-sm font-medium">
             {mode !== "standard" && <Lock size={13} className="text-nexus-primary-light" />}
