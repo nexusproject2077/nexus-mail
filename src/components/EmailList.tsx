@@ -1,5 +1,6 @@
 "use client";
 
+import { MailOpen } from "lucide-react";
 import { Star, Paperclip } from "lucide-react";
 import { Thread } from "@/types/email";
 import { formatEmailDate, getInitials, getAvatarColor, getLabelInfo } from "@/lib/utils";
@@ -21,7 +22,7 @@ export default function EmailList({
     return (
       <div className="flex-1 flex items-center justify-center text-nexus-text-dim">
         <div className="text-center">
-          <div className="text-4xl mb-3">📭</div>
+          <div className="mb-3 flex justify-center"><MailOpen size={40} strokeWidth={1.5} className="text-nexus-primary-light" aria-hidden="true" /></div>
           <p className="text-sm">Aucun message</p>
         </div>
       </div>
