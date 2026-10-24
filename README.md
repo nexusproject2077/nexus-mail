@@ -89,6 +89,51 @@ npm install
 npm run dev               # API on http://localhost:4000
 ```
 
+### Deploy behind Apache at `/mail/`
+
+The API is intentionally private until the backend environment below is set.
+Do not put `AUTH_PASSWORD_HASH`, `APP_SECRET`, or any mail credential in a
+`NEXT_PUBLIC_*` variable. `NEXT_PUBLIC_API_URL` is only the public API address.
+
+For GitHub Pages at `https://nexusproject2077.github.io/nexus-mail/`, configure
+the backend service with:
+
+```ini
+HOST=127.0.0.1
+PORT=4000
+NODE_ENV=production
+APP_SECRET=<openssl rand -base64 48>
+AUTH_USERNAME=<your-login-name>
+AUTH_PASSWORD_HASH=<generated-scrypt-hash>
+CORS_ORIGIN=https://nexusproject2077.github.io
+COOKIE_PATH=/mail
+COOKIE_SECURE=true
+```
+
+Generate the password hash on the VPS (the password is supplied as the final
+argument and is not written to a file):
+
+```bash
+node -e "const c=require('crypto');const s=c.randomBytes(16);c.scrypt(process.argv[1],s,64,{N:16384,r:8,p:1},(e,k)=>console.log('scrypt$16384$8$1$'+s.toString('base64')+'$'+k.toString('base64')))" 'choose-a-long-password'
+```
+
+After the backend passes `npm run typecheck && npm run build`, add the following
+inside the existing `*:443` virtual host for `api.mmi25b11.mmi-troyes.fr`,
+**before** its catch-all `ProxyPass / ...` lines. It leaves `/music/` unchanged.
+
+```apache
+# Nexus Mail — keep before ProxyPass / so the specific prefix wins
+ProxyPass        /mail/ http://127.0.0.1:4000/
+ProxyPassReverse /mail/ http://127.0.0.1:4000/
+```
+
+Validate with `sudo apache2ctl configtest`, then reload only if it reports
+`Syntax OK`: `sudo systemctl reload apache2`. Build the frontend with
+`NEXT_PUBLIC_API_URL=https://api.mmi25b11.mmi-troyes.fr/mail` and publish the
+resulting `out/` directory to GitHub Pages. The frontend login stores its
+session in a Secure, HttpOnly cookie scoped to `/mail/`; the browser receives
+no API secret.
+
 ## Roadmap (from the product spec)
 
 Implemented: **Phase 1 #1** (E2EE + Confidential Mode) and the **self-hostable

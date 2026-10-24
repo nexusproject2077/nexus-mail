@@ -4,7 +4,7 @@ name: Deploy to GitHub Pages
 # This replaces the default "Deploy from a branch" Jekyll build, which fails
 # because this repository is a Next.js app, not a Jekyll site.
 #
-# Requires: Settings → Pages → "Build and deployment" → Source → "GitHub Actions".
+# Requires: Settings â†’ Pages â†’ "Build and deployment" â†’ Source â†’ "GitHub Actions".
 
 on:
   push:
@@ -40,6 +40,8 @@ jobs:
 
       - name: Build static export
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.mmi25b11.mmi-troyes.fr/mail
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

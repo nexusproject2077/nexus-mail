@@ -3,21 +3,24 @@ import cors from "cors";
 import { config, assertProductionSecret } from "./config.js";
 import { accountsRouter } from "./routes/accounts.js";
 import { messagesRouter } from "./routes/messages.js";
+import { authRouter } from "./routes/auth.js";
 
 assertProductionSecret();
 
 const app = express();
-app.use(cors({ origin: config.corsOrigin }));
+app.disable("x-powered-by");
+app.use(cors({ origin: config.corsOrigin, credentials: true, methods: ["GET", "POST", "DELETE"], allowedHeaders: ["Content-Type", "X-CSRF-Token"] }));
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "nexus-mail-backend" });
 });
 
+app.use("/api/auth", authRouter);
 app.use("/api/accounts", accountsRouter);
 // Message routes are nested under an account id: /api/accounts/:id/messages...
 app.use("/api/accounts", messagesRouter);
 
-app.listen(config.port, () => {
-  console.log(`Nexus Mail backend listening on :${config.port}`);
+app.listen(config.port, config.host, () => {
+  console.log(`Nexus Mail backend listening on ${config.host}:${config.port}`);
 });

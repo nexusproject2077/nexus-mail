@@ -1,12 +1,14 @@
 /**
  * Client for the Nexus Mail self-hosted backend (IMAP/SMTP mail engine).
  *
- * The backend base URL is provided at build time via `NEXT_PUBLIC_API_URL`.
+ * The backend address is public by design; credentials and session secrets are
+ * never bundled. The backend authenticates with an HttpOnly cookie.
  * When it is unset, the app runs in standalone mode (sample data + local
  * client-side E2EE only) and {@link apiConfigured} returns false.
  */
 
 const BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+let session: { csrfToken: string; username: string } | null = null;
 
 export function apiConfigured(): boolean {
   return BASE.length > 0;
@@ -20,6 +22,37 @@ export async function checkBackend(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export function isAuthenticated(): boolean { return session !== null; }
+
+export async function login(username: string, password: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/auth/login`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  session = { csrfToken: body.csrfToken, username: body.username };
+}
+
+export async function restoreSession(): Promise<boolean> {
+  if (!apiConfigured()) return false;
+  const res = await fetch(`${BASE}/api/auth/session`, { credentials: "include", cache: "no-store" });
+  if (!res.ok) { session = null; return false; }
+  const body = await res.json();
+  session = { csrfToken: body.csrfToken, username: body.username };
+  return true;
+}
+
+export async function logout(): Promise<void> {
+  if (!session) return;
+  await fetch(`${BASE}/api/auth/logout`, {
+    method: "POST", credentials: "include", headers: { "X-CSRF-Token": session.csrfToken },
+  });
+  session = null;
 }
 
 export interface PublicAccount {
@@ -66,8 +99,10 @@ export interface NewAccount {
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!session && !(await restoreSession())) throw new Error("Connexion requise.");
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...(init?.method && init.method !== "GET" ? { "X-CSRF-Token": session!.csrfToken } : {}), ...init?.headers },
     ...init,
   });
   if (!res.ok) {

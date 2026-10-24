@@ -3,12 +3,14 @@ import { z } from "zod";
 import { getAccountWithSecret } from "../db.js";
 import { fetchSummaries, fetchDetail } from "../imap.js";
 import { sendMessage } from "../smtp.js";
+import { requireAuth, requireCsrf } from "../auth.js";
 
 export const messagesRouter = Router();
+messagesRouter.use(requireAuth);
 
 /** GET /api/accounts/:id/messages?mailbox=INBOX&limit=25 */
 messagesRouter.get("/:id/messages", async (req, res) => {
-  const account = getAccountWithSecret(req.params.id);
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
   if (!account) {
     res.status(404).json({ error: "Account not found" });
     return;
@@ -25,7 +27,7 @@ messagesRouter.get("/:id/messages", async (req, res) => {
 
 /** GET /api/accounts/:id/messages/:uid?mailbox=INBOX */
 messagesRouter.get("/:id/messages/:uid", async (req, res) => {
-  const account = getAccountWithSecret(req.params.id);
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
   if (!account) {
     res.status(404).json({ error: "Account not found" });
     return;
@@ -56,8 +58,8 @@ const sendSchema = z.object({
 });
 
 /** POST /api/accounts/:id/send */
-messagesRouter.post("/:id/send", async (req, res) => {
-  const account = getAccountWithSecret(req.params.id);
+messagesRouter.post("/:id/send", requireCsrf, async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
   if (!account) {
     res.status(404).json({ error: "Account not found" });
     return;

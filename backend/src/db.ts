@@ -24,8 +24,28 @@ db.exec(`
     smtp_secure  INTEGER NOT NULL,
     username     TEXT NOT NULL,
     enc_password TEXT NOT NULL,
+    owner_id     TEXT,
     created_at   TEXT NOT NULL
   );
+`);
+
+// Existing single-user installations retain their accounts, but they become
+// visible only to the configured owner once authentication is enabled.
+const columns = db.prepare("PRAGMA table_info(accounts)").all() as { name: string }[];
+if (!columns.some((column) => column.name === "owner_id")) {
+  db.exec("ALTER TABLE accounts ADD COLUMN owner_id TEXT");
+}
+db.prepare("UPDATE accounts SET owner_id = ? WHERE owner_id IS NULL").run(config.authUserId);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    csrf_token TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);
 `);
 
 interface Row {
@@ -65,14 +85,14 @@ function strip(a: Account): PublicAccount {
   return pub;
 }
 
-export function listAccounts(): PublicAccount[] {
-  const rows = db.prepare("SELECT * FROM accounts ORDER BY created_at").all() as Row[];
+export function listAccounts(ownerId: string): PublicAccount[] {
+  const rows = db.prepare("SELECT * FROM accounts WHERE owner_id = ? ORDER BY created_at").all(ownerId) as Row[];
   return rows.map((r) => strip(rowToAccount(r)));
 }
 
 /** Internal: full account with decrypted password (for opening connections). */
-export function getAccountWithSecret(id: string): Account | null {
-  const row = db.prepare("SELECT * FROM accounts WHERE id = ?").get(id) as
+export function getAccountWithSecret(id: string, ownerId: string): Account | null {
+  const row = db.prepare("SELECT * FROM accounts WHERE id = ? AND owner_id = ?").get(id, ownerId) as
     | Row
     | undefined;
   return row ? rowToAccount(row) : null;
@@ -80,15 +100,16 @@ export function getAccountWithSecret(id: string): Account | null {
 
 export function insertAccount(
   input: Omit<Account, "id" | "createdAt">,
+  ownerId: string,
 ): PublicAccount {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
   db.prepare(
     `INSERT INTO accounts
       (id, label, email, imap_host, imap_port, imap_secure,
-       smtp_host, smtp_port, smtp_secure, username, enc_password, created_at)
+       smtp_host, smtp_port, smtp_secure, username, enc_password, owner_id, created_at)
      VALUES (@id, @label, @email, @imapHost, @imapPort, @imapSecure,
-       @smtpHost, @smtpPort, @smtpSecure, @username, @encPassword, @createdAt)`,
+       @smtpHost, @smtpPort, @smtpSecure, @username, @encPassword, @ownerId, @createdAt)`,
   ).run({
     id,
     label: input.label,
@@ -101,12 +122,28 @@ export function insertAccount(
     smtpSecure: input.smtpSecure ? 1 : 0,
     username: input.username,
     encPassword: encryptSecret(input.password),
+    ownerId,
     createdAt,
   });
   return strip({ ...input, id, createdAt });
 }
 
-export function deleteAccount(id: string): boolean {
-  const info = db.prepare("DELETE FROM accounts WHERE id = ?").run(id);
+export function deleteAccount(id: string, ownerId: string): boolean {
+  const info = db.prepare("DELETE FROM accounts WHERE id = ? AND owner_id = ?").run(id, ownerId);
   return info.changes > 0;
+}
+
+export function createSession(tokenHash: string, csrfToken: string, ownerId: string, expiresAt: number) {
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(Date.now());
+  db.prepare("INSERT INTO sessions (token_hash, owner_id, csrf_token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)")
+    .run(tokenHash, ownerId, csrfToken, expiresAt, Date.now());
+}
+
+export function getSession(tokenHash: string) {
+  return db.prepare("SELECT owner_id, csrf_token, expires_at FROM sessions WHERE token_hash = ?")
+    .get(tokenHash) as { owner_id: string; csrf_token: string; expires_at: number } | undefined;
+}
+
+export function deleteSession(tokenHash: string) {
+  db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash);
 }

@@ -7,8 +7,10 @@ import {
   getAccountWithSecret,
 } from "../db.js";
 import { testConnection } from "../imap.js";
+import { requireAuth, requireCsrf } from "../auth.js";
 
 export const accountsRouter = Router();
+accountsRouter.use(requireAuth);
 
 const createSchema = z.object({
   label: z.string().min(1),
@@ -23,11 +25,11 @@ const createSchema = z.object({
   password: z.string().min(1),
 });
 
-accountsRouter.get("/", (_req, res) => {
-  res.json({ accounts: listAccounts() });
+accountsRouter.get("/", (req, res) => {
+  res.json({ accounts: listAccounts(req.auth!.ownerId) });
 });
 
-accountsRouter.post("/", async (req, res) => {
+accountsRouter.post("/", requireCsrf, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid account", details: parsed.error.issues });
@@ -44,15 +46,15 @@ accountsRouter.post("/", async (req, res) => {
     });
     return;
   }
-  const account = insertAccount(input);
+  const account = insertAccount(input, req.auth!.ownerId);
   res.status(201).json({ account });
 });
 
-accountsRouter.delete("/:id", (req, res) => {
-  if (!getAccountWithSecret(req.params.id)) {
+accountsRouter.delete("/:id", requireCsrf, (req, res) => {
+  if (!getAccountWithSecret(req.params.id, req.auth!.ownerId)) {
     res.status(404).json({ error: "Account not found" });
     return;
   }
-  deleteAccount(req.params.id);
+  deleteAccount(req.params.id, req.auth!.ownerId);
   res.status(204).end();
 });

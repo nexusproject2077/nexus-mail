@@ -16,6 +16,9 @@ import {
   deleteAccount,
   apiConfigured,
   checkBackend,
+  login,
+  logout,
+  restoreSession,
   type PublicAccount,
   type NewAccount,
 } from "@/lib/api";
@@ -60,6 +63,9 @@ export default function AccountsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -67,6 +73,7 @@ export default function AccountsPanel({
     void checkBackend().then((online) => {
       if (!cancelled) setBackendOnline(online);
     });
+    void restoreSession().then((ok) => { if (!cancelled) setAuthenticated(ok); });
     return () => { cancelled = true; };
   }, [isOpen]);
 
@@ -95,6 +102,17 @@ export default function AccountsPanel({
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleLogin = async () => {
+    setError(null); setBusy(true);
+    try { await login(username, password); setPassword(""); setAuthenticated(true); await onChanged(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  const handleLogout = async () => {
+    await logout(); setAuthenticated(false); setShowForm(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -148,6 +166,17 @@ export default function AccountsPanel({
             </div>
           )}
 
+          {apiConfigured() && backendOnline === true && !authenticated && (
+            <div className="mb-4 space-y-2 rounded-xl border border-nexus-border bg-nexus-bg p-3">
+              <p className="text-xs text-nexus-text">Connexion requise pour accéder aux comptes.</p>
+              <Input label="Identifiant" value={username} onChange={setUsername} />
+              <Input label="Mot de passe" type="password" value={password} onChange={setPassword} />
+              <button onClick={handleLogin} disabled={busy || !username || !password} className="w-full py-2 bg-nexus-primary disabled:opacity-40 text-white rounded-lg text-sm">
+                {busy ? "Connexion…" : "Se connecter"}
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
               <ShieldAlert size={14} className="mt-0.5 flex-shrink-0" />
@@ -156,7 +185,7 @@ export default function AccountsPanel({
           )}
 
           {/* Existing accounts */}
-          <div className="space-y-2 mb-4">
+          {authenticated && <div className="space-y-2 mb-4">
             {accounts.length === 0 && (
               <p className="text-xs text-nexus-text-dim">
                 Aucun compte connecté pour le moment.
@@ -186,12 +215,12 @@ export default function AccountsPanel({
                 </button>
               </div>
             ))}
-          </div>
+          </div>}
 
           {!showForm ? (
             <button
               onClick={() => setShowForm(true)}
-              disabled={!apiConfigured() || backendOnline !== true}
+              disabled={!apiConfigured() || backendOnline !== true || !authenticated}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors"
             >
               <Plus size={16} /> Ajouter un compte
@@ -270,6 +299,7 @@ export default function AccountsPanel({
               </div>
             </div>
           )}
+          {authenticated && <button onClick={handleLogout} className="mt-3 w-full py-2 text-xs text-nexus-text-dim hover:text-red-400">Se déconnecter</button>}
         </div>
       </div>
     </div>

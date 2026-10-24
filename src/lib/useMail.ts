@@ -112,7 +112,9 @@ export function useMail(): UseMail {
     }
   }, [configured, activeAccountId]);
 
-  activeAccountRef.current = activeAccountId;
+  useEffect(() => {
+    activeAccountRef.current = activeAccountId;
+  }, [activeAccountId]);
 
   // Fetch accounts and messages on mount / when the active account changes.
   // The loading/error setState calls live in these fetch flows by design.
