@@ -12,6 +12,16 @@ export function apiConfigured(): boolean {
   return BASE.length > 0;
 }
 
+export async function checkBackend(): Promise<boolean> {
+  if (!apiConfigured()) return false;
+  try {
+    const response = await fetch(`${BASE}/api/health`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface PublicAccount {
   id: string;
   label: string;
