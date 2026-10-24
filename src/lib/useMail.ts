@@ -155,6 +155,7 @@ export function useMail(): UseMail {
       const enrichedMsg: Email = {
         ...msg,
         body: detail.text,
+        htmlBody: detail.html ?? undefined,
         snippet: detail.snippet || msg.snippet,
         isUnread: false,
       };
