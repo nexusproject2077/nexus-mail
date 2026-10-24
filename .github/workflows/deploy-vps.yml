@@ -1,0 +1,78 @@
+name: Deploy Nexus Mail to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-mail-vps-frontend
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build for mail.mmi25b11.mmi-troyes.fr
+        env:
+          NEXT_PUBLIC_API_URL: https://api.mmi25b11.mmi-troyes.fr/mail
+          NEXT_PUBLIC_BASE_PATH: ''
+        run: npm run build
+
+      - name: Check deployment configuration
+        env:
+          VPS_HOST: ${{ secrets.NEXUS_MAIL_VPS_HOST }}
+          VPS_USER: ${{ secrets.NEXUS_MAIL_VPS_USER }}
+          VPS_KEY: ${{ secrets.NEXUS_MAIL_VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.NEXUS_MAIL_VPS_KNOWN_HOSTS }}
+          VPS_DIR: ${{ secrets.NEXUS_MAIL_FRONTEND_DIR }}
+        run: |
+          for name in VPS_HOST VPS_USER VPS_KEY VPS_KNOWN_HOSTS VPS_DIR; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing deployment secret for $name. See docs/VPS-AUTO-DEPLOY.md."
+              exit 1
+            fi
+          done
+          case "$VPS_DIR" in
+            /*) ;;
+            *) echo "::error::Frontend directory must be an absolute path"; exit 1 ;;
+          esac
+          if [ "$VPS_DIR" = "/" ] || [ "$VPS_DIR" = "/var/www" ] || [ "$VPS_DIR" = "/home" ]; then
+            echo "::error::Unsafe deployment directory"; exit 1
+          fi
+
+      - name: Configure SSH
+        env:
+          VPS_KEY: ${{ secrets.NEXUS_MAIL_VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.NEXUS_MAIL_VPS_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Publish static frontend
+        env:
+          VPS_HOST: ${{ secrets.NEXUS_MAIL_VPS_HOST }}
+          VPS_USER: ${{ secrets.NEXUS_MAIL_VPS_USER }}
+          VPS_DIR: ${{ secrets.NEXUS_MAIL_FRONTEND_DIR }}
+        run: |
+          rsync -az --no-owner --no-group \
+            -e "ssh -o StrictHostKeyChecking=yes -o BatchMode=yes" \
+            out/ "$VPS_USER@$VPS_HOST:$VPS_DIR/"
