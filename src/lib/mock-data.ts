@@ -25,7 +25,7 @@ const rawThreads = [
         labelIds: ["UNREAD", "IMPORTANT", "Label_7", "INBOX"],
         sender: "Nexus Security <security@nexusmail.app>",
         snippet: "Message confidentiel chiffré — passcode requis pour ouvrir.",
-        subject: "🔐 Message confidentiel de démonstration",
+        subject: "Message confidentiel de démonstration",
         toRecipients: ["merickoken54@gmail.com"],
         body: DEMO_CONFIDENTIAL_BODY,
         encryption: "confidential" as const,
