@@ -36,18 +36,18 @@ export default function EmailView({
   const lastMsg = thread.messages[thread.messages.length - 1];
 
   return (
-    <div className="flex-1 flex flex-col animate-slide-in">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-nexus-border">
+    <div className="flex-1 min-w-0 min-h-0 flex flex-col animate-slide-in">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 border-b border-nexus-border">
         <button
           onClick={onBack}
           className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text"
         >
           <ArrowLeft size={18} />
         </button>
-        <h2 className="flex-1 text-lg font-semibold truncate">
+        <h2 className="flex-1 min-w-0 text-sm sm:text-lg font-semibold truncate">
           {thread.subject}
         </h2>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0 sm:gap-1">
           <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
             <Archive size={18} />
           </button>
@@ -60,7 +60,7 @@ export default function EmailView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-6">
         {thread.messages.map((msg, idx) => {
           const avatarColor = getAvatarColor(msg.senderEmail);
           const userLabel = msg.labelIds.find((l) => l.startsWith("Label_"));
@@ -71,7 +71,7 @@ export default function EmailView({
               key={msg.id}
               className={`mb-6 ${idx > 0 ? "pt-6 border-t border-nexus-border/50" : ""}`}
             >
-              <div className="flex items-start gap-4 mb-4">
+              <div className="flex min-w-0 items-start gap-2 sm:gap-4 mb-4">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
                   style={{ backgroundColor: avatarColor }}
@@ -110,14 +110,14 @@ export default function EmailView({
                 </button>
               </div>
 
-              <div className="pl-14">
+              <div className="pl-0 sm:pl-14 min-w-0 break-words">
                 {msg.encryption || isEncryptedBody(msg.body) ? (
                   <EncryptedMessage
                     body={msg.body as string}
                     onNeedUnlock={onNeedUnlock}
                   />
                 ) : (
-                  <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap bg-nexus-surface-hover/30 rounded-xl p-4">
+                  <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-nexus-surface-hover/30 rounded-xl p-4">
                     {msg.body ?? msg.snippet}
                   </div>
                 )}
@@ -127,7 +127,7 @@ export default function EmailView({
         })}
       </div>
 
-      <div className="px-6 py-4 border-t border-nexus-border flex items-center gap-3">
+      <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-nexus-border flex items-center gap-3">
         <button
           onClick={() => onReply(thread.id, lastMsg.id)}
           className="flex items-center gap-2 px-4 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark text-white rounded-xl text-sm font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25"
