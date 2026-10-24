@@ -55,7 +55,7 @@ export default function Sidebar({
   );
 
   return (
-    <aside className="w-64 h-full flex flex-col bg-nexus-surface border-r border-nexus-border">
+    <aside className="w-[min(82vw,280px)] lg:w-64 h-full min-h-0 flex flex-col bg-nexus-surface border-r border-nexus-border">
       <div className="p-4">
         <button
           onClick={onCompose}
@@ -66,7 +66,7 @@ export default function Sidebar({
         </button>
       </div>
 
-      <nav className="flex-1 px-2 space-y-0.5">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2 space-y-0.5">
         {folders.map((folder) => (
           <button
             key={folder}
