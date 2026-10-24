@@ -116,6 +116,14 @@ export default function EmailView({
                     body={msg.body as string}
                     onNeedUnlock={onNeedUnlock}
                   />
+                ) : msg.htmlBody ? (
+                  <iframe
+                    title={`Contenu du message de ${msg.senderName}`}
+                    sandbox=""
+                    referrerPolicy="no-referrer"
+                    srcDoc={msg.htmlBody}
+                    className="w-full min-h-[420px] rounded-xl bg-white border border-nexus-border"
+                  />
                 ) : (
                   <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-nexus-surface-hover/30 rounded-xl p-4">
                     {msg.body ?? msg.snippet}
