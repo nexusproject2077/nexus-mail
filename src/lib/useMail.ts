@@ -74,7 +74,7 @@ export function useMail(): UseMail {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pending = useRef(false);
+  const requestId = useRef(0);
   const activeAccountRef = useRef<string | null>(null);
 
   const refreshAccounts = useCallback(async () => {
@@ -101,22 +101,20 @@ export function useMail(): UseMail {
       setThreads([]);
       return;
     }
-    if (pending.current) return;
-    pending.current = true;
+    const currentRequest = ++requestId.current;
     setLoading(true);
     try {
       const msgs = await getMessages(activeAccountId);
-      if (activeAccountRef.current === activeAccountId) {
+      if (requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
         setThreads(msgs.map((m) => summaryToThread(activeAccountId, m)));
         setError(null);
       }
     } catch (e) {
-      if (activeAccountRef.current === activeAccountId) {
+      if (requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
         setError((e as Error).message);
       }
     } finally {
-      pending.current = false;
-      setLoading(false);
+      if (requestId.current === currentRequest) setLoading(false);
     }
   }, [configured, activeAccountId]);
 
@@ -179,6 +177,11 @@ export function useMail(): UseMail {
   );
 
   const setActiveAccountId = useCallback((id: string | null) => {
+    activeAccountRef.current = id;
+    requestId.current += 1;
+    setThreads([]);
+    setError(null);
+    setLoading(false);
     setActiveAccountIdState(id);
     if (id) window.localStorage.setItem(ACTIVE_ACCOUNT_STORAGE_KEY, id);
     else window.localStorage.removeItem(ACTIVE_ACCOUNT_STORAGE_KEY);
