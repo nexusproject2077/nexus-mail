@@ -19,7 +19,7 @@ import ComposeModal from "@/components/ComposeModal";
 import SearchBar from "@/components/SearchBar";
 import SecurityPanel from "@/components/SecurityPanel";
 import AccountsPanel from "@/components/AccountsPanel";
-import { threads as allThreads } from "@/lib/mock-data";
+
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId } from "@/lib/useMail";
 import type { Thread, Folder } from "@/types/email";
@@ -54,11 +54,7 @@ export default function NexusMail() {
         filtered = mail.threads.filter((t) => t.isStarred);
       else filtered = []; // sent/drafts/trash not yet backed by IMAP
     } else {
-      filtered = allThreads;
-      if (activeFolder === "starred")
-        filtered = filtered.filter((t) => t.isStarred);
-      else if (activeFolder === "inbox")
-        filtered = filtered.filter((t) => t.labels.includes("INBOX"));
+      filtered = []; // Never display sample emails as a real inbox.
     }
 
     if (searchQuery.trim()) {
@@ -78,11 +74,7 @@ export default function NexusMail() {
     return filtered;
   }, [activeFolder, searchQuery, vaultMessages, liveInbox, mail.threads]);
 
-  const unreadCount = (
-    liveInbox
-      ? mail.threads
-      : allThreads.filter((t) => t.labels.includes("INBOX"))
-  ).filter((t) => t.isUnread).length;
+  const unreadCount = mail.threads.filter((t) => t.isUnread).length;
 
   // Live messages arrive as summaries; fetch the full body on selection.
   const handleSelectThread = async (t: Thread | null) => {
@@ -101,7 +93,7 @@ export default function NexusMail() {
     const thread =
       selectedThread?.id === threadId
         ? selectedThread
-        : allThreads.find((t) => t.id === threadId);
+        : mail.threads.find((t) => t.id === threadId);
     if (!thread) return;
     const msg = thread.messages.find((m) => m.id === messageId);
     if (!msg) return;
@@ -185,9 +177,9 @@ export default function NexusMail() {
             </span>
           </button>
           <button
-            onClick={() => mail.refreshMessages()}
-            disabled={!liveInbox || mail.loading}
-            title="Actualiser"
+            onClick={() => liveInbox ? void mail.refreshMessages() : setAccountsOpen(true)}
+            disabled={mail.loading}
+            title={liveInbox ? "Synchroniser les emails" : "Connecter un compte pour synchroniser"}
             className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40"
           >
             {mail.loading ? (
@@ -251,6 +243,13 @@ export default function NexusMail() {
             {mail.error && liveInbox && (
               <div className="mx-4 mt-3 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
                 Erreur de synchronisation : {mail.error}
+              </div>
+            )}
+            {!liveInbox && activeFolder !== "vault" && (
+              <div className="mx-4 mt-4 rounded-xl border border-nexus-border bg-nexus-surface p-4 text-sm text-nexus-text">
+                <p className="font-semibold">Aucun compte de messagerie connecté</p>
+                <p className="mt-1 text-nexus-text-dim">Les emails de démonstration ont été masqués. Connectez un compte IMAP pour récupérer vos vrais messages.</p>
+                <button type="button" onClick={() => setAccountsOpen(true)} className="mt-3 rounded-lg bg-nexus-primary px-3 py-2 text-white">Configurer la synchronisation</button>
               </div>
             )}
             <EmailList
