@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   Mail,
@@ -15,6 +15,7 @@ import {
   addAccount,
   deleteAccount,
   apiConfigured,
+  checkBackend,
   type PublicAccount,
   type NewAccount,
 } from "@/lib/api";
@@ -58,6 +59,16 @@ export default function AccountsPanel({
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void checkBackend().then((online) => {
+      if (!cancelled) setBackendOnline(online);
+    });
+    return () => { cancelled = true; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -127,6 +138,16 @@ export default function AccountsPanel({
             </div>
           )}
 
+          {apiConfigured() && (
+            <div role="status" className="mb-4 rounded-xl border border-nexus-border bg-nexus-bg px-3 py-2 text-xs text-nexus-text">
+              {backendOnline === null
+                ? "Vérification du serveur de messagerie…"
+                : backendOnline
+                  ? "Serveur de messagerie joignable. Vous pouvez configurer un compte IMAP."
+                  : "Serveur de messagerie inaccessible. Vérifiez NEXT_PUBLIC_API_URL, HTTPS et le déploiement du backend avant de connecter un compte."}
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
               <ShieldAlert size={14} className="mt-0.5 flex-shrink-0" />
@@ -170,7 +191,7 @@ export default function AccountsPanel({
           {!showForm ? (
             <button
               onClick={() => setShowForm(true)}
-              disabled={!apiConfigured()}
+              disabled={!apiConfigured() || backendOnline !== true}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors"
             >
               <Plus size={16} /> Ajouter un compte
