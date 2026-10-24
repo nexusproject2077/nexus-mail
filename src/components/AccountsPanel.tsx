@@ -18,6 +18,7 @@ import {
   checkBackend,
   login,
   logout,
+  connectGoogle,
   restoreSession,
   type PublicAccount,
   type NewAccount,
@@ -121,6 +122,11 @@ export default function AccountsPanel({
     await onChanged();
   };
 
+  const handleGoogle = async () => {
+    setError(null); setBusy(true);
+    try { await connectGoogle(); } catch (e) { setError((e as Error).message); setBusy(false); }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
       <div className="w-full max-w-lg bg-nexus-surface border border-nexus-border rounded-2xl shadow-2xl shadow-black/50 flex flex-col max-h-[95dvh] sm:max-h-[85dvh] min-w-0">
@@ -133,7 +139,7 @@ export default function AccountsPanel({
               Comptes de messagerie
             </h2>
             <p className="text-xs text-nexus-text-dim">
-              IMAP / SMTP via votre backend auto-hébergé
+              Connexion sécurisée via votre backend auto-hébergé
             </p>
           </div>
           <button
@@ -204,7 +210,7 @@ export default function AccountsPanel({
                     {a.label}
                   </div>
                   <div className="text-xs text-nexus-text-dim truncate">
-                    {a.email} · {a.imapHost}
+                    {a.email} · {a.authType === "google_oauth" ? "Google OAuth" : a.imapHost}
                   </div>
                 </div>
                 <button
@@ -218,13 +224,14 @@ export default function AccountsPanel({
           </div>}
 
           {!showForm ? (
-            <button
-              onClick={() => setShowForm(true)}
-              disabled={!apiConfigured() || backendOnline !== true || !authenticated}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors"
-            >
-              <Plus size={16} /> Ajouter un compte
-            </button>
+            <div className="space-y-2">
+              <button onClick={handleGoogle} disabled={!apiConfigured() || backendOnline !== true || !authenticated || busy} className="w-full flex items-center justify-center gap-2 py-2.5 bg-white text-slate-800 hover:bg-slate-100 disabled:opacity-40 rounded-xl text-sm font-medium transition-colors">
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />} Se connecter avec Google
+              </button>
+              <button onClick={() => setShowForm(true)} disabled={!apiConfigured() || backendOnline !== true || !authenticated} className="w-full flex items-center justify-center gap-2 py-2.5 border border-nexus-border hover:bg-nexus-surface-hover disabled:opacity-40 text-nexus-text rounded-xl text-sm font-medium transition-colors">
+                <Plus size={16} /> Ajouter un compte IMAP / SMTP
+              </button>
+            </div>
           ) : (
             <div className="space-y-3 border-t border-nexus-border pt-4">
               <div className="flex items-center justify-between">
@@ -272,10 +279,7 @@ export default function AccountsPanel({
               </div>
 
               <p className="text-[11px] text-nexus-text-dim leading-relaxed">
-                Pour Gmail, activez la validation en 2 étapes puis créez un{" "}
-                <em>mot de passe d&apos;application</em> — le mot de passe normal
-                ne fonctionnera pas en IMAP. Les identifiants sont chiffrés au
-                repos (AES-256-GCM) côté backend.
+                Pour Gmail, utilisez plutôt « Se connecter avec Google » : aucun mot de passe d&apos;application n&apos;est nécessaire. Les comptes IMAP / SMTP restent disponibles et leurs identifiants sont chiffrés au repos (AES-256-GCM).
               </p>
 
               <div className="flex gap-2">

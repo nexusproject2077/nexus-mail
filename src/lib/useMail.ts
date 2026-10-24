@@ -12,14 +12,14 @@ import {
 import type { Thread, Email } from "@/types/email";
 
 /** Encode account + IMAP uid into an opaque thread id. */
-export function liveId(accountId: string, uid: number): string {
+export function liveId(accountId: string, uid: string): string {
   return `live:${accountId}:${uid}`;
 }
 export function parseLiveId(
   id: string,
-): { accountId: string; uid: number } | null {
-  const m = id.match(/^live:(.+):(\d+)$/);
-  return m ? { accountId: m[1], uid: Number(m[2]) } : null;
+): { accountId: string; uid: string } | null {
+  const m = id.match(/^live:(.+):([^:]+)$/);
+  return m ? { accountId: m[1], uid: m[2] } : null;
 }
 
 function summaryToThread(accountId: string, s: MessageSummary): Thread {

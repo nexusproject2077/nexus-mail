@@ -24,6 +24,8 @@ db.exec(`
     smtp_secure  INTEGER NOT NULL,
     username     TEXT NOT NULL,
     enc_password TEXT NOT NULL,
+    auth_type    TEXT NOT NULL DEFAULT 'password',
+    enc_refresh_token TEXT,
     owner_id     TEXT,
     created_at   TEXT NOT NULL
   );
@@ -35,6 +37,8 @@ const columns = db.prepare("PRAGMA table_info(accounts)").all() as { name: strin
 if (!columns.some((column) => column.name === "owner_id")) {
   db.exec("ALTER TABLE accounts ADD COLUMN owner_id TEXT");
 }
+if (!columns.some((column) => column.name === "auth_type")) db.exec("ALTER TABLE accounts ADD COLUMN auth_type TEXT NOT NULL DEFAULT 'password'");
+if (!columns.some((column) => column.name === "enc_refresh_token")) db.exec("ALTER TABLE accounts ADD COLUMN enc_refresh_token TEXT");
 db.prepare("UPDATE accounts SET owner_id = ? WHERE owner_id IS NULL").run(config.authUserId);
 
 db.exec(`
@@ -60,6 +64,8 @@ interface Row {
   smtp_secure: number;
   username: string;
   enc_password: string;
+  auth_type?: "password" | "google_oauth";
+  enc_refresh_token?: string | null;
   created_at: string;
 }
 
@@ -76,12 +82,14 @@ function rowToAccount(r: Row): Account {
     smtpSecure: !!r.smtp_secure,
     username: r.username,
     password: decryptSecret(r.enc_password),
+    authType: r.auth_type === "google_oauth" ? "google_oauth" : "password",
+    refreshToken: r.enc_refresh_token ? decryptSecret(r.enc_refresh_token) : undefined,
     createdAt: r.created_at,
   };
 }
 
 function strip(a: Account): PublicAccount {
-  const { password: _password, ...pub } = a;
+  const { password: _password, refreshToken: _refreshToken, ...pub } = a;
   return pub;
 }
 
@@ -107,9 +115,9 @@ export function insertAccount(
   db.prepare(
     `INSERT INTO accounts
       (id, label, email, imap_host, imap_port, imap_secure,
-       smtp_host, smtp_port, smtp_secure, username, enc_password, owner_id, created_at)
+       smtp_host, smtp_port, smtp_secure, username, enc_password, auth_type, enc_refresh_token, owner_id, created_at)
      VALUES (@id, @label, @email, @imapHost, @imapPort, @imapSecure,
-       @smtpHost, @smtpPort, @smtpSecure, @username, @encPassword, @ownerId, @createdAt)`,
+       @smtpHost, @smtpPort, @smtpSecure, @username, @encPassword, @authType, @encRefreshToken, @ownerId, @createdAt)`,
   ).run({
     id,
     label: input.label,
@@ -122,10 +130,22 @@ export function insertAccount(
     smtpSecure: input.smtpSecure ? 1 : 0,
     username: input.username,
     encPassword: encryptSecret(input.password),
+    authType: input.authType,
+    encRefreshToken: input.refreshToken ? encryptSecret(input.refreshToken) : null,
     ownerId,
     createdAt,
   });
   return strip({ ...input, id, createdAt });
+}
+
+export function insertGoogleAccount(input: { label: string; email: string; refreshToken: string }, ownerId: string): PublicAccount {
+  return insertAccount({
+    label: input.label, email: input.email, username: input.email, password: "",
+    // Compatibility metadata only; Google accounts use the Gmail API, never IMAP/SMTP.
+    imapHost: "gmail.googleapis.com", imapPort: 443, imapSecure: true,
+    smtpHost: "gmail.googleapis.com", smtpPort: 443, smtpSecure: true,
+    authType: "google_oauth", refreshToken: input.refreshToken,
+  }, ownerId);
 }
 
 export function deleteAccount(id: string, ownerId: string): boolean {
@@ -146,4 +166,20 @@ export function getSession(tokenHash: string) {
 
 export function deleteSession(tokenHash: string) {
   db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash);
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS oauth_states (
+    state TEXT PRIMARY KEY, owner_id TEXT NOT NULL, session_token_hash TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS oauth_states_expiry_idx ON oauth_states(expires_at);
+`);
+export function createOAuthState(state: string, ownerId: string, sessionTokenHash: string, expiresAt: number) {
+  db.prepare("DELETE FROM oauth_states WHERE expires_at <= ?").run(Date.now());
+  db.prepare("INSERT INTO oauth_states (state, owner_id, session_token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)").run(state, ownerId, sessionTokenHash, expiresAt, Date.now());
+}
+export function consumeOAuthState(state: string) {
+  const row = db.prepare("SELECT owner_id, session_token_hash, expires_at FROM oauth_states WHERE state = ?").get(state) as { owner_id: string; session_token_hash: string; expires_at: number } | undefined;
+  db.prepare("DELETE FROM oauth_states WHERE state = ?").run(state);
+  return row && row.expires_at > Date.now() ? row : undefined;
 }

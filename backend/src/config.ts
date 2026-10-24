@@ -21,6 +21,10 @@ export const config = {
   sessionTtlHours: Number(process.env.SESSION_TTL_HOURS ?? 168),
   cookieSecure: process.env.COOKIE_SECURE !== "false",
   cookiePath: process.env.COOKIE_PATH ?? "/mail",
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI ?? "",
+  oauthSuccessRedirect: process.env.OAUTH_SUCCESS_REDIRECT ?? "",
 };
 
 export function assertProductionSecret() {
@@ -29,7 +33,8 @@ export function assertProductionSecret() {
     (config.appSecret === "dev-insecure-change-me" ||
       !config.authUsername ||
       !config.authPasswordHash ||
-      config.corsOrigin === "*")
+      config.corsOrigin === "*" ||
+      (config.googleClientId && (!config.googleClientSecret || !config.googleRedirectUri || !config.oauthSuccessRedirect)))
   ) {
     throw new Error(
       "APP_SECRET, AUTH_USERNAME, AUTH_PASSWORD_HASH and an exact CORS_ORIGIN are required in production.",

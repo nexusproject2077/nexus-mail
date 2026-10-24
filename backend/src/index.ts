@@ -4,6 +4,7 @@ import { config, assertProductionSecret } from "./config.js";
 import { accountsRouter } from "./routes/accounts.js";
 import { messagesRouter } from "./routes/messages.js";
 import { authRouter } from "./routes/auth.js";
+import { googleOAuthRouter } from "./routes/google-oauth.js";
 
 assertProductionSecret();
 
@@ -17,6 +18,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/oauth", googleOAuthRouter);
 app.use("/api/accounts", accountsRouter);
 // Message routes are nested under an account id: /api/accounts/:id/messages...
 app.use("/api/accounts", messagesRouter);

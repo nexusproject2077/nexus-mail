@@ -1,0 +1,85 @@
+import type { Account, MessageDetail, MessageSummary } from "./types.js";
+import { randomUUID } from "node:crypto";
+
+const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
+
+export class GoogleAccessRevokedError extends Error {}
+
+/** Best-effort revocation when the owner removes a connected Google account. */
+export async function revokeGoogleAccess(account: Account): Promise<void> {
+  if (!account.refreshToken) return;
+  await fetch("https://oauth2.googleapis.com/revoke", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token: account.refreshToken }),
+  }).catch(() => undefined);
+}
+
+async function accessToken(account: Account): Promise<string> {
+  if (!account.refreshToken) throw new GoogleAccessRevokedError("Google authorization is missing. Reconnect the account.");
+  const body = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID ?? "",
+    client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+    refresh_token: account.refreshToken,
+    grant_type: "refresh_token",
+  });
+  const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+  const json = await response.json().catch(() => ({})) as { access_token?: string; error?: string };
+  if (!response.ok || !json.access_token) {
+    if (json.error === "invalid_grant") throw new GoogleAccessRevokedError("Google access was revoked or expired. Reconnect the account.");
+    throw new Error("Unable to refresh Google authorization");
+  }
+  return json.access_token;
+}
+
+async function gmail(account: Account, path: string, init?: RequestInit) {
+  const token = await accessToken(account);
+  const response = await fetch(`${GMAIL}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, ...init?.headers } });
+  if (response.status === 401 || response.status === 403) throw new GoogleAccessRevokedError("Google authorization no longer permits this operation. Reconnect the account.");
+  if (!response.ok) throw new Error(`Gmail API request failed (HTTP ${response.status})`);
+  return response.json() as Promise<any>;
+}
+
+function header(headers: Array<{ name: string; value: string }> | undefined, name: string) {
+  return headers?.find((item) => item.name.toLowerCase() === name.toLowerCase())?.value ?? "";
+}
+function addresses(value: string) { return value.split(",").map((part) => part.trim()).filter(Boolean); }
+function sender(value: string) {
+  const match = value.match(/^(.*)<([^>]+)>$/);
+  return match ? { name: match[1].trim().replace(/^"|"$/g, ""), email: match[2].trim() } : { name: "", email: value };
+}
+function decode(data?: string) { return data ? Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8") : ""; }
+function bodies(part: any): { text: string; html: string | null } {
+  if (part?.mimeType === "text/plain") return { text: decode(part.body?.data), html: null };
+  if (part?.mimeType === "text/html") return { text: "", html: decode(part.body?.data) };
+  const found = (part?.parts ?? []).map(bodies);
+  return { text: found.map((item: { text: string }) => item.text).find(Boolean) ?? "", html: found.map((item: { html: string | null }) => item.html).find(Boolean) ?? null };
+}
+function summary(message: any): MessageSummary {
+  const headers = message.payload?.headers;
+  return { uid: message.id, subject: header(headers, "Subject") || "(sans objet)", from: sender(header(headers, "From")), to: addresses(header(headers, "To")), date: header(headers, "Date") || new Date(Number(message.internalDate ?? Date.now())).toISOString(), snippet: message.snippet ?? "", seen: !(message.labelIds ?? []).includes("UNREAD"), flagged: (message.labelIds ?? []).includes("STARRED") };
+}
+
+export async function fetchGmailSummaries(account: Account, mailbox: string, limit: number): Promise<MessageSummary[]> {
+  const label = mailbox === "INBOX" ? "INBOX" : mailbox;
+  const list = await gmail(account, `/messages?${new URLSearchParams({ labelIds: label, maxResults: String(limit) })}`);
+  const messages = await Promise.all((list.messages ?? []).map((item: { id: string }) => gmail(account, `/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`)));
+  return messages.map(summary);
+}
+
+export async function fetchGmailDetail(account: Account, id: string): Promise<MessageDetail | null> {
+  const message = await gmail(account, `/messages/${encodeURIComponent(id)}?format=full`);
+  const base = summary(message); const content = bodies(message.payload);
+  return { ...base, snippet: message.snippet || content.text.replace(/\s+/g, " ").trim().slice(0, 200), text: content.text, html: content.html };
+}
+
+export async function sendGmailMessage(account: Account, message: { to: string; subject: string; text: string; html?: string }) {
+  const boundary = `nexus-${randomUUID()}`;
+  const raw = [
+    `From: ${account.label} <${account.email}>`, `To: ${message.to}`, `Subject: =?UTF-8?B?${Buffer.from(message.subject).toString("base64")}?=`, "MIME-Version: 1.0",
+    message.html ? `Content-Type: multipart/alternative; boundary=\"${boundary}\"` : "Content-Type: text/plain; charset=UTF-8", "",
+    ...(message.html ? [`--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "", message.text, `--${boundary}`, "Content-Type: text/html; charset=UTF-8", "", message.html, `--${boundary}--`] : [message.text]),
+  ].join("\r\n");
+  const result = await gmail(account, "/messages/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw: Buffer.from(raw).toString("base64url") }) });
+  return { messageId: result.id as string };
+}

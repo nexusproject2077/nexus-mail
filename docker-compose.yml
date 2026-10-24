@@ -15,6 +15,11 @@ services:
       DB_PATH: /data/nexus.db
       CORS_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
       NODE_ENV: production
+      # Optional Google OAuth server-side settings. Leave empty when unused.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      OAUTH_SUCCESS_REDIRECT: ${OAUTH_SUCCESS_REDIRECT:-}
     volumes:
       - nexus-data:/data
     ports:

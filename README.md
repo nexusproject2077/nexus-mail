@@ -49,7 +49,7 @@ Core modules: [`src/lib/crypto.ts`](src/lib/crypto.ts) (OpenPGP wrapper) and
 ## Self-hostable mail engine — real Gmail/IMAP (implemented)
 
 A Node backend ([`backend/`](backend/)) connects to any IMAP/SMTP provider
-(Gmail included) so real mail lands in the inbox. It is optional: with no
+  (Gmail included) so real mail lands in the inbox. It is optional: with no
 backend configured the app runs standalone with sample data + local E2EE.
 
 - **Backend** — Express + TypeScript. Fetches mail with
@@ -65,8 +65,37 @@ backend configured the app runs standalone with sample data + local E2EE.
   `GET /api/accounts/:id/messages`, `GET /api/accounts/:id/messages/:uid`,
   `POST /api/accounts/:id/send`.
 
-> **Gmail:** enable 2-Step Verification and create an **App Password** — a normal
-> password will not authenticate over IMAP.
+> **Gmail:** use **Se connecter avec Google**. It uses Google OAuth 2.0 with
+> `gmail.readonly` and `gmail.send`; no Gmail password or app password is stored.
+> The refresh token is AES-256-GCM encrypted in the backend SQLite database. The
+> IMAP/SMTP form remains available for URCA and other providers.
+
+### Google OAuth setup
+
+Create a **Web application** OAuth client in Google Cloud, configure the consent
+screen, and add these exact values (for the deployed service):
+
+```text
+Authorized JavaScript origin: https://nexusproject2077.github.io
+Authorized redirect URI:     https://api.mmi25b11.mmi-troyes.fr/mail/api/oauth/google/callback
+```
+
+Enable the **Gmail API** in that Google Cloud project. On the VPS, add the
+following server-only values to `backend/.env` (never to GitHub Pages or a
+`NEXT_PUBLIC_*` variable):
+
+```ini
+GOOGLE_CLIENT_ID=<web-client-id>
+GOOGLE_CLIENT_SECRET=<web-client-secret>
+GOOGLE_REDIRECT_URI=https://api.mmi25b11.mmi-troyes.fr/mail/api/oauth/google/callback
+OAUTH_SUCCESS_REDIRECT=https://nexusproject2077.github.io/nexus-mail/
+```
+
+The first API boot creates the SQLite migration automatically: `accounts` gains
+`auth_type` and encrypted `enc_refresh_token` columns, and a short-lived
+`oauth_states` table is created. No manual SQL migration is required. Restart
+the backend after setting the variables. The OAuth callback is under the existing
+Apache `/mail/` proxy prefix, so no new proxy rule is needed.
 
 ### Self-host with Docker
 

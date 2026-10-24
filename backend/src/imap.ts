@@ -4,6 +4,7 @@ import type { Account, MessageSummary, MessageDetail } from "./types.js";
 
 /** Open an authenticated IMAP client for an account. */
 async function open(account: Account): Promise<ImapFlow> {
+  if (account.authType === "google_oauth") throw new Error("Google OAuth accounts use the Gmail API");
   const client = new ImapFlow({
     host: account.imapHost,
     port: account.imapPort,
@@ -52,7 +53,7 @@ export async function fetchSummaries(
       })) {
         const env = msg.envelope;
         summaries.push({
-          uid: msg.uid,
+          uid: String(msg.uid),
           subject: env?.subject ?? "(sans objet)",
           from: addr(env?.from?.[0]),
           to: (env?.to ?? []).map((t) => t.address ?? "").filter(Boolean),
@@ -75,7 +76,7 @@ export async function fetchSummaries(
 export async function fetchDetail(
   account: Account,
   mailbox: string,
-  uid: number,
+  uid: string,
 ): Promise<MessageDetail | null> {
   const client = await open(account);
   try {

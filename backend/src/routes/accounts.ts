@@ -8,6 +8,7 @@ import {
 } from "../db.js";
 import { testConnection } from "../imap.js";
 import { requireAuth, requireCsrf } from "../auth.js";
+import { revokeGoogleAccess } from "../gmail.js";
 
 export const accountsRouter = Router();
 accountsRouter.use(requireAuth);
@@ -38,7 +39,7 @@ accountsRouter.post("/", requireCsrf, async (req, res) => {
   const input = parsed.data;
   // Verify IMAP credentials before persisting anything.
   try {
-    await testConnection({ ...input, id: "probe", createdAt: "" });
+    await testConnection({ ...input, id: "probe", createdAt: "", authType: "password" });
   } catch (e) {
     res.status(400).json({
       error: "IMAP connection failed",
@@ -46,15 +47,17 @@ accountsRouter.post("/", requireCsrf, async (req, res) => {
     });
     return;
   }
-  const account = insertAccount(input, req.auth!.ownerId);
+  const account = insertAccount({ ...input, authType: "password" }, req.auth!.ownerId);
   res.status(201).json({ account });
 });
 
-accountsRouter.delete("/:id", requireCsrf, (req, res) => {
-  if (!getAccountWithSecret(req.params.id, req.auth!.ownerId)) {
+accountsRouter.delete("/:id", requireCsrf, async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) {
     res.status(404).json({ error: "Account not found" });
     return;
   }
+  if (account.authType === "google_oauth") await revokeGoogleAccess(account);
   deleteAccount(req.params.id, req.auth!.ownerId);
   res.status(204).end();
 });
