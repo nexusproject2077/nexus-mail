@@ -297,6 +297,8 @@ export default function NexusMail() {
         }}
         replyTo={replyTo || undefined}
         onNeedUnlock={() => setSecurityOpen(true)}
+        activeAccountId={mail.activeAccountId}
+        onSent={() => void mail.refreshMessages()}
       />
 
       <SecurityPanel
