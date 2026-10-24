@@ -34,7 +34,7 @@ export default function NexusMail() {
     to: string;
     messageId?: string;
   } | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [accountsOpen, setAccountsOpen] = useState(false);
   const { identity, isUnlocked, messages: vaultMessages } = useVault();
@@ -129,9 +129,9 @@ export default function NexusMail() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-nexus-bg">
+    <div className="h-dvh min-w-0 flex flex-col overflow-hidden bg-nexus-bg">
       {/* Header */}
-      <header className="h-14 flex items-center gap-4 px-4 border-b border-nexus-border bg-nexus-surface/80 backdrop-blur-sm flex-shrink-0">
+      <header className="min-h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 border-b border-nexus-border bg-nexus-surface/80 backdrop-blur-sm flex-shrink-0">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted"
@@ -139,7 +139,7 @@ export default function NexusMail() {
           <Menu size={20} />
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-nexus-primary to-purple-500 flex items-center justify-center">
             <span className="text-white font-bold text-sm">N</span>
           </div>
@@ -148,9 +148,9 @@ export default function NexusMail() {
           </span>
         </div>
 
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <div className="min-w-0 flex-1 sm:flex-initial"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
 
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex shrink-0 items-center gap-0 sm:gap-1 ml-auto">
           <button
             onClick={() => setSecurityOpen(true)}
             title="Chiffrement & clés"
@@ -196,7 +196,7 @@ export default function NexusMail() {
               <RefreshCw size={18} />
             )}
           </button>
-          <button className="relative p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
+          <button className="relative hidden sm:block p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
             <Bell size={18} />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-nexus-primary rounded-full" />
@@ -209,7 +209,7 @@ export default function NexusMail() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="relative flex-1 flex min-h-0 min-w-0 overflow-hidden">
         {sidebarOpen && (
           <Sidebar
             activeFolder={activeFolder}
@@ -263,7 +263,7 @@ export default function NexusMail() {
 
           {/* Email View Panel */}
           {selectedThread ? (
-            <div className="flex-1 flex flex-col bg-nexus-surface/30">
+            <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-nexus-surface/30">
               <EmailView
                 thread={selectedThread}
                 onBack={() => setSelectedThread(null)}
