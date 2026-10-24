@@ -10,6 +10,7 @@ import {
   ServerCog,
   ShieldAlert,
   Info,
+  Check,
 } from "lucide-react";
 import {
   addAccount,
@@ -28,6 +29,8 @@ interface AccountsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   accounts: PublicAccount[];
+  activeAccountId: string | null;
+  onSelectAccount: (id: string) => void;
   onChanged: () => Promise<void> | void;
 }
 
@@ -57,6 +60,8 @@ export default function AccountsPanel({
   isOpen,
   onClose,
   accounts,
+  activeAccountId,
+  onSelectAccount,
   onChanged,
 }: AccountsPanelProps) {
   const [form, setForm] = useState<NewAccount>(empty);
@@ -127,6 +132,11 @@ export default function AccountsPanel({
     try { await connectGoogle(); } catch (e) { setError((e as Error).message); setBusy(false); }
   };
 
+  const handleSelect = (id: string) => {
+    onSelectAccount(id);
+    setError(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
       <div className="w-full max-w-lg bg-nexus-surface border border-nexus-border rounded-2xl shadow-2xl shadow-black/50 flex flex-col max-h-[95dvh] sm:max-h-[85dvh] min-w-0">
@@ -192,35 +202,63 @@ export default function AccountsPanel({
 
           {/* Existing accounts */}
           {authenticated && <div className="space-y-2 mb-4">
+            {accounts.length > 1 && (
+              <p className="px-1 text-xs text-nexus-text-dim">
+                Sélectionnez le compte à afficher et à utiliser pour l&apos;envoi.
+              </p>
+            )}
             {accounts.length === 0 && (
               <p className="text-xs text-nexus-text-dim">
                 Aucun compte connecté pour le moment.
               </p>
             )}
-            {accounts.map((a) => (
+            {accounts.map((a) => {
+              const isActive = a.id === activeAccountId;
+              return (
               <div
                 key={a.id}
-                className="flex items-center gap-3 rounded-xl border border-nexus-border bg-nexus-bg p-3"
+                className={`flex items-center gap-2 rounded-xl border p-1 transition-colors ${
+                  isActive
+                    ? "border-nexus-primary bg-nexus-primary/10"
+                    : "border-nexus-border bg-nexus-bg hover:border-nexus-primary/60"
+                }`}
               >
-                <div className="w-8 h-8 rounded-lg bg-nexus-primary/15 flex items-center justify-center">
-                  <Mail size={15} className="text-nexus-primary-light" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-nexus-text truncate">
-                    {a.label}
-                  </div>
-                  <div className="text-xs text-nexus-text-dim truncate">
-                    {a.email} · {a.authType === "google_oauth" ? "Google OAuth" : a.imapHost}
-                  </div>
-                </div>
                 <button
+                  type="button"
+                  onClick={() => handleSelect(a.id)}
+                  aria-pressed={isActive}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-nexus-primary"
+                >
+                  <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center ${isActive ? "bg-nexus-primary text-white" : "bg-nexus-primary/15 text-nexus-primary-light"}`}>
+                    {isActive ? <Check size={16} /> : <Mail size={15} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-nexus-text truncate">
+                        {a.label}
+                      </span>
+                      {isActive && (
+                        <span className="shrink-0 rounded-full bg-nexus-primary px-2 py-0.5 text-[10px] font-semibold text-white">
+                          Actif
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-nexus-text-dim truncate">
+                      {a.email} · {a.authType === "google_oauth" ? "Google OAuth" : a.imapHost}
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleDelete(a.id)}
+                  aria-label={`Supprimer ${a.label}`}
                   className="p-1.5 rounded-lg hover:bg-red-500/10 text-nexus-text-dim hover:text-red-400 transition-colors"
                 >
                   <Trash2 size={15} />
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>}
 
           {!showForm ? (

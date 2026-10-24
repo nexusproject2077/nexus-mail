@@ -310,6 +310,11 @@ export default function NexusMail() {
         isOpen={accountsOpen}
         onClose={() => setAccountsOpen(false)}
         accounts={mail.accounts}
+        activeAccountId={mail.activeAccountId}
+        onSelectAccount={(id) => {
+          mail.setActiveAccountId(id);
+          setSelectedThread(null);
+        }}
         onChanged={mail.refreshAccounts}
       />
     </div>

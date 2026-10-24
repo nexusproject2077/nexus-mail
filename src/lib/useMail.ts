@@ -11,6 +11,8 @@ import {
 } from "./api";
 import type { Thread, Email } from "@/types/email";
 
+const ACTIVE_ACCOUNT_STORAGE_KEY = "nexus-mail:active-account-id";
+
 /** Encode account + IMAP uid into an opaque thread id. */
 export function liveId(accountId: string, uid: string): string {
   return `live:${accountId}:${uid}`;
@@ -68,7 +70,7 @@ export interface UseMail {
 export function useMail(): UseMail {
   const configured = apiConfigured();
   const [accounts, setAccounts] = useState<PublicAccount[]>([]);
-  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
+  const [activeAccountId, setActiveAccountIdState] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,9 +82,15 @@ export function useMail(): UseMail {
     try {
       const list = await getAccounts();
       setAccounts(list);
-      setActiveAccountId((cur) =>
-        cur && list.some((a) => a.id === cur) ? cur : (list[0]?.id ?? null),
-      );
+      setActiveAccountIdState((cur) => {
+        const saved = window.localStorage.getItem(ACTIVE_ACCOUNT_STORAGE_KEY);
+        const next = [cur, saved].find(
+          (id): id is string => !!id && list.some((account) => account.id === id),
+        ) ?? list[0]?.id ?? null;
+        if (next) window.localStorage.setItem(ACTIVE_ACCOUNT_STORAGE_KEY, next);
+        else window.localStorage.removeItem(ACTIVE_ACCOUNT_STORAGE_KEY);
+        return next;
+      });
     } catch (e) {
       setError((e as Error).message);
     }
@@ -169,6 +177,12 @@ export function useMail(): UseMail {
     },
     [],
   );
+
+  const setActiveAccountId = useCallback((id: string | null) => {
+    setActiveAccountIdState(id);
+    if (id) window.localStorage.setItem(ACTIVE_ACCOUNT_STORAGE_KEY, id);
+    else window.localStorage.removeItem(ACTIVE_ACCOUNT_STORAGE_KEY);
+  }, []);
 
   return {
     configured,
