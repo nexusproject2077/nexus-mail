@@ -29,7 +29,7 @@ export default function EmailList({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 min-h-0 min-w-0 overflow-y-auto">
       {threads.map((thread) => {
         const lastMsg = thread.messages[thread.messages.length - 1];
         const isSelected = selectedId === thread.id;
@@ -42,7 +42,7 @@ export default function EmailList({
           <button
             key={thread.id}
             onClick={() => onSelect(thread)}
-            className={`w-full flex items-start gap-3 px-4 py-3 border-b border-nexus-border/50 transition-all text-left ${
+            className={`w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-nexus-border/50 transition-all text-left ${
               isSelected
                 ? "bg-nexus-primary/10 border-l-2 border-l-nexus-primary"
                 : thread.isUnread
