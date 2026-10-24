@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   X,
   Minus,
@@ -13,7 +13,15 @@ import {
   KeyRound,
   Timer,
   Loader2,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  ImagePlus,
+  Link2,
 } from "lucide-react";
+import { sendViaAccount } from "@/lib/api";
 import { encryptToKey, encryptConfidential } from "@/lib/crypto";
 import { useVault, addVaultMessage } from "@/lib/vault";
 import type { Thread } from "@/types/email";
@@ -23,6 +31,8 @@ interface ComposeModalProps {
   onClose: () => void;
   replyTo?: { subject: string; to: string; messageId?: string };
   onNeedUnlock: () => void;
+  activeAccountId?: string | null;
+  onSent?: () => void;
 }
 
 type Mode = "standard" | "pgp" | "confidential";
@@ -39,6 +49,8 @@ export default function ComposeModal({
   onClose,
   replyTo,
   onNeedUnlock,
+  activeAccountId,
+  onSent,
 }: ComposeModalProps) {
   const { identity, isUnlocked, passphrase } = useVault();
 
@@ -47,6 +59,8 @@ export default function ComposeModal({
     replyTo ? `Re: ${replyTo.subject}` : "",
   );
   const [body, setBody] = useState("");
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [htmlBody, setHtmlBody] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
@@ -62,6 +76,8 @@ export default function ComposeModal({
     setTo("");
     setSubject("");
     setBody("");
+    setHtmlBody("");
+    if (editorRef.current) editorRef.current.innerHTML = "";
     setRecipientKey("");
     setPasscode("");
     setMode("standard");
@@ -73,14 +89,28 @@ export default function ComposeModal({
     if (!to.trim()) return;
     setError(null);
 
-    // Standard (unencrypted) send — original mock behaviour.
+    // Send a real HTML email through the configured SMTP account.
     if (mode === "standard") {
+      if (!activeAccountId) {
+        setError("Connectez un compte SMTP pour envoyer ce message.");
+        return;
+      }
       setIsSending(true);
-      setTimeout(() => {
-        setIsSending(false);
+      try {
+        await sendViaAccount(activeAccountId, {
+          to: to.trim(),
+          subject: subject.trim(),
+          text: body,
+          html: htmlBody || undefined,
+        });
+        onSent?.();
         onClose();
         reset();
-      }, 800);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setIsSending(false);
+      }
       return;
     }
 
@@ -165,6 +195,37 @@ export default function ComposeModal({
     }
   };
 
+  const format = (command: string, value?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    setHtmlBody(editorRef.current?.innerHTML ?? "");
+    setBody(editorRef.current?.innerText ?? "");
+  };
+
+  const insertImage = () => {
+    const url = window.prompt("Adresse HTTPS de l'image à insérer :");
+    if (!url) return;
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:") throw new Error();
+      format("insertImage", parsed.toString());
+    } catch {
+      setError("Utilisez une adresse d'image HTTPS valide.");
+    }
+  };
+
+  const insertLink = () => {
+    const url = window.prompt("Adresse HTTPS du lien :");
+    if (!url) return;
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:") throw new Error();
+      format("createLink", parsed.toString());
+    } catch {
+      setError("Utilisez une adresse HTTPS valide.");
+    }
+  };
+
   if (isMinimized) {
     return (
       <div className="fixed bottom-0 right-0 sm:right-6 z-50">
@@ -181,7 +242,7 @@ export default function ComposeModal({
   }
 
   return (
-    <div className="fixed bottom-0 right-6 z-50 w-full sm:w-[min(520px,calc(100vw-3rem))] animate-fade-in">
+    <div className="fixed bottom-0 right-0 sm:right-6 z-50 w-full sm:w-[min(520px,calc(100vw-3rem))] animate-fade-in">
       <div className="bg-nexus-surface border border-nexus-border rounded-t-xl shadow-2xl shadow-black/50 flex flex-col max-h-[100dvh] sm:max-h-[80dvh] min-w-0 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 bg-nexus-surface-active rounded-t-xl cursor-move">
           <span className="flex items-center gap-2 text-sm font-medium">
@@ -319,6 +380,115 @@ export default function ComposeModal({
               : "Rédigez votre message chiffré..."
           }
         />
+
+        <div className="flex items-center justify-between px-4 py-3 border-t border-nexus-border">
+          <button
+            onClick={handleSend}
+            disabled={isSending || !to.trim()}
+            className="flex items-center gap-2 px-5 py-2 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25"
+          >
+            {isSending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : mode === "standard" ? (
+              <Send size={14} />
+            ) : (
+              <Lock size={14} />
+            )}
+            {isSending
+              ? mode === "standard"
+                ? "Envoi..."
+                : "Chiffrement..."
+              : mode === "standard"
+                ? "Envoyer"
+                : "Chiffrer & envoyer"}
+          </button>
+          <div className="flex items-center gap-1">
+            <button className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors">
+              <Paperclip size={16} />
+            </button>
+            <button className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors">
+              <Smile size={16} />
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                reset();
+              }}
+              className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-red-400 transition-colors"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModeButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+        active
+          ? "bg-nexus-primary text-white"
+          : "text-nexus-text-dim hover:text-nexus-text"
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}        {mode === "standard" ? (
+          <>
+            <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-nexus-border" aria-label="Mise en forme du message">
+              {([
+                ["bold", Bold, "Gras"],
+                ["italic", Italic, "Italique"],
+                ["underline", Underline, "Souligné"],
+                ["insertUnorderedList", List, "Liste"],
+                ["insertOrderedList", ListOrdered, "Liste numérotée"],
+              ] as const).map(([cmd, Icon, label]) => (
+                <button key={cmd} type="button" title={label} aria-label={label} onMouseDown={(e) => e.preventDefault()} onClick={() => format(cmd)} className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted">
+                  <Icon size={16} />
+                </button>
+              ))}
+              <button type="button" title="Insérer un lien" aria-label="Insérer un lien" onClick={insertLink} className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted"><Link2 size={16} /></button>
+              <button type="button" title="Insérer une image par URL" aria-label="Insérer une image" onClick={insertImage} className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted"><ImagePlus size={16} /></button>
+            </div>
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              aria-label="Corps du message"
+              aria-multiline="true"
+              data-placeholder="Rédigez votre message..."
+              onInput={(e) => {
+                setBody(e.currentTarget.innerText);
+                setHtmlBody(e.currentTarget.innerHTML);
+              }}
+              className="flex-1 min-h-[160px] overflow-y-auto px-4 py-3 bg-transparent text-sm text-nexus-text outline-none break-words [&_img]:max-w-full [&_img]:h-auto empty:before:content-[attr(data-placeholder)] empty:before:text-nexus-text-dim"
+            />
+          </>
+        ) : (
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            className="flex-1 min-h-[160px] px-4 py-3 bg-transparent text-sm text-nexus-text outline-none resize-none"
+            placeholder="Rédigez votre message chiffré..."
+          />
+        )}
 
         <div className="flex items-center justify-between px-4 py-3 border-t border-nexus-border">
           <button
