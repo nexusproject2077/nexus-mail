@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ServerCog,
   Loader2,
+  Inbox,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import EmailList from "@/components/EmailList";
@@ -274,7 +275,7 @@ export default function NexusMail() {
             <div className="flex-1 hidden lg:flex items-center justify-center bg-nexus-surface/30">
               <div className="text-center">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-nexus-primary/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-4xl">📬</span>
+                  <Inbox size={40} strokeWidth={1.5} className="text-nexus-primary-light" aria-hidden="true" />
                 </div>
                 <h3 className="text-lg font-semibold text-nexus-text mb-1">
                   Sélectionnez un message
