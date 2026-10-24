@@ -106,8 +106,8 @@ export default function SecurityPanel({ isOpen, onClose }: SecurityPanelProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-nexus-surface border border-nexus-border rounded-2xl shadow-2xl shadow-black/50 flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+      <div className="w-full max-w-lg bg-nexus-surface border border-nexus-border rounded-2xl shadow-2xl shadow-black/50 flex flex-col max-h-[95dvh] sm:max-h-[85dvh] min-w-0">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-nexus-border">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-nexus-primary to-purple-500 flex items-center justify-center">
@@ -129,7 +129,7 @@ export default function SecurityPanel({ isOpen, onClose }: SecurityPanelProps) {
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto">
+        <div className="p-3 sm:p-5 min-h-0 overflow-y-auto">
           {error && (
             <div className="mb-4 flex items-start gap-2 rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
               <ShieldAlert size={14} className="mt-0.5 flex-shrink-0" />
