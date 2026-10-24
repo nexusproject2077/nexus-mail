@@ -135,6 +135,7 @@ export default function AccountsPanel({
   const handleSelect = (id: string) => {
     onSelectAccount(id);
     setError(null);
+    onClose();
   };
 
   return (
