@@ -72,6 +72,9 @@ export interface UseMail {
   selectedLabel: { accountId: string; id: string; name: string } | null;
   selectLabel: (label: { accountId: string; id: string; name: string } | null) => void;
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  loadMore: () => Promise<void>;
   error: string | null;
   refreshAccounts: () => Promise<void>;
   refreshMessages: () => Promise<void>;
@@ -90,6 +93,10 @@ export function useMail(): UseMail {
   const [labels, setLabels] = useState<Array<AccountLabel & { accountId: string; accountEmail: string }>>([]);
   const [selectedLabel, setSelectedLabel] = useState<{ accountId: string; id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursors, setCursors] = useState<Record<string, string | null>>({});
+  const cursorsRef = useRef<Record<string, string | null>>({});
+  const moreBusy = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
   const activeAccountRef = useRef<string | null>(null);
@@ -138,16 +145,19 @@ export function useMail(): UseMail {
         : []));
       const results = await Promise.allSettled(ids.map(async (id) => ({
         id,
-        messages: await getMessages(id, mailbox),
+        page: await getMessages(id, mailbox),
       })));
       if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
       const combined = results.flatMap((result) =>
         result.status === "fulfilled"
-          ? result.value.messages.map((m) => summaryToThread(result.value.id, m, mailbox))
+          ? result.value.page.messages.map((m) => summaryToThread(result.value.id, m, mailbox))
           : [],
       );
       combined.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
       setThreads(combined);
+      const next = Object.fromEntries(results.filter(r => r.status === "fulfilled").map(r => r.status === "fulfilled" ? [r.value.id, r.value.page.nextCursor] : ["", null]));
+      cursorsRef.current = next;
+      setCursors(next);
       const failures = results.filter((result) => result.status === "rejected");
       setError(failures.length ? `Impossible de synchroniser ${failures.length} compte(s) sur ${ids.length}.` : null);
     } catch (e) {
@@ -156,6 +166,37 @@ export function useMail(): UseMail {
       if (requestId.current === currentRequest) setLoading(false);
     }
   }, [configured, activeAccountId, selectedLabel]);
+
+  const loadMore = useCallback(async () => {
+    if (!configured || !activeAccountId || moreBusy.current || loading) return;
+    const entries = Object.entries(cursorsRef.current).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].length > 0);
+    if (!entries.length) return;
+    moreBusy.current = true;
+    setLoadingMore(true);
+    const currentRequest = requestId.current;
+    const mailbox = selectedLabel?.id ?? "INBOX";
+    try {
+      const results = await Promise.allSettled(entries.map(async ([id, cursor]) => ({ id, page: await getMessages(id, mailbox, 50, cursor) })));
+      if (requestId.current !== currentRequest) return;
+      const next = { ...cursorsRef.current };
+      const additions: Thread[] = [];
+      for (const result of results) {
+        if (result.status !== "fulfilled") continue;
+        next[result.value.id] = result.value.page.nextCursor;
+        additions.push(...result.value.page.messages.map(m => summaryToThread(result.value.id, m, mailbox)));
+      }
+      cursorsRef.current = next;
+      setCursors(next);
+      setThreads(old => {
+        const known = new Set(old.map(t => t.id));
+        return [...old, ...additions.filter(t => !known.has(t.id) && !!known.add(t.id))].sort((a,b) => Date.parse(b.date) - Date.parse(a.date));
+      });
+      if (results.some(r => r.status === "rejected")) setError("Une page n'a pas pu être chargée. Réessaie.");
+    } finally {
+      moreBusy.current = false;
+      setLoadingMore(false);
+    }
+  }, [configured, activeAccountId, loading, selectedLabel]);
 
   useEffect(() => {
     activeAccountRef.current = activeAccountId;
@@ -262,6 +303,8 @@ export function useMail(): UseMail {
     activeAccountRef.current = id;
     requestId.current += 1;
     setThreads([]);
+    cursorsRef.current = {};
+    setCursors({});
     setLabels([]);
     setSelectedLabel(null);
     setError(null);
@@ -281,6 +324,9 @@ export function useMail(): UseMail {
     selectedLabel,
     selectLabel: setSelectedLabel,
     loading,
+    loadingMore,
+    hasMore: Object.values(cursors).some(Boolean),
+    loadMore,
     error,
     refreshAccounts,
     refreshMessages,
