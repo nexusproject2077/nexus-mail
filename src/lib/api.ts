@@ -165,3 +165,14 @@ export function markMessageRead(accountId: string, uid: string) {
 export function trashMessage(accountId: string, uid: string) {
   return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/trash`, { method: "POST" });
 }
+
+export interface AccountLabel {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+export function getAccountLabels(accountId: string) {
+  return req<{ labels: AccountLabel[] }>(`/api/accounts/${encodeURIComponent(accountId)}/labels`)
+    .then((result) => result.labels);
+}
