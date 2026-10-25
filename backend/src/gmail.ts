@@ -37,8 +37,19 @@ async function accessToken(account: Account): Promise<string> {
 async function gmail(account: Account, path: string, init?: RequestInit) {
   const token = await accessToken(account);
   const response = await fetch(`${GMAIL}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, ...init?.headers } });
-  if (response.status === 401 || response.status === 403) throw new GoogleAccessRevokedError("Google authorization no longer permits this operation. Reconnect the account.");
-  if (!response.ok) throw new Error(`Gmail API request failed (HTTP ${response.status})`);
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({})) as {
+      error?: { message?: string; status?: string; errors?: Array<{ reason?: string }> };
+    };
+    const reason = errorBody.error?.errors?.[0]?.reason ?? errorBody.error?.status ?? "";
+    const detail = errorBody.error?.message ?? "Unknown Gmail API error";
+    if (response.status === 401) throw new GoogleAccessRevokedError("Google access token rejected. Reconnect the account if this persists.");
+    // A 403 may be rate limiting, insufficient scopes, or policy restrictions.
+    // It is NOT necessarily a revoked OAuth authorization.
+    if (response.status === 403 && /insufficientPermissions|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(reason))
+      throw new GoogleAccessRevokedError("Google permission missing. Reconnect the account to grant Gmail access.");
+    throw new Error(`Gmail API HTTP ${response.status}: ${reason || detail}`);
+  }
   return response.json() as Promise<any>;
 }
 
