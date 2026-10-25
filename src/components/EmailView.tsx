@@ -65,14 +65,27 @@ function prepareEmailHtml(html: string): string {
 
 /** Extractive, deterministic summary: no external requests or generated claims. */
 function flashSummary(input: string) {
-  const clean = input.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/\\s+/g, " ").trim();
-  const sentences = clean.match(/[^.!?\\n]+(?:[.!?]+|$)/g)?.map(s => s.trim()).filter(Boolean) ?? [];
-  const actionPattern = /\\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer)\\b/i;
-  const datePattern = /\\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|avant le|au plus tard|\\d{1,2}[\\/.-]\\d{1,2}(?:[\\/.-]\\d{2,4})?|\\d{1,2}\\s?h(?:\\d{2})?)\\b/i;
+  const clean = input
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Keep numeric dates together: a dot in 24.10 must not split the sentence.
+  const sentences = clean
+    .split(/(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÀ-ÖØ-Þ])/u)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const actionPattern = /\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer)\b/i;
+  const numericDate = /\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/;
+  const namedDate = /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|avant le|au plus tard|\d{1,2}\s?h(?:\d{2})?)\b/i;
+  const temporalContext = /\b(dès maintenant|cette semaine|du\s+.+?\s+au\s+.+?|jusqu['’]au|jusqu['’]à|à partir de|ce week-end|aujourd['’]hui|demain)\b/i;
   const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n).trimEnd() + "…" : s;
+  const dateSentence = sentences.find(s => numericDate.test(s) || namedDate.test(s))
+    ?? sentences.find(s => temporalContext.test(s));
   return {
     action: clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise"),
-    date: clip(sentences.find(s => datePattern.test(s)) ?? "Aucune échéance détectée"),
+    date: clip(dateSentence ?? "Aucune échéance détectée", 320),
     snippet: clip(clean || "Aucun texte disponible pour ce message", 100),
   };
 }
