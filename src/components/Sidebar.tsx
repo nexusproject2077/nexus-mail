@@ -68,7 +68,7 @@ export default function Sidebar({
   return (
     <aside className="w-full h-full min-h-0 flex flex-col bg-nexus-surface lg:border-r lg:border-nexus-border">
       <div
-        className={`flex shrink-0 items-center border-b border-nexus-border/50 ${compact ? "lg:hidden" : ""}`}
+        className={`flex shrink-0 items-center border-b border-nexus-border/50 lg:hidden`}
         style={{ padding: "calc(env(safe-area-inset-top) + 16px) 16px 16px 24px" }}
       >
         <div className="flex items-center gap-0">
