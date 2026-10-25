@@ -318,6 +318,7 @@ export default function NexusMail() {
               threads={filteredThreads}
               selectedId={selectedThread?.id || null}
               onSelect={handleSelectThread}
+              onTrash={activeFolder !== "trash" ? async (thread) => { try { await mail.trashThread(thread); if (selectedThread?.id === thread.id) setSelectedThread(null); } catch (error) { setMessageActionError((error as Error).message); } } : undefined}
               folder={activeFolder}
             />
           </div>
