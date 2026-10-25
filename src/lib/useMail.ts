@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   apiConfigured,
   getAccounts,
+  getCategoryCounts,
   getMessages,
   getMessage,
   getAccountLabels,
@@ -68,6 +69,10 @@ export interface UseMail {
   activeAccountId: string | null;
   setActiveAccountId: (id: string | null) => void;
   threads: Thread[];
+  category: string;
+  setCategory: (category: string) => void;
+  categoryCounts: Record<string, number> | null;
+  categoryLoading: boolean;
   labels: Array<AccountLabel & { accountId: string; accountEmail: string }>;
   selectedLabel: { accountId: string; id: string; name: string } | null;
   selectLabel: (label: { accountId: string; id: string; name: string } | null) => void;
@@ -90,6 +95,9 @@ export function useMail(): UseMail {
   const [accounts, setAccounts] = useState<PublicAccount[]>([]);
   const [activeAccountId, setActiveAccountIdState] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [category, setCategory] = useState("CATEGORY_PERSONAL");
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number> | null>(null);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const [labels, setLabels] = useState<Array<AccountLabel & { accountId: string; accountEmail: string }>>([]);
   const [selectedLabel, setSelectedLabel] = useState<{ accountId: string; id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -123,6 +131,19 @@ export function useMail(): UseMail {
     }
   }, [configured]);
 
+  const refreshCategoryCounts = useCallback(async () => {
+    const ids = activeAccountId === ALL_ACCOUNTS ? accountsRef.current.filter(a => a.authType === "google_oauth").map(a => a.id) : accountsRef.current.filter(a => a.id === activeAccountId && a.authType === "google_oauth").map(a => a.id);
+    if (!ids.length) { setCategoryCounts(null); return; }
+    const results = await Promise.allSettled(ids.map(id => getCategoryCounts(id)));
+    const counts: Record<string, number> = {};
+    let succeeded = false;
+    for (const result of results) if (result.status === "fulfilled" && result.value) {
+      succeeded = true;
+      for (const [key, value] of Object.entries(result.value)) counts[key] = (counts[key] ?? 0) + value;
+    }
+    setCategoryCounts(succeeded ? counts : null);
+  }, [activeAccountId]);
+
   const refreshMessages = useCallback(async () => {
     if (!configured || !activeAccountId) {
       setThreads([]);
@@ -136,6 +157,8 @@ export function useMail(): UseMail {
       : [activeAccountId];
     const mailbox = selectedLabel?.id ?? "INBOX";
     setLoading(true);
+    setCategoryLoading(true);
+    void refreshCategoryCounts();
     try {
       const selectedAccounts = accountsRef.current.filter((account) => activeAccountId === ALL_ACCOUNTS || account.id === activeAccountId);
       const labelResults = await Promise.allSettled(selectedAccounts.map(async (account) => ({
@@ -157,7 +180,7 @@ export function useMail(): UseMail {
       try {
         while (pending.length && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
           const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
-            id, page: await getMessages(id, mailbox, 100, cursor ?? undefined),
+            id, page: await getMessages(id, mailbox, 100, cursor ?? undefined, !selectedLabel && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? category : undefined),
           })));
           const upcoming: typeof pending = [];
           for (let index = 0; index < batch.length; index++) {
@@ -181,7 +204,7 @@ export function useMail(): UseMail {
           }
           if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
           setThreads(previous => {
-            const merged = new Map(previous.map(thread => [thread.id, thread]));
+            const merged = new Map<string, Thread>();
             for (const [id, thread] of allMessages) merged.set(id, thread);
             return [...merged.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
           });
@@ -198,10 +221,10 @@ export function useMail(): UseMail {
     } catch (e) {
       if (requestId.current === currentRequest) setError((e as Error).message);
     } finally {
-      if (requestId.current === currentRequest) setLoading(false);
+      if (requestId.current === currentRequest) { setLoading(false); setCategoryLoading(false); }
       syncInProgress.current = false;
     }
-  }, [configured, activeAccountId, selectedLabel]);
+  }, [configured, activeAccountId, selectedLabel, category, refreshCategoryCounts]);
 
   const loadMore = useCallback(async () => {
     if (!configured || !activeAccountId || moreBusy.current || loading) return;
@@ -212,7 +235,7 @@ export function useMail(): UseMail {
     const currentRequest = requestId.current;
     const mailbox = selectedLabel?.id ?? "INBOX";
     try {
-      const results = await Promise.allSettled(entries.map(async ([id, cursor]) => ({ id, page: await getMessages(id, mailbox, 50, cursor) })));
+      const results = await Promise.allSettled(entries.map(async ([id, cursor]) => ({ id, page: await getMessages(id, mailbox, 50, cursor, !selectedLabel && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? category : undefined) })));
       if (requestId.current !== currentRequest) return;
       const next = { ...cursorsRef.current };
       const additions: Thread[] = [];
@@ -232,7 +255,7 @@ export function useMail(): UseMail {
       moreBusy.current = false;
       setLoadingMore(false);
     }
-  }, [configured, activeAccountId, loading, selectedLabel]);
+  }, [configured, activeAccountId, loading, selectedLabel, category]);
 
   useEffect(() => {
     activeAccountRef.current = activeAccountId;
@@ -370,6 +393,10 @@ export function useMail(): UseMail {
     activeAccountId,
     setActiveAccountId,
     threads,
+    category,
+    setCategory,
+    categoryCounts,
+    categoryLoading,
     labels,
     selectedLabel,
     selectLabel: setSelectedLabel,
