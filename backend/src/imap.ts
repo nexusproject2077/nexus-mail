@@ -56,6 +56,8 @@ export async function fetchSummaries(
         const env = msg.envelope;
         summaries.push({
           uid: String(msg.uid),
+          messageId: env?.messageId ?? undefined,
+          inReplyTo: env?.inReplyTo ?? undefined,
           subject: env?.subject ?? "(sans objet)",
           from: addr(env?.from?.[0]),
           to: (env?.to ?? []).map((t) => t.address ?? "").filter(Boolean),
