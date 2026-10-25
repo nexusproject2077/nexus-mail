@@ -43,3 +43,60 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.15s ease-out;
 }
+
+
+/* Nexus Mail motion system: responsive, subtle, and accessible. */
+@keyframes nexusMailAppear {
+  from { opacity: 0; transform: translate3d(0, 9px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes nexusPanelEnter {
+  from { opacity: 0; transform: translate3d(12px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes nexusLoadingPulse {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}
+.nexus-mail-list {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+.nexus-mail-row {
+  animation: nexusMailAppear 220ms both cubic-bezier(.2,.75,.3,1);
+}
+.nexus-mail-row > button {
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.nexus-mail-row > button:active {
+  background-color: var(--color-nexus-surface-active);
+}
+.nexus-mail-panel {
+  animation: nexusPanelEnter 260ms cubic-bezier(.2,.8,.2,1) both;
+}
+.nexus-mail-loading {
+  animation: nexusLoadingPulse 1.3s ease-in-out infinite;
+}
+.nexus-interactive {
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+.nexus-interactive:active {
+  transform: scale(.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nexus-mail-row > button:hover {
+    box-shadow: inset 3px 0 0 var(--color-nexus-primary-light);
+  }
+  .nexus-interactive:hover {
+    transform: translateY(-1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
