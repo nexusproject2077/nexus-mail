@@ -63,6 +63,7 @@ export async function fetchSummaries(
           snippet: "",
           seen: msg.flags?.has("\\Seen") ?? false,
           flagged: msg.flags?.has("\\Flagged") ?? false,
+          labelIds: [mailbox, ...(msg.flags?.has("\\Seen") ? [] : ["UNREAD"]), ...(msg.flags?.has("\\Flagged") ? ["STARRED"] : [])],
         });
       }
       return { messages: summaries.reverse(), nextCursor: start > 1 ? String(offset + (end - start + 1)) : null };
@@ -187,7 +188,7 @@ export async function searchImap(account: Account, query: string, limit: number)
       const results: MessageSummary[] = [];
       for await (const msg of client.fetch(uids.slice(-limit).join(","), { uid: true, envelope: true, flags: true }, { uid: true })) {
         const env = msg.envelope;
-        results.push({ uid: String(msg.uid), subject: env?.subject ?? "(sans objet)", from: addr(env?.from?.[0]), to: (env?.to ?? []).map(t => t.address ?? "").filter(Boolean), date: (env?.date ?? new Date()).toISOString(), snippet: "", seen: msg.flags?.has("\\Seen") ?? false, flagged: msg.flags?.has("\\Flagged") ?? false });
+        results.push({ uid: String(msg.uid), subject: env?.subject ?? "(sans objet)", from: addr(env?.from?.[0]), to: (env?.to ?? []).map(t => t.address ?? "").filter(Boolean), date: (env?.date ?? new Date()).toISOString(), snippet: "", seen: msg.flags?.has("\\Seen") ?? false, flagged: msg.flags?.has("\\Flagged") ?? false, labelIds: ["INBOX", ...(msg.flags?.has("\\Seen") ? [] : ["UNREAD"]), ...(msg.flags?.has("\\Flagged") ? ["STARRED"] : [])] });
       }
       return results.reverse();
     } finally { lock.release(); }
