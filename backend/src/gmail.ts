@@ -114,21 +114,28 @@ export async function fetchGmailDetail(account: Account, id: string): Promise<Me
 }
 
 export async function sendGmailMessage(account: Account, message: OutgoingMessage) {
-  if (message.attachments?.length) {
-    const transport = nodemailer.createTransport({ streamTransport: true, buffer: true });
-    const generated = await transport.sendMail({ from: { name: account.label, address: account.email }, to: message.to, subject: message.subject, text: message.text, html: message.html, attachments: message.attachments.map(a => ({ filename: a.filename, contentType: a.contentType, content: Buffer.from(a.data, "base64") })) });
-    const raw = generated.message as Buffer;
-    const sent = await gmail(account, "/messages/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw: raw.toString("base64url") }) });
-    return { messageId: sent.id as string };
-  }
-  const boundary = `nexus-${randomUUID()}`;
-  const raw = [
-    `From: ${account.label} <${account.email}>`, `To: ${message.to}`, `Subject: =?UTF-8?B?${Buffer.from(message.subject).toString("base64")}?=`, "MIME-Version: 1.0",
-    message.html ? `Content-Type: multipart/alternative; boundary=\"${boundary}\"` : "Content-Type: text/plain; charset=UTF-8", "",
-    ...(message.html ? [`--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "", message.text, `--${boundary}`, "Content-Type: text/html; charset=UTF-8", "", message.html, `--${boundary}--`] : [message.text]),
-  ].join("\r\n");
-  const result = await gmail(account, "/messages/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw: Buffer.from(raw).toString("base64url") }) });
-  return { messageId: result.id as string };
+  // Nodemailer generates RFC-compliant multipart/alternative and multipart/mixed
+  // MIME, including UTF-8 transfer encoding and Base64 file attachments.
+  const transport = nodemailer.createTransport({ streamTransport: true, buffer: true });
+  const generated = await transport.sendMail({
+    from: { name: account.label, address: account.email },
+    to: message.to,
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+    attachments: message.attachments?.map(a => ({
+      filename: a.filename,
+      contentType: a.contentType,
+      content: Buffer.from(a.data, "base64"),
+    })),
+  });
+  const raw = generated.message as Buffer;
+  const sent = await gmail(account, "/messages/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ raw: raw.toString("base64url") }),
+  });
+  return { messageId: sent.id as string };
 }
 
 /** Update Gmail labels. gmail.modify OAuth scope is required. */
