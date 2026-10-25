@@ -204,9 +204,23 @@ export default function AccountsPanel({
           {/* Existing accounts */}
           {authenticated && <div className="space-y-2 mb-4">
             {accounts.length > 1 && (
-              <p className="px-1 text-xs text-nexus-text-dim">
-                Sélectionnez le compte à afficher et à utiliser pour l&apos;envoi.
-              </p>
+              <>
+                <p className="px-1 text-xs text-nexus-text-dim">
+                  Consultez tous vos messages ensemble ou choisissez un compte.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleSelect("all")}
+                  aria-pressed={activeAccountId === "all"}
+                  className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${activeAccountId === "all" ? "border-nexus-primary bg-nexus-primary/10" : "border-nexus-border bg-nexus-bg hover:border-nexus-primary/60"}`}
+                >
+                  <div className="w-8 h-8 shrink-0 rounded-lg bg-nexus-primary/15 text-nexus-primary-light flex items-center justify-center">
+                    <Mail size={16} />
+                  </div>
+                  <span className="flex-1 text-sm font-medium text-nexus-text">Toutes les boîtes</span>
+                  {activeAccountId === "all" && <Check size={16} className="text-nexus-primary-light" />}
+                </button>
+              </>
             )}
             {accounts.length === 0 && (
               <p className="text-xs text-nexus-text-dim">
