@@ -26,8 +26,8 @@ import AccountsPanel from "@/components/AccountsPanel";
 import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/components/SettingsPanel";
 
 import { useVault } from "@/lib/vault";
-import { useMail, parseLiveId } from "@/lib/useMail";
-import { blockMailSender, changeMailCategory } from "@/lib/api";
+import { useMail, parseLiveId, summaryToThread } from "@/lib/useMail";
+import { blockMailSender, changeMailCategory, getMessages } from "@/lib/api";
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
@@ -115,6 +115,45 @@ export default function NexusMail() {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [searchQuery, liveInbox, mail.searchMessages]);
 
+  const [specialThreads, setSpecialThreads] = useState<Thread[]>([]);
+  const [specialLoading, setSpecialLoading] = useState(false);
+  useEffect(() => {
+    if (activeFolder !== "drafts" && activeFolder !== "starred") {
+      setSpecialThreads([]);
+      setSpecialLoading(false);
+      return;
+    }
+    const ids = mail.activeAccountId === "all" ? mail.accounts : mail.accounts.filter(account => account.id === mail.activeAccountId);
+    if (!ids.length) return;
+    let cancelled = false;
+    setSpecialThreads([]);
+    setSpecialLoading(true);
+    void (async () => {
+      const mailbox = activeFolder === "drafts" ? "DRAFT" : "STARRED";
+      const results = await Promise.allSettled(ids.map(async account => {
+        if (account.authType !== "google_oauth" && activeFolder === "starred") return [];
+        const folder = account.authType === "google_oauth" ? mailbox : "Drafts";
+        const found: Thread[] = [];
+        let cursor: string | undefined;
+        const visited = new Set<string>();
+        do {
+          const page = await getMessages(account.id, folder, 100, cursor);
+          found.push(...page.messages.map(message => summaryToThread(account.id, message, folder)));
+          cursor = page.nextCursor ?? undefined;
+          if (cursor && visited.has(cursor)) break;
+          if (cursor) visited.add(cursor);
+        } while (cursor && !cancelled);
+        return found;
+      }));
+      if (cancelled) return;
+      const fetched = results.flatMap(result => result.status === "fulfilled" ? result.value : []);
+      const unique = [...new Map(fetched.map(thread => [thread.id, thread])).values()];
+      setSpecialThreads(unique.sort((a, b) => Date.parse(b.date) - Date.parse(a.date)));
+      setSpecialLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [activeFolder, mail.activeAccountId, mail.accounts]);
+
   const filteredThreads = useMemo(() => {
     let filtered: Thread[];
 
@@ -127,8 +166,9 @@ export default function NexusMail() {
       else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (t.labels.includes(mail.category) || (mail.category === "CATEGORY_PERSONAL" && !t.labels.some(label => ["CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"].includes(label)))));
       else if (activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
-        filtered = mail.threads.filter((t) => t.isStarred);
-      else filtered = []; // sent/drafts/trash not yet backed by IMAP
+        filtered = [...specialThreads, ...mail.threads.filter(t => t.isStarred)].filter((t, index, items) => items.findIndex(other => other.id === t.id) === index);
+      else if (activeFolder === "drafts") filtered = specialThreads;
+      else filtered = []; // sent/trash not yet backed by IMAP
     } else {
       filtered = []; // Never display sample emails as a real inbox.
     }
@@ -149,7 +189,7 @@ export default function NexusMail() {
     }
 
     return filtered;
-  }, [activeFolder, mail.category, mail.accounts, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel, searchResults]);
+  }, [activeFolder, mail.category, mail.accounts, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel, searchResults, specialThreads]);
 
   const unreadCount = mail.threads.filter((t) => t.isUnread).length;
 
@@ -430,7 +470,7 @@ export default function NexusMail() {
             )}
             <EmailList
               threads={filteredThreads}
-              loading={liveInbox && mail.loading}
+              loading={liveInbox && (mail.loading || specialLoading)}
               onRefresh={liveInbox ? mail.refreshMessages : undefined}
               selectedId={selectedThread?.id || null}
               onSelect={handleSelectThread}
