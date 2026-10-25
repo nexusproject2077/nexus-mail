@@ -196,3 +196,19 @@ export function consumeOAuthState(state: string) {
   db.prepare("DELETE FROM oauth_states WHERE state = ?").run(state);
   return row && row.expires_at > Date.now() ? row : undefined;
 }
+
+/** Per-owner sender blacklist, persisted in the existing SQLite database. */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS blocked_senders (
+    owner_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (owner_id, email)
+  );
+`);
+export function blockSender(ownerId: string, email: string): void {
+  db.prepare("INSERT OR IGNORE INTO blocked_senders (owner_id, email) VALUES (?, ?)").run(ownerId, email.trim().toLowerCase());
+}
+export function listBlockedSenders(ownerId: string): string[] {
+  return (db.prepare("SELECT email FROM blocked_senders WHERE owner_id = ? ORDER BY created_at DESC").all(ownerId) as { email: string }[]).map(row => row.email);
+}
