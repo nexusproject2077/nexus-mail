@@ -116,3 +116,27 @@ export async function fetchDetail(
     await client.logout();
   }
 }
+
+/** Mark an IMAP message read by UID. */
+export async function markImapRead(account: Account, mailbox: string, uid: string): Promise<void> {
+  const client = await open(account);
+  try {
+    const lock = await client.getMailboxLock(mailbox);
+    try { await client.messageFlagsAdd(uid, ["\\\\Seen"], { uid: true }); }
+    finally { lock.release(); }
+  } finally { await client.logout(); }
+}
+
+/** Move a message into the provider's Trash folder, without permanent deletion. */
+export async function trashImapMessage(account: Account, mailbox: string, uid: string): Promise<void> {
+  const client = await open(account);
+  try {
+    const boxes = await client.list();
+    const trash = boxes.find((box) => box.specialUse === "\\\\Trash")
+      ?? boxes.find((box) => /^(trash|corbeille|deleted items|deleted messages)$/i.test(box.name));
+    if (!trash) throw new Error("Aucun dossier Corbeille trouvé sur ce compte.");
+    const lock = await client.getMailboxLock(mailbox);
+    try { await client.messageMove(uid, trash.path, { uid: true }); }
+    finally { lock.release(); }
+  } finally { await client.logout(); }
+}
