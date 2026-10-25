@@ -81,15 +81,34 @@ function flashSummary(input: string) {
     .trim();
   const withoutUrls = clean.replace(/\s+/g, " ").trim();
   const rawLines = clean.split(/\n+/).map(s => s.trim()).filter(Boolean);
-  const quotedMarker = /\*\*\s*(?:extrait|exemple|citation|message frauduleux|faux mail)\s*\*\*|\b(?:extrait|exemple)\s+(?:du|de|d[’\x27]un)\s+(?:message|mail|courriel)|\bbonjour\s+x{2,}\b/i;
-  const endQuoteMarker = /\*\*\s*fin\s+(?:de\s+l[’\x27])?(?:extrait|citation|exemple)\s*\*\*/i;
+  // Exclude the entire quoted example, even when markers share a line with real text.
+  const quoteStart = /\*\*\s*(?:extrait|exemple|citation|message frauduleux|faux mail)\s*\*\*/i;
+  const quoteEnd = /\*\*\s*fin\s+(?:(?:de\s+)?l[’\x27])?(?:de\s+)?(?:extrait|citation|exemple)\s*\*\*/i;
   let inQuotedExample = false;
-  const actionLines = rawLines.filter(line => {
-    if (endQuoteMarker.test(line)) { inQuotedExample = false; return false; }
-    if (quotedMarker.test(line) || /^\s*(?:>|«|“)/.test(line)) { inQuotedExample = true; return false; }
-    if (inQuotedExample) return false;
-    return !/\*\*|bonjour\s+x{2,}|\b(?:le texte est rédigé ainsi|le message est rédigé ainsi)\b/i.test(line);
-  }).map(s => s.replace(/^[-•]\s*/, ""));
+  const actionLines: string[] = [];
+  for (const line of rawLines) {
+    let remainder = line;
+    let safe = "";
+    while (remainder) {
+      if (inQuotedExample) {
+        const end = quoteEnd.exec(remainder);
+        if (!end) break;
+        remainder = remainder.slice(end.index + end[0].length);
+        inQuotedExample = false;
+      } else {
+        const start = quoteStart.exec(remainder);
+        if (!start) { safe += remainder; break; }
+        safe += remainder.slice(0, start.index);
+        remainder = remainder.slice(start.index + start[0].length);
+        inQuotedExample = true;
+      }
+    }
+    const candidate = safe.trim().replace(/^[-•]\s*/, "");
+    if (candidate && !/^\s*(?:>|«|“)/.test(candidate) && !/bonjour\s+x{2,}|\b(?:le texte est rédigé ainsi|le message est rédigé ainsi)\b/i.test(candidate)) actionLines.push(candidate);
+  }
+  const safetyPattern = /\b(ne\s+cliquez\s+pas|ne\s+pas\s+cliquer|surtout\s+pas|à\s+la\s+corbeille|mettez\s+.{0,45}\s+à\s+la\s+corbeille|supprimez|modifiez\s+votre\s+mot\s+de\s+passe|changez\s+votre\s+mot\s+de\s+passe)\b/i;
+  const safetyActions = actionLines.flatMap(line => line.split(/(?<=[.!?])\s+/)).filter(sentence => safetyPattern.test(sentence));
+  const safetyAction = safetyActions.length ? safetyActions.slice(0, 2).map(s => s.trim()).join(" ").toLocaleUpperCase("fr-FR") : "";
   const sentences = withoutUrls.split(/(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÀ-ÖØ-Þ])/u).map(s => s.trim()).filter(Boolean);
   const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
   const actionPattern = /\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer|remplir|déposer|remettre|à rendre|échéances?)\b/i;
@@ -99,7 +118,9 @@ function flashSummary(input: string) {
   const dueLine = /\b(ce soir|aujourd[\x27’]hui|demain|le\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?|avant le|pour le|date limite)\b/i;
   const taskVerb = /\b(remplir|déposer|remettre|rendre|envoyer|soumettre|valider)\b/i;
   const deadlineActions = actionLines.filter(line => dueLine.test(line) && taskVerb.test(line));
-  const action = deadlineActions.length
+  const action = safetyAction
+    ? safetyAction
+    : deadlineActions.length
     ? deadlineActions.slice(0, 3).join(" ; ")
     : hasDeadline && task ? "Rendre le devoir SÉQUENCE " + task[1]
     : clip(actionLines.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise", 160);
