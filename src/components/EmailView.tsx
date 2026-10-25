@@ -93,41 +93,39 @@ function flashSummary(input: string) {
     ?? withoutUrls.match(numericDate)?.[0]
     ?? withoutUrls.match(contextDate)?.[0]
     ?? "Aucune échéance détectée";
+  // Two-stage extractive summary: situation/problem, then impact or resolution.
   const contextText = withoutUrls
     .replace(/^(?:(?:bonjour(?:\s+[a-zà-ÿ-]+)?|mesdames\s*,?\s*messieurs|cher(?:s|e|es)?\s+[a-zà-ÿ-]+)\s*[,!:.]?\s*)+/i, "")
     .trim();
   const contextSentences = contextText
     .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Þ])|\n+/u)
-    .map(s => s.trim())
-    .filter(s => s.length > 12 && /[a-zà-ÿ]/i.test(s));
-  const keywords = new Set(["sécurité", "devoir", "cours", "corrigée", "corrigées", "dysfonctionnement", "dysfonctionnements", "panne", "maintenance", "important", "accès", "faille", "failles", "correctif", "correctifs", "incident", "rétabli", "rétablissement", "service", "services", "numérique", "numériques", "application", "applications", "rendu", "échéance", "indisponible", "fonctionnelle", "fonctionnel", "corriger", "problème", "problèmes", "mise", "jour", "urgence", "travaux", "réseau"]);
-  const stopWords = new Set(["avec", "dans", "pour", "mais", "cette", "cela", "depuis", "leurs", "notre", "votre", "nous", "vous", "elles", "sont", "sera", "être", "avoir", "ainsi", "plusieurs", "comme", "entre", "après", "avant", "alors", "tout", "tous", "toutes", "dont", "leur", "leurs", "afin", "aussi", "même", "très", "désormais"]);
-  const words = (s: string) => (s.toLocaleLowerCase("fr-FR").match(/[a-zà-ÿ]{3,}/gi) ?? []).filter(w => !stopWords.has(w));
-  const frequency = new Map<string, number>();
-  for (const sentence of contextSentences) for (const word of words(sentence)) frequency.set(word, (frequency.get(word) ?? 0) + 1);
-  const normalized = (s: string) => s.toLocaleLowerCase("fr-FR").replace(/[^a-zà-ÿ0-9]/gi, "");
-  const ranked = contextSentences.map((sentence, index) => {
-    const tokens = words(sentence);
-    const distinct = [...new Set(tokens)];
-    const keywordScore = distinct.filter(w => keywords.has(w)).length * 4;
-    const frequencyScore = distinct.reduce((sum, w) => sum + Math.min(frequency.get(w) ?? 0, 4), 0) / Math.max(1, Math.sqrt(distinct.length));
-    const deadlineOnly = /^(?:date limite|à rendre|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/i.test(sentence);
-    const dateOverlap = extractedDate !== "Aucune échéance détectée" && sentence.toLocaleLowerCase("fr-FR").includes(extractedDate.toLocaleLowerCase("fr-FR"));
-    const actionOverlap = action !== "Aucune action immédiate requise" && (normalized(sentence).includes(normalized(action)) || normalized(action).includes(normalized(sentence)));
-    const duplicate = actionOverlap || dateOverlap;
-    return { sentence, index, score: keywordScore + frequencyScore - (deadlineOnly ? 4 : 0), duplicate };
-  }).sort((a, b) => b.score - a.score || a.index - b.index);
-  const bestContext = ranked.find(item => !item.duplicate)?.sentence ?? ranked[0]?.sentence ?? "Aucun contexte disponible";
-  const clipAtWord = (s: string, limit: number) => {
-    if (s.length <= limit) return s;
-    const prefix = s.slice(0, limit - 1);
-    const lastSpace = prefix.lastIndexOf(" ");
-    return (lastSpace > 30 ? prefix.slice(0, lastSpace) : prefix).trimEnd().replace(/[,;:]+$/, "") + "…";
-  };
+    .map(s => s.trim().replace(/^(?:depuis\s+(?:\w+\s+){0,3}(?:jours?|semaines?|mois)\s*,?\s*)/i, ""))
+    .filter(s => s.length > 15 && /[a-zà-ÿ]/i.test(s));
+  const problemTerms = /\b(devoir|projet|faille(?:s)?|panne(?:s)?|maintenance|indisponibilit[ée]|incident(?:s)?|sécurité|dysfonctionnement(?:s)?|problème(?:s)?|échéance)\b/i;
+  const stateTerms = /\b(corrig[ée](?:s)?|corriger|correction|rétabli(?:e|s|es)?|accessible(?:s)?|fonctionnel(?:le|s|les)?|en cours|bloqu[ée](?:s)?|obligatoire|rendu|résolu(?:e|s|es)?|mobilis[ée](?:s)?|indisponible(?:s)?)\b/i;
+  const countTerms = (s: string, pattern: RegExp) => (s.match(new RegExp(pattern.source, "gi")) ?? []).length;
+  const normalize = (s: string) => s.toLocaleLowerCase("fr-FR").replace(/[^a-zà-ÿ0-9]/gi, "");
+  const ranked = contextSentences.map((sentence, index) => ({
+    sentence, index,
+    problem: countTerms(sentence, problemTerms),
+    state: countTerms(sentence, stateTerms),
+    duplicate: (extractedDate !== "Aucune échéance détectée" && sentence.toLocaleLowerCase("fr-FR").includes(extractedDate.toLocaleLowerCase("fr-FR")))
+      || (action !== "Aucune action immédiate requise" && normalize(sentence).includes(normalize(action))),
+  }));
+  const candidates = ranked.filter(item => !item.duplicate);
+  const situation = [...candidates].sort((a, b) => (b.problem * 3 + b.state) - (a.problem * 3 + a.state) || a.index - b.index)[0];
+  const impact = [...candidates].filter(item => item.index !== situation?.index)
+    .sort((a, b) => (b.state * 3 + b.problem) - (a.state * 3 + a.problem) || a.index - b.index)[0];
+  const concise = (sentence: string) => sentence
+    .replace(/^(?:depuis\s+(?:\w+\s+){0,3}(?:jours?|semaines?|mois)\s*,?\s*)/i, "")
+    .replace(/\s+/g, " ").trim();
+  const contextParts = [situation?.sentence, impact && impact.state > 0 ? impact.sentence : undefined]
+    .filter((s): s is string => Boolean(s)).map(concise);
+  const context = contextParts.length ? contextParts.join(" ") : "Aucun contexte disponible";
   return {
     action,
     date: clip(extractedDate, 80),
-    snippet: clipAtWord(bestContext, 150),
+    snippet: context,
   };
 }
 
