@@ -24,7 +24,7 @@
 body {
   background: #000000;
   color: #f5f5f5;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, Helvetica, sans-serif;
 }
 
 @keyframes slideIn {
@@ -118,3 +118,21 @@ body {
 ::selection { background: #3b3b3b; color: #ffffff; }
 html, body { background-color: #000000; }
 .bg-nexus-surface\/30 { background-color: rgb(12 12 12 / .72); }
+
+/* Nexus Mail typography and spacing system */
+:root {
+  --nexus-title-size: 22px;
+  --nexus-subtitle-size: 16px;
+  --nexus-body-size: 14px;
+}
+.nexus-page-title { font-size: var(--nexus-title-size); font-weight: 700; line-height: 1.3; letter-spacing: -.025em; text-align: left; }
+.nexus-section-title { font-size: var(--nexus-subtitle-size); font-weight: 600; line-height: 1.45; text-align: left; }
+.nexus-body-text { font-size: var(--nexus-body-size); line-height: 1.6; text-align: left; }
+.nexus-email-content { line-height: 1.65; text-align: left; }
+.nexus-email-content p { margin-block: 0 1em; }
+.nexus-email-content p + p { margin-top: .5em; }
+.nexus-email-content h1, .nexus-email-content h2, .nexus-email-content h3 { margin-block: 1.2em .6em; text-align: left; }
+.nexus-mail-list .nexus-mail-row > button { padding-block: 16px; }
+.nexus-mail-list .nexus-mail-row > button > div:last-child { min-width: 0; }
+.nexus-action-button { border-radius: 8px; min-height: 40px; padding: 10px 16px; font-weight: 600; line-height: 1.4; }
+.nexus-subtle-divider { border-color: rgb(255 255 255 / .10); border-width: 1px; }
