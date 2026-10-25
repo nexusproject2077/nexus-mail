@@ -69,9 +69,9 @@ export default function Sidebar({
         className="flex shrink-0 items-center border-b border-nexus-border/50"
         style={{ padding: "calc(env(safe-area-inset-top) + 16px) 16px 16px 24px" }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
           <svg
-            className="h-10 w-10 shrink-0 text-white"
+            className="h-11 w-11 shrink-0 text-white"
             viewBox="0 0 64 64"
             aria-label="NEXUS HUB"
             role="img"
@@ -84,7 +84,7 @@ export default function Sidebar({
             <path d="M 33 11 L 16 27 L 33 43" />
             <path d="M 35 25 L 51 41 L 35 57" />
           </svg>
-          <span className="text-[30px] font-bold leading-none tracking-tight text-white">Mail</span>
+          <span className="text-[36px] font-bold leading-none tracking-tight text-white">Mail</span>
         </div>
       </div>
 
