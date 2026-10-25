@@ -53,6 +53,7 @@ export default function NexusMail() {
     messageId?: string;
   } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
   const [drawerDragX, setDrawerDragX] = useState(0);
   const [drawerDragging, setDrawerDragging] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -293,7 +294,7 @@ export default function NexusMail() {
       {/* Header */}
       <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-16 items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2 pt-[max(8px,env(safe-area-inset-top))] border-b border-nexus-border bg-black flex-shrink-0`}>
         <button
-          onClick={() => { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); }}
+          onClick={() => { if (window.matchMedia("(min-width: 1024px)").matches) setDesktopSidebarOpen(value => !value); else { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); } }}
           className="nexus-interactive flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1a1a1a] hover:bg-[#252525] transition-colors text-white"
         >
           <Menu size={23} />
@@ -378,7 +379,7 @@ export default function NexusMail() {
 
       {/* Main Content */}
       <div className="relative flex-1 flex min-h-0 min-w-0 overflow-hidden">
-        <div className={`fixed inset-0 z-[80] transition-[visibility] duration-[250ms] ${sidebarOpen ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!sidebarOpen}>
+        <div className={`fixed inset-0 z-[80] lg:hidden transition-[visibility] duration-[250ms] ${sidebarOpen ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!sidebarOpen}>
           <button type="button" aria-label="Fermer le menu" onClick={closeDrawer} className={`absolute inset-0 bg-black/50 transition-opacity duration-[250ms] ease-out ${sidebarOpen ? "opacity-100" : "opacity-0"}`} />
           <div ref={drawerRef} onTouchStart={onDrawerTouchStart} onTouchMove={onDrawerTouchMove} onTouchEnd={onDrawerTouchEnd} onTouchCancel={onDrawerTouchEnd} style={{ transform: sidebarOpen ? `translate3d(${drawerDragX}px,0,0)` : "translate3d(-100%,0,0)", transition: drawerDragging ? "none" : drawerDragX < 0 ? "transform 350ms cubic-bezier(0.2, 1.25, 0.3, 1)" : "transform 250ms ease-out" }} className="absolute inset-y-0 left-0 w-[80vw] max-w-[360px] h-full overflow-hidden rounded-r-[40px] shadow-2xl will-change-transform motion-reduce:transition-none">
           <Sidebar
@@ -406,6 +407,9 @@ export default function NexusMail() {
           </div>
         </div>
 
+        <div className={`hidden lg:flex shrink-0 min-h-0 overflow-hidden border-r border-nexus-border transition-[width] duration-200 ${desktopSidebarOpen ? "w-[280px]" : "w-[72px]"}`}>
+          <Sidebar compact={!desktopSidebarOpen} activeFolder={activeFolder} onFolderChange={(f) => { setActiveFolder(f); mail.selectLabel(null); setSelectedThread(null); }} onOpenSecurity={() => setSecurityOpen(true)} onOpenSettings={() => setSettingsOpen(true)} unreadCount={unreadCount} vaultCount={vaultMessages.length} labels={mail.labels} activeAccountId={mail.activeAccountId} selectedLabel={mail.selectedLabel} onSelectLabel={(label) => { mail.selectLabel(label); setActiveFolder("inbox"); setSelectedThread(null); }} />
+        </div>
         <div className="flex-1 flex min-w-0 min-h-0">
           {activeFolder === "deliveries" && !selectedThread ? (
             <DeliveriesPanel threads={liveInbox ? mail.threads : []} onOpen={(thread) => void handleSelectThread(thread)} />
