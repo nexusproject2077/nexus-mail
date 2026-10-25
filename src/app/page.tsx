@@ -27,7 +27,7 @@ import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
   const [activeFolder, setActiveFolder] = useState<Folder>("inbox");
-  const [activeCategory, setActiveCategory] = useState("CATEGORY_PERSONAL");
+
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
@@ -67,7 +67,7 @@ export default function NexusMail() {
       filtered = vaultMessages;
     } else if (liveInbox) {
       if (mail.selectedLabel) filtered = mail.threads;
-      else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (activeCategory === "CATEGORY_PERSONAL" ? (!t.labels.some(label => ["CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"].includes(label)) || t.labels.includes("CATEGORY_PERSONAL")) : t.labels.includes(activeCategory)));
+      else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (mail.accounts.find(a => a.id === parseLiveId(t.id)?.accountId)?.authType === "google_oauth" ? true : mail.category === "CATEGORY_PERSONAL"));
       else if (activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = mail.threads.filter((t) => t.isStarred);
@@ -92,7 +92,7 @@ export default function NexusMail() {
     }
 
     return filtered;
-  }, [activeFolder, activeCategory, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel, searchResults]);
+  }, [activeFolder, mail.category, mail.accounts, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel, searchResults]);
 
   const unreadCount = mail.threads.filter((t) => t.isUnread).length;
 
@@ -306,10 +306,10 @@ export default function NexusMail() {
                   ["CATEGORY_SOCIAL", "Réseaux sociaux"],
                   ["CATEGORY_UPDATES", "Notifications"],
                 ] as const).map(([id, title]) => (
-                  <button key={id} type="button" role="tab" aria-selected={activeCategory === id}
-                    onClick={() => setActiveCategory(id)}
-                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeCategory === id ? "bg-white text-black" : "text-nexus-text-muted hover:bg-nexus-surface-hover"}`}>
-                    {title}
+                  <button key={id} type="button" role="tab" aria-selected={mail.category === id}
+                    onClick={() => mail.setCategory(id)}
+                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${mail.category === id ? "bg-white text-black" : "text-nexus-text-muted hover:bg-nexus-surface-hover"}`}>
+                    {title}{mail.categoryCounts && <span className="ml-1.5 text-xs opacity-70">{mail.categoryCounts[id] ?? "—"}</span>}
                   </button>
                 ))}
               </div>
