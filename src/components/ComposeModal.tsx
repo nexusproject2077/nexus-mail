@@ -75,6 +75,33 @@ export default function ComposeModal({
   const [expiryIdx, setExpiryIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  const draftKey = activeAccountId ? `nexus-mail:compose-draft:${activeAccountId}` : null;
+  const draftRestored = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isOpen || !draftKey || draftRestored.current === draftKey) return;
+    draftRestored.current = draftKey;
+    try {
+      const saved = window.localStorage.getItem(draftKey);
+      if (!saved) return;
+      const draft = JSON.parse(saved) as { to?: string; subject?: string; body?: string };
+      if (!replyTo) {
+        setTo(draft.to ?? "");
+        setSubject(draft.subject ?? "");
+        setBody(draft.body ?? "");
+      }
+    } catch { /* Corrupt or unavailable storage: allow composing normally. */ }
+  }, [isOpen, draftKey, replyTo]);
+  useEffect(() => {
+    if (!isOpen || !draftKey || isSending || mode !== "standard" || draftRestored.current !== draftKey || replyTo) return;
+    try {
+      if (to.trim() || subject.trim() || body.trim()) {
+        window.localStorage.setItem(draftKey, JSON.stringify({ to, subject, body, savedAt: Date.now() }));
+      } else {
+        window.localStorage.removeItem(draftKey);
+      }
+    } catch { /* Storage may be unavailable or full. */ }
+  }, [to, subject, body, isOpen, draftKey, isSending, mode, replyTo]);
+
   const [mounted, setMounted] = useState(isOpen);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -143,6 +170,7 @@ export default function ComposeModal({
           html: htmlBody || undefined,
           attachments: outgoing,
         });
+        if (draftKey) { try { window.localStorage.removeItem(draftKey); } catch {} }
         onSent?.();
         onClose();
         reset();
@@ -423,7 +451,7 @@ export default function ComposeModal({
             {isSending ? <Loader2 size={23} className="animate-spin" /> : mode === "standard" ? <Send size={23} /> : <Lock size={23} />}
           </button>
           <div className="flex items-center justify-end gap-2 sm:gap-3">
-            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={event => {
+            <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.zip,.csv,.xlsx,.pptx" aria-label="Sélectionner des photos, PDF ou fichiers" className="hidden" onChange={event => {
               const files = Array.from(event.target.files ?? []);
               const next = [...attachments, ...files];
               if (next.length > 5 || next.reduce((total, file) => total + file.size, 0) > 10 * 1024 * 1024) {
