@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-nexus-primary: #15803d;
-  --color-nexus-primary-light: #4ade80;
-  --color-nexus-primary-dark: #166534;
+  --color-nexus-primary: #ffffff;
+  --color-nexus-primary-light: #ffffff;
+  --color-nexus-primary-dark: #d4d4d4;
   --color-nexus-bg: #000000;
   --color-nexus-surface: #0c0c0c;
   --color-nexus-surface-hover: #191919;
@@ -12,8 +12,8 @@
   --color-nexus-text: #f5f5f5;
   --color-nexus-text-muted: #b6b6b6;
   --color-nexus-text-dim: #898989;
-  --color-nexus-unread: #101b14;
-  --color-nexus-accent: #4ade80;
+  --color-nexus-unread: #161616;
+  --color-nexus-accent: #ffffff;
 }
 
 * {
@@ -115,6 +115,6 @@ body {
 /* AMOLED polish: neutralize legacy purple utility accents without affecting
    semantic red warnings, amber stars, or sender avatar colors. */
 :root { color-scheme: dark; }
-::selection { background: #14532d; color: #ffffff; }
+::selection { background: #3b3b3b; color: #ffffff; }
 html, body { background-color: #000000; }
 .bg-nexus-surface\/30 { background-color: rgb(12 12 12 / .72); }
