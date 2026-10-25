@@ -12,6 +12,7 @@ import {
 import type { Thread, Email } from "@/types/email";
 
 const ACTIVE_ACCOUNT_STORAGE_KEY = "nexus-mail:active-account-id";
+const ALL_ACCOUNTS = "all";
 
 /** Encode account + IMAP uid into an opaque thread id. */
 export function liveId(accountId: string, uid: string): string {
@@ -76,17 +77,19 @@ export function useMail(): UseMail {
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
   const activeAccountRef = useRef<string | null>(null);
+  const accountsRef = useRef<PublicAccount[]>([]);
 
   const refreshAccounts = useCallback(async () => {
     if (!configured) return;
     try {
       const list = await getAccounts();
       setAccounts(list);
+      accountsRef.current = list;
       setActiveAccountIdState((cur) => {
         const saved = window.localStorage.getItem(ACTIVE_ACCOUNT_STORAGE_KEY);
         const next = [cur, saved].find(
-          (id): id is string => !!id && list.some((account) => account.id === id),
-        ) ?? list[0]?.id ?? null;
+          (id): id is string => !!id && (id === ALL_ACCOUNTS || list.some((account) => account.id === id)),
+        ) ?? (list.length > 1 ? ALL_ACCOUNTS : list[0]?.id ?? null);
         if (next) window.localStorage.setItem(ACTIVE_ACCOUNT_STORAGE_KEY, next);
         else window.localStorage.removeItem(ACTIVE_ACCOUNT_STORAGE_KEY);
         return next;
@@ -102,17 +105,27 @@ export function useMail(): UseMail {
       return;
     }
     const currentRequest = ++requestId.current;
+    const ids = activeAccountId === ALL_ACCOUNTS
+      ? accountsRef.current.map((account) => account.id)
+      : [activeAccountId];
     setLoading(true);
     try {
-      const msgs = await getMessages(activeAccountId);
-      if (requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
-        setThreads(msgs.map((m) => summaryToThread(activeAccountId, m)));
-        setError(null);
-      }
+      const results = await Promise.allSettled(ids.map(async (id) => ({
+        id,
+        messages: await getMessages(id),
+      })));
+      if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
+      const combined = results.flatMap((result) =>
+        result.status === "fulfilled"
+          ? result.value.messages.map((m) => summaryToThread(result.value.id, m))
+          : [],
+      );
+      combined.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+      setThreads(combined);
+      const failures = results.filter((result) => result.status === "rejected");
+      setError(failures.length ? `Impossible de synchroniser ${failures.length} compte(s) sur ${ids.length}.` : null);
     } catch (e) {
-      if (requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
-        setError((e as Error).message);
-      }
+      if (requestId.current === currentRequest) setError((e as Error).message);
     } finally {
       if (requestId.current === currentRequest) setLoading(false);
     }
