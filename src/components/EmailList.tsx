@@ -106,7 +106,7 @@ export default function EmailList({
       )}
       {!loading && threads.length === 0 && <div className="py-12 text-center text-sm text-nexus-text-dim">Aucun message</div>}
       {threads.map((thread) => {
-        const lastMsg = thread.messages[thread.messages.length - 1];
+        const lastMsg = thread.messages.reduce((latest, message) => Date.parse(message.date) > Date.parse(latest.date) ? message : latest, thread.messages[0]);
         const isSelected = selectedId === thread.id;
         const senderName = lastMsg.senderName;
         const avatarColor = getAvatarColor(lastMsg.senderEmail);
@@ -141,7 +141,7 @@ export default function EmailList({
                       : "text-nexus-text-muted"
                   }`}
                 >
-                  {senderName}
+                  {senderName}{thread.messages.length > 1 ? ` (${thread.messages.length})` : ""}
                 </span>
                 <span className="text-xs text-nexus-text-dim whitespace-nowrap flex-shrink-0">
                   {formatEmailDate(thread.date)}
