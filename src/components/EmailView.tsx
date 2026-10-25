@@ -78,14 +78,14 @@ export default function EmailView({
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col animate-slide-in">
-      <div className="flex min-w-0 items-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 border-b border-nexus-border">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-3 border-b border-nexus-border">
         <button
           onClick={onBack}
           className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text"
         >
           <ArrowLeft size={18} />
         </button>
-        <h2 className="flex-1 min-w-0 text-sm sm:text-lg font-semibold truncate">
+        <h2 className="flex-1 min-w-0 text-sm sm:text-lg font-semibold whitespace-normal break-words leading-snug">
           {thread.subject}
         </h2>
         <div className="flex shrink-0 items-center gap-0 sm:gap-1">
