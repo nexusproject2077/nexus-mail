@@ -65,6 +65,28 @@ export default function Sidebar({
 
   return (
     <aside className="w-full h-full min-h-0 flex flex-col bg-nexus-surface lg:border-r lg:border-nexus-border">
+      <div
+        className="flex shrink-0 items-center border-b border-nexus-border/50"
+        style={{ padding: "calc(env(safe-area-inset-top) + 16px) 16px 16px 24px" }}
+      >
+        <div className="flex items-center gap-3">
+          <svg
+            className="h-8 w-8 stroke-current text-white"
+            viewBox="0 0 64 64"
+            aria-label="NEXUS HUB"
+            role="img"
+            fill="none"
+            strokeWidth={4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path className="opacity-90" d="M 33 11 L 16 27 L 33 43" />
+            <path className="opacity-90" d="M 35 25 L 51 41 L 35 57" />
+          </svg>
+          <span className="text-xl font-bold tracking-wide text-white">Mail</span>
+        </div>
+      </div>
+
       <nav className="flex-1 min-h-0 overflow-y-auto px-2 space-y-0.5">
         {folders.map((folder) => (
           <button
