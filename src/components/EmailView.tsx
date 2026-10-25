@@ -65,22 +65,32 @@ function prepareEmailHtml(html: string): string {
 
 /** Extractive, deterministic summary: no external requests or generated claims. */
 function flashSummary(input: string) {
-  const clean = input
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\\n/g, " ")
-    .replace(/\s+/g, " ")
+  // Decode HTML entities locally before extracting meaning (including accented French text).
+  const decodeEntities = (value: string) => {
+    if (typeof document === "undefined") return value;
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = value;
+    return textarea.value;
+  };
+  const clean = decodeEntities(input.replace(/<[^>]*>/g, " ").replace(/\\n/g, "\n"))
+    .replace(/https?:\/\/[^\s<>"\x27]+/gi, " ")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
     .trim();
-  const withoutUrls = clean.replace(/https?:\/\/[^\s<>"']+/gi, " ").replace(/\s+/g, " ").trim();
+  const withoutUrls = clean.replace(/\s+/g, " ").trim();
+  const lines = clean.split(/\n+/).map(s => s.trim().replace(/^[-•]\s*/, "")).filter(Boolean);
   const sentences = withoutUrls.split(/(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÀ-ÖØ-Þ])/u).map(s => s.trim()).filter(Boolean);
   const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
-  const actionPattern = /\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer)\b/i;
+  const actionPattern = /\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer|remplir|déposer|remettre|à rendre|échéances?)\b/i;
   const task = withoutUrls.match(/(?:devoir|séquence)\s+(?:séquence\s*)?(\d+)\b/i);
   const hasDeadline = /date\s+limite\s*:|[àa]\s+rendre\b/i.test(withoutUrls);
-  const action = hasDeadline && task
-    ? "Rendre le devoir SÉQUENCE " + task[1]
-    : clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise", 120);
-
+  const dueLine = /\b(ce soir|aujourd[\x27’]hui|demain|le\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?|avant le|pour le|date limite)\b/i;
+  const taskVerb = /\b(remplir|déposer|remettre|rendre|envoyer|soumettre|valider)\b/i;
+  const deadlineActions = lines.filter(line => dueLine.test(line) && taskVerb.test(line));
+  const action = deadlineActions.length
+    ? deadlineActions.slice(0, 3).map(line => line.replace(/^\s*[-•]\s*/, "")).join(" ; ")
+    : hasDeadline && task ? "Rendre le devoir SÉQUENCE " + task[1]
+    : clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise", 160);
   const timestamp = /\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:\s*(?:UTC|GMT|Z|[+-]\d{2}:?\d{2}))?\b/i;
   const frenchDate = /\b(?:(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+)?\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}(?:\s*,?\s*(?:à\s*)?\d{1,2}[:h]\d{2})?\b/i;
   const numericRange = /\bdu\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\s+au\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/i;
