@@ -83,3 +83,17 @@ export async function sendGmailMessage(account: Account, message: { to: string; 
   const result = await gmail(account, "/messages/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw: Buffer.from(raw).toString("base64url") }) });
   return { messageId: result.id as string };
 }
+
+/** Update Gmail labels. gmail.modify OAuth scope is required. */
+export async function markGmailRead(account: Account, id: string): Promise<void> {
+  await gmail(account, `/messages/${encodeURIComponent(id)}/modify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ removeLabelIds: ["UNREAD"] }),
+  });
+}
+
+/** Move a message to Gmail Trash; does not permanently delete it. */
+export async function trashGmailMessage(account: Account, id: string): Promise<void> {
+  await gmail(account, `/messages/${encodeURIComponent(id)}/trash`, { method: "POST" });
+}
