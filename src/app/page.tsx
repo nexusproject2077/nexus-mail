@@ -38,6 +38,8 @@ export default function NexusMail() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [accountsOpen, setAccountsOpen] = useState(false);
+  const [messageActionError, setMessageActionError] = useState<string | null>(null);
+  const [trashBusy, setTrashBusy] = useState(false);
   const { identity, isUnlocked, messages: vaultMessages } = useVault();
   const mail = useMail();
 
@@ -87,6 +89,20 @@ export default function NexusMail() {
       } catch {
         /* keep the summary view if the body fetch fails */
       }
+    }
+  };
+
+  const handleTrash = async () => {
+    if (!selectedThread || trashBusy) return;
+    setTrashBusy(true);
+    setMessageActionError(null);
+    try {
+      await mail.trashThread(selectedThread);
+      setSelectedThread(null);
+    } catch (e) {
+      setMessageActionError((e as Error).message);
+    } finally {
+      setTrashBusy(false);
     }
   };
 
@@ -242,6 +258,11 @@ export default function NexusMail() {
                 <ChevronDown size={12} />
               </div>
             </div>
+            {messageActionError && (
+              <div role="alert" className="mx-4 mt-3 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
+                Action impossible : {messageActionError}
+              </div>
+            )}
             {mail.error && liveInbox && (
               <div className="mx-4 mt-3 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
                 Erreur de synchronisation : {mail.error}
@@ -270,6 +291,8 @@ export default function NexusMail() {
                 onBack={() => setSelectedThread(null)}
                 onReply={handleReply}
                 onNeedUnlock={() => setSecurityOpen(true)}
+                onTrash={parseLiveId(selectedThread.id) ? () => void handleTrash() : undefined}
+                trashBusy={trashBusy}
               />
             </div>
           ) : (
