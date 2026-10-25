@@ -94,13 +94,13 @@ function flashSummary(input: string) {
     ?? withoutUrls.match(contextDate)?.[0]
     ?? "Aucune échéance détectée";
   const contextText = withoutUrls
-    .replace(/^(?:(?:bonjour(?:\s+[^,.!]+)?|mesdames\s*,?\s*messieurs|cher(?:s|e|es)?\s+[^,.!]+)\s*[,!:.]?\s*)+/i, "")
+    .replace(/^(?:(?:bonjour(?:\s+[a-zà-ÿ-]+)?|mesdames\s*,?\s*messieurs|cher(?:s|e|es)?\s+[a-zà-ÿ-]+)\s*[,!:.]?\s*)+/i, "")
     .trim();
   const contextSentences = contextText
     .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Þ])|\n+/u)
     .map(s => s.trim())
     .filter(s => s.length > 12 && /[a-zà-ÿ]/i.test(s));
-  const keywords = new Set(["sécurité", "devoir", "panne", "maintenance", "important", "accès", "faille", "failles", "correctif", "correctifs", "incident", "rétabli", "rétablissement", "service", "services", "numérique", "numériques", "application", "applications", "rendu", "échéance", "indisponible", "fonctionnelle", "fonctionnel", "corriger", "problème", "problèmes", "mise", "jour", "urgence", "travaux", "réseau"]);
+  const keywords = new Set(["sécurité", "devoir", "cours", "corrigée", "corrigées", "dysfonctionnement", "dysfonctionnements", "panne", "maintenance", "important", "accès", "faille", "failles", "correctif", "correctifs", "incident", "rétabli", "rétablissement", "service", "services", "numérique", "numériques", "application", "applications", "rendu", "échéance", "indisponible", "fonctionnelle", "fonctionnel", "corriger", "problème", "problèmes", "mise", "jour", "urgence", "travaux", "réseau"]);
   const stopWords = new Set(["avec", "dans", "pour", "mais", "cette", "cela", "depuis", "leurs", "notre", "votre", "nous", "vous", "elles", "sont", "sera", "être", "avoir", "ainsi", "plusieurs", "comme", "entre", "après", "avant", "alors", "tout", "tous", "toutes", "dont", "leur", "leurs", "afin", "aussi", "même", "très", "désormais"]);
   const words = (s: string) => (s.toLocaleLowerCase("fr-FR").match(/[a-zà-ÿ]{3,}/gi) ?? []).filter(w => !stopWords.has(w));
   const frequency = new Map<string, number>();
@@ -112,8 +112,9 @@ function flashSummary(input: string) {
     const keywordScore = distinct.filter(w => keywords.has(w)).length * 4;
     const frequencyScore = distinct.reduce((sum, w) => sum + Math.min(frequency.get(w) ?? 0, 4), 0) / Math.max(1, Math.sqrt(distinct.length));
     const deadlineOnly = /^(?:date limite|à rendre|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/i.test(sentence);
-    const duplicate = (action !== "Aucune action immédiate requise" && (normalized(sentence) === normalized(action) || normalized(action).includes(normalized(sentence))))
-      || (extractedDate !== "Aucune échéance détectée" && (normalized(sentence) === normalized(extractedDate) || (deadlineOnly && normalized(sentence).includes(normalized(extractedDate)))));
+    const dateOverlap = extractedDate !== "Aucune échéance détectée" && sentence.toLocaleLowerCase("fr-FR").includes(extractedDate.toLocaleLowerCase("fr-FR"));
+    const actionOverlap = action !== "Aucune action immédiate requise" && (normalized(sentence).includes(normalized(action)) || normalized(action).includes(normalized(sentence)));
+    const duplicate = actionOverlap || dateOverlap;
     return { sentence, index, score: keywordScore + frequencyScore - (deadlineOnly ? 4 : 0), duplicate };
   }).sort((a, b) => b.score - a.score || a.index - b.index);
   const bestContext = ranked.find(item => !item.duplicate)?.sentence ?? ranked[0]?.sentence ?? "Aucun contexte disponible";
@@ -126,7 +127,7 @@ function flashSummary(input: string) {
   return {
     action,
     date: clip(extractedDate, 80),
-    snippet: clipAtWord(bestContext, 120),
+    snippet: clipAtWord(bestContext, 150),
   };
 }
 
