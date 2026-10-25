@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getAccountWithSecret } from "../db.js";
-import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage } from "../imap.js";
+import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels } from "../imap.js";
 import { sendMessage } from "../smtp.js";
-import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage } from "../gmail.js";
+import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
 export const messagesRouter = Router();
@@ -106,4 +106,18 @@ messagesRouter.post("/:id/messages/:uid/trash", requireCsrf, async (req, res) =>
     else await trashImapMessage(account, "INBOX", uid);
     res.json({ ok: true });
   } catch (e) { res.status(502).json({ error: "Unable to move to Trash", message: (e as Error).message }); }
+});
+
+/** GET /api/accounts/:id/labels */
+messagesRouter.get("/:id/labels", async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  try {
+    const labels = account.authType === "google_oauth"
+      ? await fetchGmailLabels(account)
+      : await fetchImapLabels(account);
+    res.json({ labels });
+  } catch (error) {
+    res.status(502).json({ error: "Unable to fetch labels", message: (error as Error).message });
+  }
 });
