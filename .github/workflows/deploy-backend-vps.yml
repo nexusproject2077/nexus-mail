@@ -1,6 +1,11 @@
 name: Deploy Nexus Mail backend to VPS
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend-vps.yml'
   workflow_dispatch:
 
 permissions:
