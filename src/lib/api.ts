@@ -138,6 +138,8 @@ export function deleteAccount(id: string) {
 export interface MessagePage {
   messages: MessageSummary[];
   nextCursor: string | null;
+  nextPageToken?: string | null;
+  nextPage?: number | null;
 }
 
 export async function getMessages(accountId: string, mailbox = "INBOX", limit = 50, cursor?: string): Promise<MessagePage> {
