@@ -127,6 +127,7 @@ function SwipeEmailRow({ thread, onSelect, onTrash, children }: {
 }) {
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const start = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
   const current = useRef(0);
@@ -134,7 +135,7 @@ function SwipeEmailRow({ thread, onSelect, onTrash, children }: {
   const active = !!onTrash && !busy;
   const reset = () => { current.current = 0; setOffset(0); setDragging(false); start.current = null; };
   return (
-    <div className="relative overflow-hidden md:overflow-visible select-none md:select-text" style={{ WebkitUserSelect: "none" }}>
+    <div className="relative overflow-hidden md:overflow-visible select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 180ms ease-out, opacity 140ms ease-out" : "none" }}>
       {active && <div className="absolute inset-y-0 right-0 w-full bg-red-600 flex justify-end items-center pr-6 text-white pointer-events-none">
         <Trash2 size={22} aria-hidden="true" />
         <span className="ml-2 text-sm font-medium">Corbeille</span>
@@ -163,10 +164,15 @@ function SwipeEmailRow({ thread, onSelect, onTrash, children }: {
         onTouchEnd={async () => {
           if (!start.current) return;
           const dx = current.current;
-          reset();
-          if (dx > -100 || !active) return;
+          if (dx > -100 || !active) { reset(); return; }
+          start.current = null;
+          setDragging(false);
           setBusy(true);
+          setOffset(-window.innerWidth);
+          await new Promise(resolve => window.setTimeout(resolve, 160));
+          setExiting(true);
           try { await onTrash?.(thread); }
+          catch { setExiting(false); reset(); }
           finally { setBusy(false); }
         }}
         onTouchCancel={reset}
