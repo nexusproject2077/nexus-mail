@@ -141,13 +141,13 @@ export interface MessagePage {
 }
 
 export async function getMessages(accountId: string, mailbox = "INBOX", limit = 50, cursor?: string): Promise<MessagePage> {
-  const q = new URLSearchParams({ mailbox, limit: String(limit) });
+  const q = new URLSearchParams({ mailbox, pageSize: String(limit) });
   if (cursor) q.set("cursor", cursor);
-  const result = await req<MessagePage | MessageSummary[] | { messages: MessageSummary[]; nextCursor?: string | null }>(`/api/accounts/${encodeURIComponent(accountId)}/messages?${q}`);
+  const result = await req<MessagePage | MessageSummary[] | { messages: MessageSummary[]; nextCursor?: string | null; nextPageToken?: string | null; nextPage?: number | null }>(`/api/accounts/${encodeURIComponent(accountId)}/messages?${q}`);
   // Older deployed backends returned a bare array; never blank the inbox
   // while the paginated backend is being rolled out.
   if (Array.isArray(result)) return { messages: result, nextCursor: null };
-  if (result && Array.isArray(result.messages)) return { messages: result.messages, nextCursor: result.nextCursor ?? null };
+  if (result && Array.isArray(result.messages)) return { messages: result.messages, nextCursor: result.nextCursor ?? result.nextPageToken ?? (result.nextPage == null ? null : String(result.nextPage)) };
   throw new Error("Format de réponse de messagerie inattendu : vérifie le déploiement du backend.");
 }
 
