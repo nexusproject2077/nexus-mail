@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Menu,
+  Pencil,
   Bell,
   Settings,
   RefreshCw,
@@ -37,6 +38,7 @@ export default function NexusMail() {
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [composeFabCompact, setComposeFabCompact] = useState(false);
   const [mailtoDraft, setMailtoDraft] = useState<{ to: string; subject: string; body: string; html?: string; quotedText?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } } | null>(null);
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -346,7 +348,6 @@ export default function NexusMail() {
               setSelectedThread(null);
               setSidebarOpen(false);
             }}
-            onCompose={handleCompose}
             onOpenSecurity={() => { setSidebarOpen(false); setSecurityOpen(true); }}
             onOpenSettings={() => { setSidebarOpen(false); setSettingsOpen(true); }}
             unreadCount={unreadCount}
@@ -435,6 +436,7 @@ export default function NexusMail() {
               onSelect={handleSelectThread}
               onTrash={activeFolder !== "trash" && liveInbox ? async (thread) => { try { await mail.trashThread(thread); if (selectedThread?.id === thread.id) setSelectedThread(null); } catch (error) { setMessageActionError((error as Error).message); throw error; } } : undefined}
               folder={activeFolder}
+              onScrollDirection={(direction) => setComposeFabCompact(direction === "down")}
               hasMore={!searchQuery.trim() && mail.hasMore}
               loadingMore={mail.loadingMore}
               onLoadMore={() => void mail.loadMore()}
@@ -482,6 +484,21 @@ export default function NexusMail() {
           )}
         </div>
       </div>
+
+      {!selectedThread && !composeOpen && !sidebarOpen && activeFolder !== "deliveries" && (
+        <button
+          type="button"
+          onClick={handleCompose}
+          aria-label="Nouveau message"
+          className={`fixed bottom-6 right-6 z-40 flex h-14 items-center justify-center overflow-hidden rounded-full bg-white text-black shadow-lg transition-[width,padding] duration-300 ease-in-out motion-reduce:transition-none active:scale-[0.98] ${composeFabCompact ? "w-14 px-0" : "w-[190px] px-5"}`}
+          style={{ bottom: "max(24px, env(safe-area-inset-bottom))" }}
+        >
+          <Pencil size={21} strokeWidth={2} className="shrink-0" aria-hidden="true" />
+          <span aria-hidden={composeFabCompact} className={`whitespace-nowrap overflow-hidden text-sm font-semibold transition-[max-width,opacity,margin] duration-300 ease-in-out motion-reduce:transition-none ${composeFabCompact ? "ml-0 max-w-0 opacity-0" : "ml-3 max-w-36 opacity-100"}`}>
+            Nouveau message
+          </span>
+        </button>
+      )}
 
       <ComposeModal
         isOpen={composeOpen}
