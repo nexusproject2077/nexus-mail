@@ -198,9 +198,9 @@ export default function ComposeModal({
         let signature = "";
         try { signature = JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").signatures?.[activeAccountId] || ""; } catch { /* no signature */ }
         const signedText = signature ? `${body}\n\n${signature}` : body;
-        const typedIntro = initialDraft?.html ? body.split("---------- Message transféré ----------")[0].trim() : "";
+        const typedIntro = initialDraft?.html ? body.split(/Le .+ a écrit :|---------- Message transféré ----------/)[0].trim() : "";
         const escapedIntro = typedIntro.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>");
-        const outgoingHtml = initialDraft?.html ? `${escapedIntro ? `<div>${escapedIntro}</div><br>` : ""}${htmlBody}` : htmlBody;
+        const outgoingHtml = initialDraft?.html ? `${escapedIntro ? `<div style="white-space:pre-wrap">${escapedIntro}</div><br>` : ""}${htmlBody}` : htmlBody;
         const signedHtml = outgoingHtml && signature ? `${outgoingHtml}<p>${signature.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>")}</p>` : outgoingHtml;
         await sendViaAccount(activeAccountId, {
           to: to.trim(),
@@ -483,6 +483,18 @@ export default function ComposeModal({
               : "Rédigez votre message chiffré..."
           }
         />
+
+        {mode === "standard" && initialDraft?.html && (
+          <div className="min-h-0 max-h-[45vh] overflow-y-auto border-t border-nexus-border" aria-label="Aperçu du message original">
+            <iframe
+              title="Contenu HTML du message original"
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              referrerPolicy="no-referrer"
+              srcDoc={htmlBody}
+              className="block w-full min-h-[320px] border-0 bg-white"
+            />
+          </div>
+        )}
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
         <div className="relative shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))] bg-[#171717] border-t border-white/5">
