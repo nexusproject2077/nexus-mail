@@ -34,23 +34,58 @@ async function accessToken(account: Account): Promise<string> {
   return json.access_token;
 }
 
-async function gmail(account: Account, path: string, init?: RequestInit) {
+const tokenCache = new Map<string, { token: string; expiresAt: number }>();
+const accountQueues = new Map<string, Promise<void>>();
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+async function cachedAccessToken(account: Account): Promise<string> {
+  const cached = tokenCache.get(account.id);
+  if (cached && cached.expiresAt > Date.now()) return cached.token;
   const token = await accessToken(account);
-  const response = await fetch(`${GMAIL}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, ...init?.headers } });
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({})) as {
-      error?: { message?: string; status?: string; errors?: Array<{ reason?: string }> };
-    };
-    const reason = errorBody.error?.errors?.[0]?.reason ?? errorBody.error?.status ?? "";
-    const detail = errorBody.error?.message ?? "Unknown Gmail API error";
-    if (response.status === 401) throw new GoogleAccessRevokedError("Google access token rejected. Reconnect the account if this persists.");
-    // A 403 may be rate limiting, insufficient scopes, or policy restrictions.
-    // It is NOT necessarily a revoked OAuth authorization.
-    if (response.status === 403 && /insufficientPermissions|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(reason))
-      throw new GoogleAccessRevokedError("Google permission missing. Reconnect the account to grant Gmail access.");
-    throw new Error(`Gmail API HTTP ${response.status}: ${reason || detail}`);
+  tokenCache.set(account.id, { token, expiresAt: Date.now() + 45 * 60_000 });
+  return token;
+}
+
+async function gmail(account: Account, path: string, init?: RequestInit) {
+  // Serialize requests per Gmail account and pace them to prevent quota spikes.
+  const previous = accountQueues.get(account.id) ?? Promise.resolve();
+  let release!: () => void;
+  const turn = new Promise<void>(resolve => { release = resolve; });
+  accountQueues.set(account.id, previous.catch(() => undefined).then(() => turn));
+  await previous.catch(() => undefined);
+  try {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const token = await cachedAccessToken(account);
+      const response = await fetch(`${GMAIL}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, ...init?.headers } });
+      if (response.ok) return response.json() as Promise<any>;
+      const errorBody = await response.json().catch(() => ({})) as {
+        error?: { message?: string; status?: string; errors?: Array<{ reason?: string }> };
+      };
+      const reason = errorBody.error?.errors?.[0]?.reason ?? errorBody.error?.status ?? "";
+      const detail = errorBody.error?.message ?? "Unknown Gmail API error";
+      if (response.status === 401) {
+        tokenCache.delete(account.id);
+        if (attempt === 0) continue;
+        throw new GoogleAccessRevokedError("Google access token rejected. Reconnect the account if this persists.");
+      }
+      if (response.status === 403 && /insufficientPermissions|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(reason))
+        throw new GoogleAccessRevokedError("Google permission missing. Reconnect the account to grant Gmail access.");
+      const limited = response.status === 429 || ((response.status === 403 || response.status === 503) && /rateLimitExceeded|userRateLimitExceeded|quotaExceeded|RESOURCE_EXHAUSTED|backendError/i.test(reason + detail));
+      if (limited && attempt < 4) {
+        const retryAfter = Number(response.headers.get("retry-after"));
+        const delay = Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 60_000)
+          : Math.min(1000 * 2 ** attempt + Math.floor(Math.random() * 400), 16_000);
+        await sleep(delay);
+        continue;
+      }
+      throw new Error(`Gmail API HTTP ${response.status}: ${reason || detail}`);
+    }
+    throw new Error("Gmail API retry limit reached");
+  } finally {
+    await sleep(140);
+    release();
   }
-  return response.json() as Promise<any>;
 }
 
 function header(headers: Array<{ name: string; value: string }> | undefined, name: string) {
