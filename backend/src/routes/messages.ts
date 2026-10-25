@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getAccountWithSecret } from "../db.js";
+import { getAccountWithSecret, blockSender, listBlockedSenders } from "../db.js";
 import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels, updateImapFlags, searchImap, fetchImapAttachment } from "../imap.js";
 import { sendMessage } from "../smtp.js";
-import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailCategoryCounts } from "../gmail.js";
+import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
 export const messagesRouter = Router();
@@ -191,4 +191,24 @@ messagesRouter.get("/:id/messages/:uid/attachments/:attachmentId", async (req, r
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.send(content);
   } catch (error) { res.status(502).json({ error: "Attachment download failed", message: (error as Error).message }); }
+});
+
+/** Blocklist management: blocking persists locally, without claiming a provider-side spam filter. */
+messagesRouter.get("/blocked-senders", (req, res) => {
+  res.json({ senders: listBlockedSenders(req.auth!.ownerId) });
+});
+messagesRouter.post("/blocked-senders", requireCsrf, (req, res) => {
+  const parsed = z.object({ email: z.string().email() }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid email" }); return; }
+  blockSender(req.auth!.ownerId, parsed.data.email);
+  res.json({ ok: true });
+});
+messagesRouter.post("/:id/messages/:uid/category", requireCsrf, async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  if (account.authType !== "google_oauth") { res.status(400).json({ error: "Categories are available for Gmail only" }); return; }
+  const parsed = z.object({ category: z.enum(["CATEGORY_PERSONAL", "CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES", "CATEGORY_FORUMS"]) }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid category" }); return; }
+  try { await setGmailCategory(account, req.params.uid, parsed.data.category); res.json({ ok: true }); }
+  catch (error) { res.status(502).json({ error: "Unable to change category", message: (error as Error).message }); }
 });
