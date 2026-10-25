@@ -34,7 +34,7 @@ export default function NexusMail() {
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [mailtoDraft, setMailtoDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
+  const [mailtoDraft, setMailtoDraft] = useState<{ to: string; subject: string; body: string; html?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } } | null>(null);
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("compose") !== "1") return;
@@ -185,21 +185,37 @@ export default function NexusMail() {
     } catch (error) { setMessageActionError((error as Error).message); }
   };
 
-  const handleReply = (threadId: string, messageId: string) => {
-    const thread =
-      selectedThread?.id === threadId
-        ? selectedThread
-        : mail.threads.find((t) => t.id === threadId);
-    if (!thread) return;
-    const msg = thread.messages.find((m) => m.id === messageId);
-    if (!msg) return;
-    setReplyTo({
-      subject: msg.subject,
-      to: msg.senderEmail,
-      messageId: msg.id,
+  const handleMessageCompose = (threadId: string, messageId: string, kind: "reply" | "forward") => {
+    const thread = selectedThread?.id === threadId ? selectedThread : mail.threads.find(t => t.id === threadId);
+    const msg = thread?.messages.find(m => m.id === messageId);
+    if (!msg || !thread) return;
+    const prefix = kind === "reply" ? "Re:" : "Fwd:";
+    const subject = /^(re|fwd|fw|tr):/i.test(msg.subject) && kind === "reply" ? msg.subject : `${prefix} ${msg.subject}`;
+    const date = new Date(msg.date).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
+    const quote = kind === "reply" ? `Le ${date}, ${msg.senderName || msg.senderEmail} a écrit :` : `---------- Message transféré ----------\\nDe : ${msg.sender}\\nDate : ${date}\\nObjet : ${msg.subject}\\nÀ : ${msg.toRecipients.join(", ")}`;
+    const original = msg.body || msg.snippet || "";
+    const body = `\\n\\n${quote}\\n${original.split("\\n").map(line => kind === "reply" ? `> ${line}` : line).join("\\n")}`;
+    const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = kind === "forward" && msg.htmlBody
+      ? `<div style="white-space:pre-wrap"><br><br>${escapeHtml(quote)}</div><hr>${msg.htmlBody}`
+      : undefined;
+    const parsed = parseLiveId(msg.id);
+    setReplyTo(null);
+    setMailtoDraft({
+      to: kind === "reply" ? msg.senderEmail : "",
+      subject,
+      body,
+      html,
+      forwardAttachments: kind === "forward" && parsed && msg.attachments?.length ? {
+        accountId: parsed.accountId, uid: parsed.uid, mailbox: thread.mailbox ?? "INBOX",
+        items: msg.attachments.map(a => ({ id: a.id, filename: a.filename, contentType: a.contentType })),
+      } : undefined,
     });
     setComposeOpen(true);
   };
+
+  const handleReply = (threadId: string, messageId: string) => handleMessageCompose(threadId, messageId, "reply");
+  const handleForward = (threadId: string, messageId: string) => handleMessageCompose(threadId, messageId, "forward");
 
   const handleCompose = () => {
     setMailtoDraft(null);
