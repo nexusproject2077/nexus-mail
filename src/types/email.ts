@@ -39,4 +39,4 @@ export interface Label {
   count?: number;
 }
 
-export type Folder = 'inbox' | 'starred' | 'sent' | 'drafts' | 'trash' | 'all' | 'vault';
+export type Folder = 'inbox' | 'starred' | 'sent' | 'drafts' | 'trash' | 'all' | 'vault' | 'deliveries';
