@@ -283,7 +283,7 @@ export default function ComposeModal({
 
   return (
     <div className="fixed inset-0 z-[100] w-screen h-[100dvh] sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] ">
-      <div className="bg-nexus-surface border border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}">
+      <div className={`bg-nexus-surface border border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}`}>
         <div className="flex items-center justify-between pl-4 pr-3 py-3 bg-[#141414] sm:rounded-t-xl">
           <span className="flex items-center gap-2 text-base font-semibold">
             {mode !== "standard" && <Lock size={13} className="text-nexus-primary-light" />}
