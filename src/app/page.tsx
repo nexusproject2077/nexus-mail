@@ -277,7 +277,7 @@ export default function NexusMail() {
         <div className="flex-1 flex min-w-0 min-h-0">
           {/* Email List Panel */}
           <div
-            className={`min-w-0 min-h-0 flex-col border-r border-nexus-border bg-nexus-bg ${
+            className={`min-w-0 min-h-0 flex-col bg-nexus-bg lg:border-r lg:border-nexus-border ${
               selectedThread ? "hidden lg:flex lg:w-[clamp(300px,32vw,420px)] lg:shrink-0" : "flex flex-1"
             }`}
           >
