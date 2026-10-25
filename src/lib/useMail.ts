@@ -7,6 +7,9 @@ import {
   getMessages,
   getMessage,
   getAccountLabels,
+  performMessageAction,
+  searchAccountMessages,
+  type MessageAction,
   type AccountLabel,
   markMessageRead,
   trashMessage,
@@ -74,6 +77,8 @@ export interface UseMail {
   refreshMessages: () => Promise<void>;
   loadDetail: (thread: Thread) => Promise<Thread>;
   trashThread: (thread: Thread) => Promise<void>;
+  actionThread: (thread: Thread, action: MessageAction) => Promise<void>;
+  searchMessages: (query: string) => Promise<Thread[]>;
 }
 
 /** Loads accounts and the active account's inbox from the backend. */
@@ -203,6 +208,8 @@ export function useMail(): UseMail {
         ...msg,
         body: detail.text,
         htmlBody: detail.html ?? undefined,
+        attachments: detail.attachments,
+        hasAttachment: !!detail.attachments?.length,
         snippet: detail.snippet || msg.snippet,
         isUnread: false,
       };
@@ -221,6 +228,35 @@ export function useMail(): UseMail {
     await trashMessage(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
     setThreads((current) => current.filter((item) => item.id !== thread.id));
   }, []);
+
+  const actionThread = useCallback(async (thread: Thread, action: MessageAction) => {
+    const parsed = parseLiveId(thread.id);
+    if (!parsed) throw new Error("Message non synchronisé");
+    await performMessageAction(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX", action);
+    if (action === "archive") {
+      setThreads(current => current.filter(item => item.id !== thread.id));
+    } else {
+      setThreads(current => current.map(item => item.id !== thread.id ? item : {
+        ...item,
+        isUnread: action === "unread" ? true : action === "read" ? false : item.isUnread,
+        isStarred: action === "star" ? true : action === "unstar" ? false : item.isStarred,
+        messages: item.messages.map(message => ({
+          ...message,
+          isUnread: action === "unread" ? true : action === "read" ? false : message.isUnread,
+          isStarred: action === "star" ? true : action === "unstar" ? false : message.isStarred,
+        })),
+      }));
+    }
+  }, []);
+
+  const searchMessages = useCallback(async (query: string): Promise<Thread[]> => {
+    if (query.trim().length < 2) return [];
+    const ids = activeAccountId === ALL_ACCOUNTS ? accountsRef.current.map(a => a.id) : activeAccountId ? [activeAccountId] : [];
+    const results = await Promise.allSettled(ids.map(async id => ({ id, messages: await searchAccountMessages(id, query.trim()) })));
+    const matches = results.flatMap(result => result.status === "fulfilled" ? result.value.messages.map(message => summaryToThread(result.value.id, message)) : []);
+    if (results.length && results.every(result => result.status === "rejected")) throw new Error("Recherche indisponible sur les comptes connectés");
+    return matches.sort((a,b) => Date.parse(b.date) - Date.parse(a.date));
+  }, [activeAccountId]);
 
   const setActiveAccountId = useCallback((id: string | null) => {
     activeAccountRef.current = id;
@@ -250,5 +286,7 @@ export function useMail(): UseMail {
     refreshMessages,
     loadDetail,
     trashThread,
+    actionThread,
+    searchMessages,
   };
 }
