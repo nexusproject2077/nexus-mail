@@ -33,7 +33,7 @@ export function parseLiveId(
   return m ? { accountId: m[1], uid: m[2] } : null;
 }
 
-function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"): Thread {
+export function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"): Thread {
   const id = liveId(accountId, s.threadId ?? s.inReplyTo ?? s.messageId ?? s.uid);
   const email: Email = {
     id: liveId(accountId, s.uid),
