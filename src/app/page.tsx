@@ -299,12 +299,12 @@ export default function NexusMail() {
           <Menu size={23} />
         </button>
 
-        <div className="hidden sm:flex shrink-0 items-center gap-2.5 pr-1" aria-label="Nexus Mail">
-          <svg aria-hidden="true" viewBox="0 0 32 32" className="h-8 w-8 text-white" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m5 6 10.5 10L5 26" />
-            <path d="m16.5 6 10.5 10-10.5 10" />
+        <div className="hidden sm:flex shrink-0 items-center gap-0 pr-1" aria-label="Nexus Mail">
+          <svg aria-hidden="true" viewBox="0 0 64 64" className="h-11 w-11 shrink-0 text-white" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M 33 11 L 16 27 L 33 43" />
+            <path d="M 35 25 L 51 41 L 35 57" />
           </svg>
-          <span className="text-[15px] font-semibold tracking-[-0.02em] text-white whitespace-nowrap">Nexus Mail</span>
+          <span className="text-[36px] font-normal leading-none tracking-tight text-white whitespace-nowrap">Mail</span>
         </div>
 
         <div className="min-w-0 flex-1 max-w-3xl lg:mx-2"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
