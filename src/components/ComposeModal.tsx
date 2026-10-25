@@ -67,6 +67,7 @@ export default function ComposeModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<Mode>("standard");
+  const [securityOpen, setSecurityOpen] = useState(false);
   const [recipientKey, setRecipientKey] = useState("");
   const [passcode, setPasscode] = useState("");
   const [expiryIdx, setExpiryIdx] = useState(0);
@@ -84,6 +85,7 @@ export default function ComposeModal({
     setRecipientKey("");
     setPasscode("");
     setMode("standard");
+    setSecurityOpen(false);
     setExpiryIdx(0);
     setError(null);
   };
@@ -252,17 +254,31 @@ export default function ComposeModal({
   }
 
   return (
-    <div className="fixed bottom-0 right-0 sm:right-6 z-50 w-full sm:w-[min(520px,calc(100vw-3rem))] animate-fade-in">
-      <div className="bg-nexus-surface border border-nexus-border rounded-t-xl shadow-2xl shadow-black/50 flex flex-col max-h-[100dvh] sm:max-h-[80dvh] min-w-0 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 bg-nexus-surface-active rounded-t-xl cursor-move">
+    <div className="fixed inset-0 z-[100] w-screen h-[100dvh] sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] animate-fade-in">
+      <div className="bg-nexus-surface border border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-nexus-surface-active sm:rounded-t-xl">
           <span className="flex items-center gap-2 text-sm font-medium">
             {mode !== "standard" && <Lock size={13} className="text-nexus-primary-light" />}
             {replyTo ? "Répondre" : "Nouveau message"}
           </span>
           <div className="flex items-center gap-1">
+            <div className="relative sm:hidden">
+              <button type="button" aria-label="Options de sécurité" aria-expanded={securityOpen} onClick={() => setSecurityOpen(value => !value)} className="p-2 rounded-lg text-nexus-text hover:bg-nexus-surface-hover">
+                {mode === "standard" ? <Send size={18} /> : mode === "pgp" ? <ShieldCheck size={18} /> : <Lock size={18} />}
+              </button>
+              {securityOpen && (
+                <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-nexus-border bg-nexus-surface p-1 shadow-2xl">
+                  {(["standard", "pgp", "confidential"] as const).map(value => (
+                    <button key={value} type="button" onClick={() => { setMode(value); setSecurityOpen(false); }} className={"block w-full rounded-lg px-3 py-2 text-left text-sm " + (mode === value ? "bg-nexus-surface-active text-nexus-text" : "text-nexus-text-muted")}>
+                      {value === "standard" ? "Standard" : value === "pgp" ? "E2EE" : "Confidentiel"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setIsMinimized(true)}
-              className="p-1 rounded hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors"
+              className="hidden sm:block p-1 rounded hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors"
             >
               <Minus size={14} />
             </button>
@@ -300,7 +316,7 @@ export default function ComposeModal({
 
         {/* Encryption mode selector */}
         <div className="px-4 py-2.5 border-b border-nexus-border bg-nexus-bg/40">
-          <div className="flex gap-1 p-1 bg-nexus-bg rounded-xl">
+          <div className="hidden sm:flex gap-1 p-1 bg-nexus-bg rounded-xl">
             <ModeButton
               active={mode === "standard"}
               onClick={() => setMode("standard")}
@@ -383,7 +399,7 @@ export default function ComposeModal({
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="flex-1 min-h-[160px] px-4 py-3 bg-transparent text-sm text-nexus-text outline-none resize-none placeholder:text-nexus-text-dim"
+          className="flex-1 min-h-0 sm:min-h-[160px] px-4 py-3 bg-transparent text-sm text-nexus-text outline-none resize-none placeholder:text-nexus-text-dim"
           placeholder={
             mode === "standard"
               ? "Rédigez votre message..."
@@ -392,7 +408,7 @@ export default function ComposeModal({
         />
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-nexus-border">
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] border-t border-nexus-border">
           <button
             onClick={handleSend}
             disabled={isSending || !to.trim()}
