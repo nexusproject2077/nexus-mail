@@ -2,7 +2,6 @@
 
 import { MailOpen, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Star, Paperclip } from "lucide-react";
 import { Thread } from "@/types/email";
 import { formatEmailDate, getInitials, getAvatarColor, getLabelInfo } from "@/lib/utils";
 
@@ -117,7 +116,7 @@ export default function EmailList({
           <SwipeEmailRow key={thread.id} thread={thread} onSelect={onSelect} onTrash={onTrash}>
           <button
             onClick={() => onSelect(thread)}
-            className={`w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-nexus-border/50 transition-[background-color,opacity,transform] duration-[250ms] ease-out active:opacity-80 active:scale-[0.99] active:bg-white/10 text-left ${
+            className={`w-full flex items-start gap-3 px-4 py-3.5 border-b border-nexus-border/50 transition-[background-color,opacity,transform] duration-[250ms] ease-out active:opacity-80 active:scale-[0.99] active:bg-white/10 text-left ${
               isSelected
                 ? "bg-nexus-primary/10 border-l-2 border-l-nexus-primary"
                 : thread.isUnread
@@ -126,7 +125,7 @@ export default function EmailList({
             }`}
           >
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5"
               style={{ backgroundColor: avatarColor }}
             >
               {getInitials(senderName)}
@@ -158,13 +157,13 @@ export default function EmailList({
                 {thread.subject}
               </div>
 
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-nexus-text-dim truncate flex-1">
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-nexus-text-dim truncate flex-1 leading-5">
                   {thread.snippet}
                 </span>
                 {labelInfo && (
                   <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                    className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
                     style={{
                       backgroundColor: labelInfo.color + "20",
                       color: labelInfo.color,
