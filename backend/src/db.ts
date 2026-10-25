@@ -139,6 +139,19 @@ export function insertAccount(
 }
 
 export function insertGoogleAccount(input: { label: string; email: string; refreshToken: string }, ownerId: string): PublicAccount {
+  const existing = db.prepare(
+    "SELECT * FROM accounts WHERE owner_id = ? AND auth_type = 'google_oauth' AND lower(email) = lower(?) ORDER BY created_at LIMIT 1",
+  ).get(ownerId, input.email) as Row | undefined;
+  if (existing) {
+    db.prepare(
+      "UPDATE accounts SET label = ?, enc_refresh_token = ? WHERE id = ? AND owner_id = ?",
+    ).run(input.label, encryptSecret(input.refreshToken), existing.id, ownerId);
+    return strip(rowToAccount({
+      ...existing,
+      label: input.label,
+      enc_refresh_token: encryptSecret(input.refreshToken),
+    }));
+  }
   return insertAccount({
     label: input.label, email: input.email, username: input.email, password: "",
     // Compatibility metadata only; Google accounts use the Gmail API, never IMAP/SMTP.
