@@ -301,12 +301,21 @@ export function useMail(): UseMail {
         void refreshMessages();
       }
     };
-    const timer = window.setInterval(sync, 30000);
-    document.addEventListener("visibilitychange", sync);
-    window.addEventListener("focus", sync);
-    window.addEventListener("online", sync);
+    const getFrequency = () => { try { return JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").sync || "30"; } catch { return "30"; } };
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const schedule = () => {
+      if (timer) window.clearInterval(timer);
+      const frequency = getFrequency();
+      if (frequency !== "manual") timer = window.setInterval(sync, frequency === "push" ? 30000 : Number(frequency) * 60000);
+    };
+    schedule();
+    window.addEventListener("nexus-settings-change", schedule);
+    if (getFrequency() !== "manual") document.addEventListener("visibilitychange", sync);
+    if (getFrequency() !== "manual") window.addEventListener("focus", sync);
+    if (getFrequency() !== "manual") window.addEventListener("online", sync);
     return () => {
-      window.clearInterval(timer);
+      if (timer) window.clearInterval(timer);
+      window.removeEventListener("nexus-settings-change", schedule);
       document.removeEventListener("visibilitychange", sync);
       window.removeEventListener("focus", sync);
       window.removeEventListener("online", sync);
