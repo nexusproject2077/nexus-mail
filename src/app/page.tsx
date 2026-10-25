@@ -34,7 +34,7 @@ export default function NexusMail() {
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [mailtoDraft, setMailtoDraft] = useState<{ to: string; subject: string; body: string; html?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } } | null>(null);
+  const [mailtoDraft, setMailtoDraft] = useState<{ to: string; subject: string; body: string; html?: string; quotedText?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } } | null>(null);
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("compose") !== "1") return;
