@@ -1,5 +1,7 @@
 import type { Account, MessageDetail, MessageSummary } from "./types.js";
 import { randomUUID } from "node:crypto";
+import nodemailer from "nodemailer";
+import type { OutgoingMessage } from "./smtp.js";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -73,7 +75,14 @@ export async function fetchGmailDetail(account: Account, id: string): Promise<Me
   return { ...base, snippet: message.snippet || content.text.replace(/\s+/g, " ").trim().slice(0, 200), text: content.text, html: content.html, attachments: gmailAttachments(message.payload) };
 }
 
-export async function sendGmailMessage(account: Account, message: { to: string; subject: string; text: string; html?: string }) {
+export async function sendGmailMessage(account: Account, message: OutgoingMessage) {
+  if (message.attachments?.length) {
+    const transport = nodemailer.createTransport({ streamTransport: true, buffer: true });
+    const generated = await transport.sendMail({ from: { name: account.label, address: account.email }, to: message.to, subject: message.subject, text: message.text, html: message.html, attachments: message.attachments.map(a => ({ filename: a.filename, contentType: a.contentType, content: Buffer.from(a.data, "base64") })) });
+    const raw = generated.message as Buffer;
+    const sent = await gmail(account, "/messages/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw: raw.toString("base64url") }) });
+    return { messageId: sent.id as string };
+  }
   const boundary = `nexus-${randomUUID()}`;
   const raw = [
     `From: ${account.label} <${account.email}>`, `To: ${message.to}`, `Subject: =?UTF-8?B?${Buffer.from(message.subject).toString("base64")}?=`, "MIME-Version: 1.0",
