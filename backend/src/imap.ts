@@ -198,7 +198,7 @@ export async function fetchImapAttachment(account: Account, mailbox: string, uid
     const lock = await client.getMailboxLock(mailbox);
     try {
       const msg = await client.fetchOne(uid, { source: true }, { uid: true });
-      if (!msg?.source) throw new Error("Message introuvable");
+      if (!msg || !msg.source) throw new Error("Message introuvable");
       const parsed = await simpleParser(msg.source);
       const attachment = parsed.attachments[index];
       if (!attachment) throw new Error("Pièce jointe introuvable");
