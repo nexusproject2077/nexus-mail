@@ -302,7 +302,7 @@ export function useMail(): UseMail {
       }
     };
     const getFrequency = () => { try { return JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").sync || "30"; } catch { return "30"; } };
-    let timer: ReturnType<typeof setInterval> | undefined;
+    let timer: number | undefined;
     const schedule = () => {
       if (timer) window.clearInterval(timer);
       const frequency = getFrequency();
