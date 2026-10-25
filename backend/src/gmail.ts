@@ -62,11 +62,13 @@ function summary(message: any): MessageSummary {
   return { uid: message.id, subject: header(headers, "Subject") || "(sans objet)", from: sender(header(headers, "From")), to: addresses(header(headers, "To")), date: header(headers, "Date") || new Date(Number(message.internalDate ?? Date.now())).toISOString(), snippet: message.snippet ?? "", seen: !(message.labelIds ?? []).includes("UNREAD"), flagged: (message.labelIds ?? []).includes("STARRED") };
 }
 
-export async function fetchGmailSummaries(account: Account, mailbox: string, limit: number): Promise<MessageSummary[]> {
+export async function fetchGmailSummaries(account: Account, mailbox: string, limit: number, pageToken?: string): Promise<{ messages: MessageSummary[]; nextCursor: string | null }> {
   const label = mailbox === "INBOX" ? "INBOX" : mailbox;
-  const list = await gmail(account, `/messages?${new URLSearchParams({ labelIds: label, maxResults: String(limit) })}`);
+  const params = new URLSearchParams({ labelIds: label, maxResults: String(limit) });
+  if (pageToken) params.set("pageToken", pageToken);
+  const list = await gmail(account, `/messages?${params}`);
   const messages = await Promise.all((list.messages ?? []).map((item: { id: string }) => gmail(account, `/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`)));
-  return messages.map(summary);
+  return { messages: messages.map(summary), nextCursor: list.nextPageToken ?? null };
 }
 
 export async function fetchGmailDetail(account: Account, id: string): Promise<MessageDetail | null> {
