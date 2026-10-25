@@ -1,6 +1,10 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
   ArrowLeft,
   Star,
   Reply,
@@ -55,6 +59,20 @@ function prepareEmailHtml(html: string): string {
   });
 }
 
+/** Extractive, deterministic summary: no external requests or generated claims. */
+function flashSummary(input: string) {
+  const clean = input.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/\\s+/g, " ").trim();
+  const sentences = clean.match(/[^.!?\\n]+(?:[.!?]+|$)/g)?.map(s => s.trim()).filter(Boolean) ?? [];
+  const actionPattern = /\\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer)\\b/i;
+  const datePattern = /\\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|avant le|au plus tard|\\d{1,2}[\\/.-]\\d{1,2}(?:[\\/.-]\\d{2,4})?|\\d{1,2}\\s?h(?:\\d{2})?)\\b/i;
+  const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n).trimEnd() + "…" : s;
+  return {
+    action: clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise"),
+    date: clip(sentences.find(s => datePattern.test(s)) ?? "Aucune échéance détectée"),
+    snippet: clip(clean || "Aucun texte disponible pour ce message", 100),
+  };
+}
+
 interface EmailViewProps {
   thread: Thread;
   onBack: () => void;
@@ -77,6 +95,8 @@ export default function EmailView({
   onAction,
 }: EmailViewProps) {
   const lastMsg = thread.messages[thread.messages.length - 1];
+  const [flashExpanded, setFlashExpanded] = useState(true);
+  const flash = useMemo(() => flashSummary(lastMsg?.body || lastMsg?.snippet || ""), [lastMsg?.body, lastMsg?.snippet]);
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col animate-slide-in">
@@ -102,6 +122,22 @@ export default function EmailView({
           </button>
         </div>
       </div>
+
+      <section className="mx-3 sm:mx-6 mt-3 mb-1 rounded-xl border border-white/15 bg-[#121212] text-white" aria-label="Résumé Flash">
+        <button type="button" onClick={() => setFlashExpanded(value => !value)}
+          aria-expanded={flashExpanded}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+          <span className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={15} aria-hidden="true" /> Résumé Flash</span>
+          {flashExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+        </button>
+        {flashExpanded && (
+          <ul className="list-disc space-y-2 px-7 pb-4 text-sm leading-relaxed text-white/90 break-words">
+            <li><strong className="font-medium text-white">Action :</strong> {flash.action}</li>
+            <li><strong className="font-medium text-white">Date :</strong> {flash.date}</li>
+            <li><strong className="font-medium text-white">Contexte :</strong> {flash.snippet}</li>
+          </ul>
+        )}
+      </section>
 
       <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-0 py-3 sm:p-6">
         {thread.messages.map((msg, idx) => {
