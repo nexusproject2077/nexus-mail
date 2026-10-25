@@ -195,7 +195,8 @@ export default function NexusMail() {
     const quote = kind === "reply" ? `Le ${date}, ${msg.senderName || msg.senderEmail} a écrit :` : `---------- Message transféré ----------\\nDe : ${msg.sender}\\nDate : ${date}\\nObjet : ${msg.subject}\\nÀ : ${msg.toRecipients.join(", ")}`;
     const cleanText = (value: unknown) => typeof value === "string" && !/^(null|undefined)$/i.test(value.trim()) ? value : "";
     const original = cleanText(msg.body) || cleanText(msg.snippet);
-    const body = `\\n\\n${quote}\\n${original.split("\\n").map(line => kind === "reply" ? `> ${line}` : line).join("\\n")}`;
+    const quotedText = `${quote}\\n${original.split("\\n").map(line => kind === "reply" ? `> ${line}` : line).join("\\n")}`;
+    const body = "";
     const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const html = msg.htmlBody
       ? `<div style="white-space:pre-wrap"><br><br>${escapeHtml(quote)}</div><hr>${msg.htmlBody}`
@@ -207,6 +208,7 @@ export default function NexusMail() {
       subject,
       body,
       html,
+      quotedText,
       forwardAttachments: kind === "forward" && parsed && msg.attachments?.length ? {
         accountId: parsed.accountId, uid: parsed.uid, mailbox: thread.mailbox ?? "INBOX",
         items: msg.attachments.map(a => ({ id: a.id, filename: a.filename, contentType: a.contentType })),
