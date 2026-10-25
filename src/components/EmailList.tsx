@@ -12,6 +12,9 @@ interface EmailListProps {
   onSelect: (thread: Thread) => void;
   folder: string;
   onTrash?: (thread: Thread) => Promise<void>;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
 }
 
 export default function EmailList({
@@ -20,6 +23,9 @@ export default function EmailList({
   onSelect,
   folder,
   onTrash,
+  onLoadMore,
+  hasMore = false,
+  loadingMore = false,
 }: EmailListProps) {
   if (threads.length === 0) {
     return (
@@ -33,7 +39,7 @@ export default function EmailList({
   }
 
   return (
-    <div className="flex-1 min-h-0 min-w-0 overflow-y-auto">
+    <div className="flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (hasMore && !loadingMore && el.scrollHeight - el.scrollTop - el.clientHeight < 500) onLoadMore?.(); }}>
       {threads.map((thread) => {
         const lastMsg = thread.messages[thread.messages.length - 1];
         const isSelected = selectedId === thread.id;
@@ -108,6 +114,7 @@ export default function EmailList({
           </SwipeEmailRow>
         );
       })}
+      {hasMore && <button type="button" disabled={loadingMore} onClick={onLoadMore} className="w-full py-4 text-sm text-nexus-text-muted hover:text-nexus-text disabled:opacity-60">{loadingMore ? "Chargement des anciens emails…" : "Charger les emails plus anciens"}</button>}
     </div>
   );
 }
