@@ -30,6 +30,7 @@ interface ComposeModalProps {
   isOpen: boolean;
   onClose: () => void;
   replyTo?: { subject: string; to: string; messageId?: string };
+  initialDraft?: { to: string; subject: string; body: string };
   onNeedUnlock: () => void;
   activeAccountId?: string | null;
   onSent?: () => void;
@@ -48,6 +49,7 @@ export default function ComposeModal({
   isOpen,
   onClose,
   replyTo,
+  initialDraft,
   onNeedUnlock,
   activeAccountId,
   onSent,
@@ -75,10 +77,17 @@ export default function ComposeModal({
   const [expiryIdx, setExpiryIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!isOpen || !initialDraft) return;
+    setTo(initialDraft.to);
+    setSubject(initialDraft.subject);
+    setBody(initialDraft.body);
+  }, [isOpen, initialDraft]);
+
   const draftKey = activeAccountId ? `nexus-mail:compose-draft:${activeAccountId}` : null;
   const draftRestored = useRef<string | null>(null);
   useEffect(() => {
-    if (!isOpen || !draftKey || draftRestored.current === draftKey) return;
+    if (!isOpen || initialDraft || !draftKey || draftRestored.current === draftKey) return;
     draftRestored.current = draftKey;
     try {
       const saved = window.localStorage.getItem(draftKey);
@@ -90,7 +99,7 @@ export default function ComposeModal({
         setBody(draft.body ?? "");
       }
     } catch { /* Corrupt or unavailable storage: allow composing normally. */ }
-  }, [isOpen, draftKey, replyTo]);
+  }, [isOpen, draftKey, replyTo, initialDraft]);
   useEffect(() => {
     if (!isOpen || !draftKey || isSending || mode !== "standard" || draftRestored.current !== draftKey || replyTo) return;
     try {
