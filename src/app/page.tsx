@@ -39,6 +39,32 @@ export default function NexusMail() {
     messageId?: string;
   } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [drawerDragX, setDrawerDragX] = useState(0);
+  const [drawerDragging, setDrawerDragging] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const drawerTouch = useRef<{ startX: number; startY: number; horizontal: boolean | null } | null>(null);
+  const closeDrawer = () => { setDrawerDragging(false); setDrawerDragX(0); setSidebarOpen(false); };
+  const onDrawerTouchStart = (event: import("react").TouchEvent<HTMLDivElement>) => {
+    if (!sidebarOpen || event.touches.length !== 1) return;
+    drawerTouch.current = { startX: event.touches[0].clientX, startY: event.touches[0].clientY, horizontal: null };
+  };
+  const onDrawerTouchMove = (event: import("react").TouchEvent<HTMLDivElement>) => {
+    const touch = drawerTouch.current;
+    if (!touch || !sidebarOpen) return;
+    const dx = event.touches[0].clientX - touch.startX;
+    const dy = event.touches[0].clientY - touch.startY;
+    if (touch.horizontal === null && Math.hypot(dx, dy) > 8) touch.horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
+    if (!touch.horizontal) return;
+    setDrawerDragging(true);
+    setDrawerDragX(Math.max(-(drawerRef.current?.offsetWidth ?? window.innerWidth * 0.8), Math.min(0, dx)));
+  };
+  const onDrawerTouchEnd = () => {
+    if (!drawerTouch.current) return;
+    drawerTouch.current = null;
+    setDrawerDragging(false);
+    if (Math.abs(drawerDragX) > (drawerRef.current?.offsetWidth ?? window.innerWidth * 0.8) / 2) closeDrawer();
+    else setDrawerDragX(0);
+  };
   const [securityOpen, setSecurityOpen] = useState(false);
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
@@ -184,7 +210,7 @@ export default function NexusMail() {
       {/* Header */}
       <header className="min-h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 border-b border-nexus-border bg-nexus-surface/80 backdrop-blur-sm flex-shrink-0">
         <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
+          onClick={() => { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); }}
           className="nexus-interactive p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted"
         >
           <Menu size={20} />
@@ -258,8 +284,8 @@ export default function NexusMail() {
       {/* Main Content */}
       <div className="relative flex-1 flex min-h-0 min-w-0 overflow-hidden">
         <div className={`fixed inset-0 z-[80] lg:hidden transition-[visibility] duration-[250ms] ${sidebarOpen ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!sidebarOpen}>
-          <button type="button" aria-label="Fermer le menu" onClick={() => setSidebarOpen(false)} className={`absolute inset-0 bg-black/50 transition-opacity duration-[250ms] ease-out ${sidebarOpen ? "opacity-100" : "opacity-0"}`} />
-          <div className={`absolute inset-y-0 left-0 w-[80vw] max-w-[360px] h-[100dvh] overflow-hidden rounded-r-2xl shadow-2xl transition-transform duration-[250ms] ease-out motion-reduce:transition-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+          <button type="button" aria-label="Fermer le menu" onClick={closeDrawer} className={`absolute inset-0 bg-black/50 transition-opacity duration-[250ms] ease-out ${sidebarOpen ? "opacity-100" : "opacity-0"}`} />
+          <div ref={drawerRef} onTouchStart={onDrawerTouchStart} onTouchMove={onDrawerTouchMove} onTouchEnd={onDrawerTouchEnd} onTouchCancel={onDrawerTouchEnd} style={{ transform: sidebarOpen ? `translate3d(${drawerDragX}px,0,0)` : "translate3d(-100%,0,0)", transition: drawerDragging ? "none" : drawerDragX < 0 ? "transform 350ms cubic-bezier(0.2, 1.25, 0.3, 1)" : "transform 250ms ease-out" }} className="absolute inset-y-0 left-0 w-[80vw] max-w-[360px] h-[100dvh] overflow-hidden rounded-r-2xl shadow-2xl will-change-transform motion-reduce:transition-none">
           <Sidebar
             activeFolder={activeFolder}
             onFolderChange={(f) => {
