@@ -141,65 +141,75 @@ export default function EmailList({
   );
 }
 
-function SwipeEmailRow({ thread, onSelect, onTrash, children }: {
+function SwipeEmailRow({ thread, onTrash, children }: {
   thread: Thread;
   onSelect: (thread: Thread) => void;
   onTrash?: (thread: Thread) => Promise<void>;
   children: React.ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const start = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
   const current = useRef(0);
   const suppressClick = useRef(false);
-  const active = !!onTrash && !busy;
+  const revealWidth = 112;
   const reset = () => { current.current = 0; setOffset(0); setDragging(false); start.current = null; };
+  const remove = async () => {
+    if (!onTrash || busy) return;
+    setBusy(true);
+    setDragging(false);
+    setOffset(-window.innerWidth);
+    await new Promise<void>(resolve => window.setTimeout(resolve, 160));
+    setExiting(true);
+    try { await onTrash(thread); }
+    catch { setExiting(false); reset(); }
+    finally { setBusy(false); }
+  };
   return (
-    <div className="relative overflow-hidden md:overflow-visible select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 180ms ease-out, opacity 140ms ease-out" : "none" }}>
-      {active && <div className="absolute inset-y-0 right-0 w-full bg-red-600 flex justify-end items-center pr-6 text-white pointer-events-none">
-        <Trash2 size={22} aria-hidden="true" />
-        <span className="ml-2 text-sm font-medium">Corbeille</span>
-      </div>}
+    <div className="relative overflow-hidden select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 180ms ease-out, opacity 140ms ease-out" : "none" }}>
+      {onTrash && <button type="button" disabled={busy} aria-label="Mettre à la corbeille" onClick={() => void remove()} className="absolute inset-y-0 right-0 w-28 bg-[#db766d] flex flex-col gap-1 items-center justify-center text-white">
+        <Trash2 size={23} aria-hidden="true" />
+        <span className="text-xs font-medium">Corbeille</span>
+      </button>}
       <div
         className="nexus-mail-row relative bg-nexus-bg touch-pan-y"
-        style={{ transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 220ms cubic-bezier(.2,.8,.2,1)", willChange: dragging ? "transform" : "auto" }}
+        style={{ transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 210ms cubic-bezier(.2,.8,.2,1)" }}
         onTouchStart={event => {
-          if (!active || event.touches.length !== 1) return;
-          const t = event.touches[0];
-          start.current = { x: t.clientX, y: t.clientY, horizontal: null };
-          current.current = 0;
+          if (!onTrash || busy || event.touches.length !== 1) return;
+          const touch = event.touches[0];
+          start.current = { x: touch.clientX - current.current, y: touch.clientY, horizontal: null };
         }}
         onTouchMove={event => {
-          if (!start.current || !active) return;
-          const t = event.touches[0];
-          const dx = t.clientX - start.current.x;
-          const dy = t.clientY - start.current.y;
-          if (start.current.horizontal === null && Math.hypot(dx,dy) > 8) start.current.horizontal = Math.abs(dx) > Math.abs(dy) * 1.25;
+          if (!start.current || !onTrash || busy) return;
+          const touch = event.touches[0];
+          const dx = touch.clientX - start.current.x;
+          const dy = touch.clientY - start.current.y;
+          if (start.current.horizontal === null && Math.hypot(dx - current.current, dy) > 8) start.current.horizontal = Math.abs(dx - current.current) > Math.abs(dy) * 1.25;
           if (!start.current.horizontal) return;
           suppressClick.current = true;
           setDragging(true);
-          current.current = Math.max(-Math.min(220, window.innerWidth * 0.65), Math.min(0, dx));
+          current.current = Math.max(-Math.min(260, window.innerWidth * .75), Math.min(0, dx));
           setOffset(current.current);
         }}
-        onTouchEnd={async () => {
+        onTouchEnd={() => {
           if (!start.current) return;
           const dx = current.current;
-          if (dx > -100 || !active) { reset(); return; }
           start.current = null;
           setDragging(false);
-          setBusy(true);
-          setOffset(-window.innerWidth);
-          await new Promise(resolve => window.setTimeout(resolve, 160));
-          setExiting(true);
-          try { await onTrash?.(thread); }
-          catch { setExiting(false); reset(); }
-          finally { setBusy(false); }
+          if (dx <= -205) { void remove(); return; }
+          current.current = dx < -50 ? -revealWidth : 0;
+          setOffset(current.current);
         }}
-        onTouchCancel={reset}
+        onTouchCancel={() => { start.current = null; setDragging(false); setOffset(current.current); }}
         onClickCapture={event => {
-          if (suppressClick.current) { event.stopPropagation(); event.preventDefault(); suppressClick.current = false; }
+          if (suppressClick.current || current.current < 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            suppressClick.current = false;
+            if (current.current < 0) reset();
+          }
         }}
       >{children}</div>
     </div>
