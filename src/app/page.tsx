@@ -50,7 +50,7 @@ export default function NexusMail() {
     if (activeFolder === "vault") {
       filtered = vaultMessages;
     } else if (liveInbox) {
-      if (activeFolder === "inbox") filtered = mail.threads;
+      if (activeFolder === "inbox" || activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = mail.threads.filter((t) => t.isStarred);
       else filtered = []; // sent/drafts/trash not yet backed by IMAP
@@ -173,8 +173,9 @@ export default function NexusMail() {
           >
             <ServerCog size={16} />
             <span className="hidden md:inline max-w-[160px] truncate">
-              {mail.accounts.find((a) => a.id === mail.activeAccountId)?.email ??
-                "Comptes"}
+              {mail.activeAccountId === "all"
+                ? "Toutes les boîtes"
+                : mail.accounts.find((a) => a.id === mail.activeAccountId)?.email ?? "Comptes"}
             </span>
           </button>
           <button
@@ -297,7 +298,7 @@ export default function NexusMail() {
         }}
         replyTo={replyTo || undefined}
         onNeedUnlock={() => setSecurityOpen(true)}
-        activeAccountId={mail.activeAccountId}
+        activeAccountId={mail.activeAccountId === "all" ? mail.accounts[0]?.id ?? null : mail.activeAccountId}
         onSent={() => void mail.refreshMessages()}
       />
 
