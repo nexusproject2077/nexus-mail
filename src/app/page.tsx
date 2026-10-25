@@ -165,7 +165,7 @@ export default function NexusMail() {
       filtered = vaultMessages;
     } else if (liveInbox) {
       if (mail.selectedLabel) filtered = mail.threads;
-      else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (t.labels.includes(mail.category) || (mail.category === "CATEGORY_PERSONAL" && !t.labels.some(label => ["CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"].includes(label)))));
+      else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (mail.category === "ALL" || t.labels.includes(mail.category) || (mail.category === "CATEGORY_PERSONAL" && !t.labels.some(label => ["CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"].includes(label)))));
       else if (activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = [...specialThreads, ...mail.threads.filter(t => t.isStarred)].filter((t, index, items) => items.findIndex(other => other.id === t.id) === index);
@@ -437,7 +437,7 @@ export default function NexusMail() {
                   {mail.selectedLabel?.name ?? folderTitle[activeFolder]}
                 </h1>
                 <span className="text-xs text-nexus-text-dim bg-nexus-surface-hover px-2 py-0.5 rounded-xl">
-                  {filteredThreads.length}
+                  {filteredThreads.length}{activeFolder === "inbox" && mail.category !== "ALL" ? ` / ${mail.threads.length}` : ""}
                 </span>
               </div>
               <div className="hidden sm:flex items-center gap-1 text-xs text-nexus-text-dim">
@@ -449,6 +449,7 @@ export default function NexusMail() {
               <div ref={tabListRef} role="tablist" aria-label="Catégories Gmail" className="relative flex gap-0.5 overflow-x-auto border-b border-nexus-border/40 px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {tabIndicator && <span aria-hidden="true" className="absolute top-1.5 bottom-1.5 rounded-full bg-white pointer-events-none transition-[left,width] duration-[250ms] ease-out motion-reduce:transition-none" style={{left: tabIndicator.left, width: tabIndicator.width}} />}
                 {([
+                  ["ALL", "Tous"],
                   ["CATEGORY_PERSONAL", "Principale"],
                   ["CATEGORY_PROMOTIONS", "Promotions"],
                   ["CATEGORY_SOCIAL", "Réseaux sociaux"],
@@ -457,7 +458,7 @@ export default function NexusMail() {
                   <button key={id} type="button" role="tab" aria-selected={mail.category === id}
                     onClick={() => mail.setCategory(id)}
                     className={`relative z-10 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-[color,transform,opacity] duration-[250ms] ease-out active:scale-[0.95] active:opacity-80 ${mail.category === id ? "text-black" : "text-nexus-text-muted hover:text-nexus-text"}`}>
-                    {title}{mail.categoryCounts && <span className="ml-1.5 text-xs opacity-70">{mail.categoryCounts[id] ?? "—"}</span>}
+                    {title}{id !== "ALL" && mail.categoryCounts && <span className="ml-1.5 text-xs opacity-70">{mail.categoryCounts[id] ?? "—"}</span>}
                   </button>
                 ))}
               </div>
