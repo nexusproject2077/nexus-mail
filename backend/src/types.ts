@@ -30,6 +30,7 @@ export interface MessageSummary {
   snippet: string;
   seen: boolean;
   flagged: boolean;
+  labelIds: string[];
 }
 
 /** A fully parsed message. */
