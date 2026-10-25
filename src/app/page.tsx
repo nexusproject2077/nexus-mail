@@ -220,7 +220,7 @@ export default function NexusMail() {
   return (
     <div className="h-dvh min-w-0 flex flex-col overflow-hidden bg-nexus-bg">
       {/* Header */}
-      <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 pt-[env(safe-area-inset-top,0px)] border-b border-nexus-border bg-nexus-surface/95 backdrop-blur-xl flex-shrink-0">
+      <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-14 items-center gap-2 sm:gap-4 px-2 sm:px-4 pt-[env(safe-area-inset-top,0px)] border-b border-nexus-border bg-nexus-surface/95 backdrop-blur-xl flex-shrink-0`}> 
         <button
           onClick={() => { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); }}
           className="nexus-interactive p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted"
