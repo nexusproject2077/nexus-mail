@@ -111,3 +111,10 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* AMOLED polish: neutralize legacy purple utility accents without affecting
+   semantic red warnings, amber stars, or sender avatar colors. */
+:root { color-scheme: dark; }
+::selection { background: #14532d; color: #ffffff; }
+html, body { background-color: #000000; }
+.bg-nexus-surface\/30 { background-color: rgb(12 12 12 / .72); }
