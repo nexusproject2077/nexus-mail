@@ -396,7 +396,7 @@ export default function ComposeModal({
           <button
             onClick={handleSend}
             disabled={isSending || !to.trim()}
-            className="flex items-center gap-2 px-5 py-2 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25"
+            className="flex items-center gap-2 px-5 py-2 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-black rounded-xl text-sm font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25"
           >
             {isSending ? (
               <Loader2 size={14} className="animate-spin" />
@@ -460,7 +460,7 @@ function ModeButton({
       onClick={onClick}
       className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
         active
-          ? "bg-nexus-primary text-white"
+          ? "bg-nexus-primary text-black"
           : "text-nexus-text-dim hover:text-nexus-text"
       }`}
     >
