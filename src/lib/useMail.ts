@@ -186,14 +186,16 @@ export function useMail(): UseMail {
     void refreshCategoryCounts();
     try {
       const selectedAccounts = accountsRef.current.filter((account) => activeAccountId === ALL_ACCOUNTS || account.id === activeAccountId);
-      const labelResults = await Promise.allSettled(selectedAccounts.map(async (account) => ({
+      // Labels are secondary metadata: never block the inbox while they load.
+      void Promise.allSettled(selectedAccounts.map(async (account) => ({
         account,
         labels: await getAccountLabels(account.id),
-      })));
-      if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
-      setLabels(labelResults.flatMap((result) => result.status === "fulfilled"
-        ? result.value.labels.map((label) => ({ ...label, accountId: result.value.account.id, accountEmail: result.value.account.email }))
-        : []));
+      }))).then((labelResults) => {
+        if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
+        setLabels(labelResults.flatMap((result) => result.status === "fulfilled"
+          ? result.value.labels.map((label) => ({ ...label, accountId: result.value.account.id, accountEmail: result.value.account.email }))
+          : []));
+      });
       // Load at most 500 messages in total across all connected accounts.
       // Keep API requests paginated (up to 100 messages per account per round).
       const allMessages = new Map<string, Thread>();
@@ -204,10 +206,11 @@ export function useMail(): UseMail {
       const messageLimit = 500;
       const gmailCategory = !selectedLabel && category !== "ALL" ? category : undefined;
       let loadedMessages = 0;
+      let firstPage = true;
       setLoadingMore(true);
       try {
         while (pending.length && loadedMessages < messageLimit && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
-          const perAccountLimit = Math.min(100, Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length)));
+          const perAccountLimit = Math.min(firstPage ? 20 : 100, Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length)));
           const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
             id, page: await getMessages(id, mailbox, perAccountLimit, cursor ?? undefined, gmailCategory && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? gmailCategory : undefined),
           })));
@@ -240,6 +243,7 @@ export function useMail(): UseMail {
           setCursors({ ...next });
           setLoading(false);
           pending = upcoming;
+          firstPage = false;
         }
         if (failures.size) setError(`Synchronisation incomplète : ${[...failures.entries()].map(([id, reason]) => `${accountsRef.current.find(a => a.id === id)?.email ?? id} — ${reason}`).join("; ")}`);
         else setError(null);
