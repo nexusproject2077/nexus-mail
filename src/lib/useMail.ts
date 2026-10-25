@@ -143,23 +143,51 @@ export function useMail(): UseMail {
       setLabels(labelResults.flatMap((result) => result.status === "fulfilled"
         ? result.value.labels.map((label) => ({ ...label, accountId: result.value.account.id, accountEmail: result.value.account.email }))
         : []));
-      const results = await Promise.allSettled(ids.map(async (id) => ({
-        id,
-        page: await getMessages(id, mailbox),
-      })));
-      if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
-      const combined = results.flatMap((result) =>
-        result.status === "fulfilled"
-          ? result.value.page.messages.map((m) => summaryToThread(result.value.id, m, mailbox))
-          : [],
-      );
-      combined.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-      setThreads(combined);
-      const next = Object.fromEntries(results.filter(r => r.status === "fulfilled").map(r => r.status === "fulfilled" ? [r.value.id, r.value.page.nextCursor] : ["", null]));
-      cursorsRef.current = next;
-      setCursors(next);
-      const failures = results.filter((result) => result.status === "rejected");
-      setError(failures.length ? `Impossible de synchroniser ${failures.length} compte(s) sur ${ids.length}.` : null);
+      // Synchronise toute la boîte sans plafond : les pages restent une contrainte
+      // technique de l'API, pas une limite de messages visible par l'utilisateur.
+      const allMessages = new Map<string, Thread>();
+      const next: Record<string, string | null> = {};
+      const failures = new Set<string>();
+      let pending = ids.map(id => ({ id, cursor: null as string | null }));
+      const seenCursors = new Set<string>();
+      setLoadingMore(true);
+      try {
+        while (pending.length && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
+          const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
+            id, page: await getMessages(id, mailbox, 100, cursor ?? undefined),
+          })));
+          const upcoming: typeof pending = [];
+          for (let index = 0; index < batch.length; index++) {
+            const result = batch[index];
+            const id = pending[index].id;
+            if (result.status !== "fulfilled") {
+              failures.add(id);
+              next[id] = null;
+              continue;
+            }
+            for (const message of result.value.page.messages) {
+              const thread = summaryToThread(id, message, mailbox);
+              allMessages.set(thread.id, thread);
+            }
+            const cursor = result.value.page.nextCursor;
+            next[id] = cursor;
+            if (cursor && !seenCursors.has(id + ":" + cursor)) {
+              seenCursors.add(id + ":" + cursor);
+              upcoming.push({ id, cursor });
+            }
+          }
+          if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
+          setThreads([...allMessages.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)));
+          cursorsRef.current = { ...next };
+          setCursors({ ...next });
+          setLoading(false);
+          pending = upcoming;
+        }
+        if (failures.size) setError(`Impossible de synchroniser entièrement ${failures.size} compte(s). Réessaie.`);
+        else setError(null);
+      } finally {
+        if (requestId.current === currentRequest) setLoadingMore(false);
+      }
     } catch (e) {
       if (requestId.current === currentRequest) setError((e as Error).message);
     } finally {
