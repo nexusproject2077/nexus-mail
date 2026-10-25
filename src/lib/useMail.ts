@@ -175,14 +175,16 @@ export function useMail(): UseMail {
       setThreads([]);
       return;
     }
-    if (syncInProgress.current) return;
-    syncInProgress.current = true;
     const currentRequest = ++requestId.current;
     const ids = selectedLabel ? [selectedLabel.accountId] : activeAccountId === ALL_ACCOUNTS
       ? accountsRef.current.map((account) => account.id)
       : [activeAccountId];
     const mailbox = selectedLabel?.id ?? "INBOX";
     setLoading(true);
+    setThreads([]);
+    storeRef.current = [];
+    cursorsRef.current = {};
+    setCursors({});
     setCategoryLoading(true);
     void refreshCategoryCounts();
     try {
@@ -203,13 +205,14 @@ export function useMail(): UseMail {
       let pending = ids.map(id => ({ id, cursor: null as string | null }));
       const seenCursors = new Set<string>();
       const messageLimit = 500;
+      const gmailCategory = !selectedLabel && category !== "ALL" ? category : undefined;
       let loadedMessages = 0;
       setLoadingMore(true);
       try {
         while (pending.length && loadedMessages < messageLimit && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
           const perAccountLimit = Math.min(100, Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length)));
           const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
-            id, page: await getMessages(id, mailbox, perAccountLimit, cursor ?? undefined, undefined),
+            id, page: await getMessages(id, mailbox, perAccountLimit, cursor ?? undefined, gmailCategory && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? gmailCategory : undefined),
           })));
           const upcoming: typeof pending = [];
           for (let index = 0; index < batch.length; index++) {
@@ -250,9 +253,8 @@ export function useMail(): UseMail {
       if (requestId.current === currentRequest) setError((e as Error).message);
     } finally {
       if (requestId.current === currentRequest) { setLoading(false); setCategoryLoading(false); }
-      syncInProgress.current = false;
     }
-  }, [configured, activeAccountId, selectedLabel, refreshCategoryCounts]);
+  }, [configured, activeAccountId, selectedLabel, category, refreshCategoryCounts]);
 
   const loadMore = useCallback(async () => {
     if (!configured || !activeAccountId || moreBusy.current || loading) return;
@@ -263,7 +265,7 @@ export function useMail(): UseMail {
     const currentRequest = requestId.current;
     const mailbox = selectedLabel?.id ?? "INBOX";
     try {
-      const results = await Promise.allSettled(entries.map(async ([id, cursor]) => ({ id, page: await getMessages(id, mailbox, 50, cursor, !selectedLabel && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? category : undefined) })));
+      const results = await Promise.allSettled(entries.map(async ([id, cursor]) => ({ id, page: await getMessages(id, mailbox, 50, cursor, !selectedLabel && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? (category === "ALL" ? undefined : category) : undefined) })));
       if (requestId.current !== currentRequest) return;
       const next = { ...cursorsRef.current };
       const additions: Thread[] = [];
@@ -281,7 +283,7 @@ export function useMail(): UseMail {
       moreBusy.current = false;
       setLoadingMore(false);
     }
-  }, [configured, activeAccountId, loading, selectedLabel]);
+  }, [configured, activeAccountId, loading, selectedLabel, category]);
 
   useEffect(() => {
     activeAccountRef.current = activeAccountId;
