@@ -150,7 +150,7 @@ export default function SecurityPanel({ isOpen, onClose }: SecurityPanelProps) {
                     }}
                     className={`min-w-0 px-2 py-3 rounded-lg text-sm font-medium leading-snug transition-all duration-[250ms] ease-out active:scale-[0.97] ${
                       tab === t
-                        ? "bg-nexus-primary text-white"
+                        ? "bg-nexus-primary text-black"
                         : "text-nexus-text-dim hover:text-nexus-text"
                     }`}
                   >
@@ -195,7 +195,7 @@ export default function SecurityPanel({ isOpen, onClose }: SecurityPanelProps) {
                   <button
                     onClick={handleGenerate}
                     disabled={busy}
-                    className="w-full min-h-12 flex items-center justify-center gap-2 px-3 py-3 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all duration-[250ms] ease-out active:scale-[0.97]"
+                    className="w-full min-h-12 flex items-center justify-center gap-2 px-3 py-3 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-black rounded-xl text-sm font-semibold transition-all duration-[250ms] ease-out active:scale-[0.97]"
                   >
                     {busy ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -259,7 +259,7 @@ export default function SecurityPanel({ isOpen, onClose }: SecurityPanelProps) {
                   <button
                     onClick={handleUnlock}
                     disabled={busy || !unlockPass}
-                    className="flex items-center gap-1.5 px-4 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+                    className="flex items-center gap-1.5 px-4 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-black rounded-xl text-sm font-medium transition-colors"
                   >
                     {busy ? <Loader2 size={15} className="animate-spin" /> : <Unlock size={15} />}
                   </button>
@@ -379,7 +379,7 @@ function ImportForm({
       <button
         onClick={handleImport}
         disabled={busy || !armored || !pubArmored}
-        className="w-full flex items-center justify-center gap-2 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-black rounded-xl text-sm font-medium transition-colors"
       >
         {busy ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
         Importer l&apos;identité
