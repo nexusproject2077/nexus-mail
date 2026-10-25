@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ShieldCheck,
   Lock,
+  Settings,
 } from "lucide-react";
 import type { AccountLabel } from "@/lib/api";
 import type { Folder } from "@/types/email";
@@ -37,6 +38,7 @@ interface SidebarProps {
   onFolderChange: (folder: Folder) => void;
   onCompose: () => void;
   onOpenSecurity: () => void;
+  onOpenSettings: () => void;
   unreadCount: number;
   vaultCount: number;
   labels: Array<AccountLabel & { accountId: string; accountEmail: string }>;
@@ -50,6 +52,7 @@ export default function Sidebar({
   onFolderChange,
   onCompose,
   onOpenSecurity,
+  onOpenSettings,
   unreadCount,
   vaultCount,
   labels,
@@ -143,6 +146,13 @@ export default function Sidebar({
             <ShieldCheck size={18} />
           </span>
           <span className="flex-1 text-left">Sécurité &amp; clés</span>
+        </button>
+      </div>
+
+      <div className="px-2 pb-2">
+        <button type="button" onClick={onOpenSettings} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-colors">
+          <Settings size={18} aria-hidden="true" />
+          <span className="flex-1 text-left">Paramètres</span>
         </button>
       </div>
 
