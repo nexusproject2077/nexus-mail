@@ -157,3 +157,11 @@ export function sendViaAccount(
     body: JSON.stringify(message),
   });
 }
+
+export function markMessageRead(accountId: string, uid: string) {
+  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/read`, { method: "POST" });
+}
+
+export function trashMessage(accountId: string, uid: string) {
+  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/trash`, { method: "POST" });
+}
