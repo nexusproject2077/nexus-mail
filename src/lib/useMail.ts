@@ -373,9 +373,18 @@ export function useMail(): UseMail {
   }, [refreshMessages]);
 
   const actionThread = useCallback(async (thread: Thread, action: MessageAction) => {
-    const parsed = parseLiveId(thread.id);
-    if (!parsed) throw new Error("Message non synchronisé");
-    await performMessageAction(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX", action);
+    // A Gmail conversation id is not a Gmail message id.  Using the thread id
+    // here made Gmail answer 404 when an action (notably "Non lu") was applied
+    // to a conversation.  Always address the provider with the real ids of the
+    // messages that make up the thread, as we already do for deletion.
+    const messageIds = [...new Set(thread.messages.map((message) => {
+      const parsed = parseLiveId(message.id);
+      if (!parsed) throw new Error("Identifiant de message invalide.");
+      return JSON.stringify([parsed.accountId, parsed.uid]);
+    }))].map((value) => JSON.parse(value) as [string, string]);
+    if (!messageIds.length) throw new Error("Aucun message à modifier.");
+    await Promise.all(messageIds.map(([accountId, uid]) =>
+      performMessageAction(accountId, uid, thread.mailbox ?? "INBOX", action)));
     if (action === "archive") {
       setThreads(current => current.map(item => item.id !== thread.id ? item : {
         ...item,
