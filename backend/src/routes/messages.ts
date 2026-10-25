@@ -9,7 +9,7 @@ import { requireAuth, requireCsrf } from "../auth.js";
 export const messagesRouter = Router();
 messagesRouter.use(requireAuth);
 
-/** GET /api/accounts/:id/messages?mailbox=INBOX&limit=25 */
+/** GET /api/accounts/:id/messages?mailbox=INBOX&cursor=... — all messages accessible via pagination */
 messagesRouter.get("/:id/messages", async (req, res) => {
   const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
   if (!account) {
@@ -17,11 +17,11 @@ messagesRouter.get("/:id/messages", async (req, res) => {
     return;
   }
   const mailbox = String(req.query.mailbox ?? "INBOX");
-  const limit = Math.min(Math.max(Number(req.query.limit ?? 50) || 50, 1), 100);
+  const pageSize = Math.min(Math.max(Number(req.query.pageSize ?? req.query.limit ?? 100) || 100, 1), 100);
   const cursor = String(req.query.cursor ?? "");
   if (cursor.length > 2048 || (account.authType !== "google_oauth" && cursor && !/^\d+$/.test(cursor))) { res.status(400).json({ error: "Invalid pagination cursor" }); return; }
   try {
-    const result = account.authType === "google_oauth" ? await fetchGmailSummaries(account, mailbox, limit, cursor || undefined) : await fetchSummaries(account, mailbox, limit, Number(cursor || 0));
+    const result = account.authType === "google_oauth" ? await fetchGmailSummaries(account, mailbox, pageSize, cursor || undefined) : await fetchSummaries(account, mailbox, pageSize, Number(cursor || 0));
     res.json(result);
   } catch (e) {
     res.status(502).json({ error: "Mail fetch failed", message: (e as Error).message });
