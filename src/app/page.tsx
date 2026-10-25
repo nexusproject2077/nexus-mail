@@ -370,8 +370,8 @@ export default function NexusMail() {
               </div>
             </div>
             {activeFolder === "inbox" && !mail.selectedLabel && (
-              <div ref={tabListRef} role="tablist" aria-label="Catégories Gmail" className="relative flex gap-1 overflow-x-auto border-b border-nexus-border/40 px-2 py-2">
-                {tabIndicator && <span aria-hidden="true" className="absolute top-2 bottom-2 rounded-full bg-white pointer-events-none transition-[left,width] duration-[250ms] ease-out motion-reduce:transition-none" style={{left: tabIndicator.left, width: tabIndicator.width}} />}
+              <div ref={tabListRef} role="tablist" aria-label="Catégories Gmail" className="relative flex gap-0.5 overflow-x-auto border-b border-nexus-border/40 px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {tabIndicator && <span aria-hidden="true" className="absolute top-1.5 bottom-1.5 rounded-full bg-white pointer-events-none transition-[left,width] duration-[250ms] ease-out motion-reduce:transition-none" style={{left: tabIndicator.left, width: tabIndicator.width}} />}
                 {([
                   ["CATEGORY_PERSONAL", "Principale"],
                   ["CATEGORY_PROMOTIONS", "Promotions"],
@@ -380,7 +380,7 @@ export default function NexusMail() {
                 ] as const).map(([id, title]) => (
                   <button key={id} type="button" role="tab" aria-selected={mail.category === id}
                     onClick={() => mail.setCategory(id)}
-                    className={`relative z-10 shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-[color,transform,opacity] duration-[250ms] ease-out active:scale-[0.95] active:opacity-80 ${mail.category === id ? "text-black" : "text-nexus-text-muted hover:text-nexus-text"}`}>
+                    className={`relative z-10 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-[color,transform,opacity] duration-[250ms] ease-out active:scale-[0.95] active:opacity-80 ${mail.category === id ? "text-black" : "text-nexus-text-muted hover:text-nexus-text"}`}>
                     {title}{mail.categoryCounts && <span className="ml-1.5 text-xs opacity-70">{mail.categoryCounts[id] ?? "—"}</span>}
                   </button>
                 ))}
