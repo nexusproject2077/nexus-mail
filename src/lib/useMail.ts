@@ -122,7 +122,7 @@ export function useMail(): UseMail {
     const mailbox = selectedLabel?.id ?? "INBOX";
     setLoading(true);
     try {
-      const selectedAccounts = accountsRef.current.filter((account) => ids.includes(account.id));
+      const selectedAccounts = accountsRef.current.filter((account) => activeAccountId === ALL_ACCOUNTS || account.id === activeAccountId);
       const labelResults = await Promise.allSettled(selectedAccounts.map(async (account) => ({
         account,
         labels: await getAccountLabels(account.id),
