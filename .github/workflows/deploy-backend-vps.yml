@@ -1,0 +1,60 @@
+name: Deploy Nexus Mail backend to VPS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-mail-vps-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Build backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+      - name: Set up SSH
+        env:
+          VPS_KEY: ${{ secrets.NEXUS_MAIL_VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.NEXUS_MAIL_VPS_KNOWN_HOSTS }}
+        run: |
+          test -n "$VPS_KEY" && test -n "$VPS_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Verify target and restart privileges
+        env:
+          VPS_HOST: ${{ secrets.NEXUS_MAIL_VPS_HOST }}
+          VPS_USER: ${{ secrets.NEXUS_MAIL_VPS_USER }}
+        run: |
+          test -n "$VPS_HOST" && test -n "$VPS_USER"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" \
+            'test -d "$HOME/nexus-mail/backend/dist" && test -f "$HOME/nexus-mail/backend/.env" && sudo -n systemctl status nexus-mail >/dev/null'
+      - name: Publish compiled backend only
+        env:
+          VPS_HOST: ${{ secrets.NEXUS_MAIL_VPS_HOST }}
+          VPS_USER: ${{ secrets.NEXUS_MAIL_VPS_USER }}
+        run: |
+          rsync -az --no-owner --no-group -e "ssh -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            backend/dist/ "$VPS_USER@$VPS_HOST:~/nexus-mail/backend/dist/"
+      - name: Restart backend
+        env:
+          VPS_HOST: ${{ secrets.NEXUS_MAIL_VPS_HOST }}
+          VPS_USER: ${{ secrets.NEXUS_MAIL_VPS_USER }}
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" \
+            'sudo -n systemctl restart nexus-mail && systemctl is-active --quiet nexus-mail'
