@@ -80,7 +80,17 @@ export async function fetchGmailSummaries(account: Account, mailbox: string, lim
   if (category) params.append("labelIds", category);
   if (pageToken) params.set("pageToken", pageToken);
   const list = await gmail(account, `/messages?${params}`);
-  const messages = await Promise.all((list.messages ?? []).map((item: { id: string }) => gmail(account, `/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`)));
+  // Limit concurrent Gmail metadata requests to avoid rate-limit bursts when
+  // fetching 500 messages across several pages/accounts.
+  const items: Array<{ id: string }> = list.messages ?? [];
+  const messages: Awaited<ReturnType<typeof gmail>>[] = [];
+  for (let offset = 0; offset < items.length; offset += 10) {
+    const batch = items.slice(offset, offset + 10);
+    const details = await Promise.all(batch.map(item =>
+      gmail(account, `/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`)
+    ));
+    messages.push(...details);
+  }
   return { messages: messages.map(summary), nextCursor: list.nextPageToken ?? null };
 }
 
