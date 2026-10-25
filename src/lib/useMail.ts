@@ -44,10 +44,10 @@ function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"
     subject: s.subject,
     snippet: s.snippet,
     date: s.date,
-    labelIds: ["INBOX", ...(s.seen ? [] : ["UNREAD"])],
+    labelIds: s.labelIds ?? [mailbox, ...(s.seen ? [] : ["UNREAD"])],
     isUnread: !s.seen,
     isStarred: s.flagged,
-    isImportant: s.flagged,
+    isImportant: (s.labelIds ?? []).includes("IMPORTANT"),
   };
   return {
     id,
@@ -320,7 +320,11 @@ export function useMail(): UseMail {
     if (!parsed) throw new Error("Message non synchronisé");
     await performMessageAction(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX", action);
     if (action === "archive") {
-      setThreads(current => current.filter(item => item.id !== thread.id));
+      setThreads(current => current.map(item => item.id !== thread.id ? item : {
+        ...item,
+        labels: item.labels.filter(label => label !== "INBOX"),
+        messages: item.messages.map(message => ({ ...message, labelIds: message.labelIds.filter(label => label !== "INBOX") })),
+      }));
     } else {
       setThreads(current => current.map(item => item.id !== thread.id ? item : {
         ...item,
