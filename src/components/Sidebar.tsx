@@ -76,7 +76,7 @@ export default function Sidebar({
             aria-label="NEXUS HUB"
             role="img"
             fill="none"
-            strokeWidth={4}
+            strokeWidth={7}
             strokeLinecap="round"
             strokeLinejoin="round"
           >
