@@ -70,7 +70,7 @@ export async function fetchGmailSummaries(account: Account, mailbox: string, lim
 export async function fetchGmailDetail(account: Account, id: string): Promise<MessageDetail | null> {
   const message = await gmail(account, `/messages/${encodeURIComponent(id)}?format=full`);
   const base = summary(message); const content = bodies(message.payload);
-  return { ...base, snippet: message.snippet || content.text.replace(/\s+/g, " ").trim().slice(0, 200), text: content.text, html: content.html };
+  return { ...base, snippet: message.snippet || content.text.replace(/\s+/g, " ").trim().slice(0, 200), text: content.text, html: content.html, attachments: gmailAttachments(message.payload) };
 }
 
 export async function sendGmailMessage(account: Account, message: { to: string; subject: string; text: string; html?: string }) {
@@ -107,3 +107,26 @@ export async function fetchGmailLabels(account: Account): Promise<Array<{ id: st
       id: label.id, name: label.name, color: label.color?.backgroundColor,
     }));
 }
+
+export async function updateGmailFlags(account: Account, id: string, action: "read" | "unread" | "star" | "unstar" | "archive"): Promise<void> {
+  const addLabelIds = action === "unread" ? ["UNREAD"] : action === "star" ? ["STARRED"] : [];
+  const removeLabelIds = action === "read" ? ["UNREAD"] : action === "unstar" ? ["STARRED"] : action === "archive" ? ["INBOX"] : [];
+  await gmail(account, `/messages/${encodeURIComponent(id)}/modify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ addLabelIds, removeLabelIds }) });
+}
+
+export async function searchGmail(account: Account, query: string, limit: number): Promise<MessageSummary[]> {
+  const list = await gmail(account, `/messages?${new URLSearchParams({ q: query, maxResults: String(limit) })}`);
+  const messages = await Promise.all((list.messages ?? []).map((item: { id: string }) => gmail(account, `/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`)));
+  return messages.map(summary);
+}
+
+export async function fetchGmailAttachment(account: Account, id: string, attachmentId: string): Promise<Buffer> {
+  const result = await gmail(account, `/messages/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`);
+  return Buffer.from(String(result.data ?? ""), "base64url");
+}
+
+function gmailAttachments(part: any): Array<{ id: string; filename: string; contentType: string; size: number }> {
+  return [part, ...(part?.parts ?? []).flatMap(gmailAttachmentsRaw)].filter((p: any) => p?.filename && p?.body?.attachmentId)
+    .map((p: any) => ({ id: p.body.attachmentId, filename: p.filename, contentType: p.mimeType ?? "application/octet-stream", size: Number(p.body.size ?? 0) }));
+}
+function gmailAttachmentsRaw(part: any): any[] { return [part, ...(part?.parts ?? []).flatMap(gmailAttachmentsRaw)]; }
