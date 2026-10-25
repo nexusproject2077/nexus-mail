@@ -52,7 +52,8 @@ export default function NexusMail() {
     if (activeFolder === "vault") {
       filtered = vaultMessages;
     } else if (liveInbox) {
-      if (activeFolder === "inbox" || activeFolder === "all") filtered = mail.threads;
+      if (mail.selectedLabel) filtered = mail.threads;
+      else if (activeFolder === "inbox" || activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = mail.threads.filter((t) => t.isStarred);
       else filtered = []; // sent/drafts/trash not yet backed by IMAP
@@ -75,7 +76,7 @@ export default function NexusMail() {
     }
 
     return filtered;
-  }, [activeFolder, searchQuery, vaultMessages, liveInbox, mail.threads]);
+  }, [activeFolder, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel]);
 
   const unreadCount = mail.threads.filter((t) => t.isUnread).length;
 
@@ -225,6 +226,7 @@ export default function NexusMail() {
             activeFolder={activeFolder}
             onFolderChange={(f) => {
               setActiveFolder(f);
+              mail.selectLabel(null);
               setSelectedThread(null);
             }}
             onCompose={handleCompose}
@@ -233,6 +235,13 @@ export default function NexusMail() {
             vaultCount={vaultMessages.length}
             labels={mail.labels}
             activeAccountId={mail.activeAccountId}
+            selectedLabel={mail.selectedLabel}
+            onSelectLabel={(label) => {
+              mail.selectLabel(label);
+              setActiveFolder("inbox");
+              setSelectedThread(null);
+              setSidebarOpen(false);
+            }}
           />
         )}
 
@@ -249,7 +258,7 @@ export default function NexusMail() {
                   <CheckSquare size={16} />
                 </button>
                 <h1 className="text-sm font-semibold text-nexus-text truncate">
-                  {folderTitle[activeFolder]}
+                  {mail.selectedLabel?.name ?? folderTitle[activeFolder]}
                 </h1>
                 <span className="text-xs text-nexus-text-dim bg-nexus-surface-hover px-2 py-0.5 rounded-full">
                   {filteredThreads.length}
