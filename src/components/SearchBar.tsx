@@ -19,7 +19,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Rechercher..."
-        className="w-full min-w-0 pl-9 sm:pl-10 pr-3 sm:pr-10 py-2.5 bg-nexus-surface-hover border border-nexus-border rounded-xl text-sm text-nexus-text placeholder:text-nexus-text-dim outline-none focus:border-nexus-primary/50 focus:ring-1 focus:ring-nexus-primary/25 transition-all"
+        className="w-full min-w-0 pl-9 sm:pl-10 pr-3 sm:pr-10 py-2.5 bg-nexus-surface-hover border border-nexus-border rounded-xl text-base text-nexus-text placeholder:text-nexus-text-dim outline-none focus:border-nexus-primary/50 focus:ring-1 focus:ring-nexus-primary/25 transition-all"
       />
       <button className="hidden sm:block absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-nexus-surface-active text-nexus-text-dim hover:text-nexus-text transition-colors">
         <SlidersHorizontal size={14} />
