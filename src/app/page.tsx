@@ -27,6 +27,7 @@ import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
   const [activeFolder, setActiveFolder] = useState<Folder>("inbox");
+  const [activeCategory, setActiveCategory] = useState("CATEGORY_PERSONAL");
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
@@ -66,7 +67,8 @@ export default function NexusMail() {
       filtered = vaultMessages;
     } else if (liveInbox) {
       if (mail.selectedLabel) filtered = mail.threads;
-      else if (activeFolder === "inbox" || activeFolder === "all") filtered = mail.threads;
+      else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (activeCategory === "CATEGORY_PERSONAL" ? (!t.labels.some(label => ["CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"].includes(label)) || t.labels.includes("CATEGORY_PERSONAL")) : t.labels.includes(activeCategory)));
+      else if (activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = mail.threads.filter((t) => t.isStarred);
       else filtered = []; // sent/drafts/trash not yet backed by IMAP
@@ -90,7 +92,7 @@ export default function NexusMail() {
     }
 
     return filtered;
-  }, [activeFolder, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel, searchResults]);
+  }, [activeFolder, activeCategory, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel, searchResults]);
 
   const unreadCount = mail.threads.filter((t) => t.isUnread).length;
 
@@ -298,6 +300,22 @@ export default function NexusMail() {
                 <ChevronDown size={12} />
               </div>
             </div>
+            {activeFolder === "inbox" && !mail.selectedLabel && (
+              <div role="tablist" aria-label="Catégories Gmail" className="flex gap-1 overflow-x-auto border-b border-nexus-border/40 px-2 py-2">
+                {([
+                  ["CATEGORY_PERSONAL", "Principale"],
+                  ["CATEGORY_PROMOTIONS", "Promotions"],
+                  ["CATEGORY_SOCIAL", "Réseaux sociaux"],
+                  ["CATEGORY_UPDATES", "Notifications"],
+                ] as const).map(([id, title]) => (
+                  <button key={id} type="button" role="tab" aria-selected={activeCategory === id}
+                    onClick={() => setActiveCategory(id)}
+                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${activeCategory === id ? "bg-white text-black" : "text-nexus-text-muted hover:bg-nexus-surface-hover"}`}>
+                    {title}
+                  </button>
+                ))}
+              </div>
+            )}
             {searchError && <div role="alert" className="mx-4 mt-3 text-xs text-red-400">{searchError}</div>}
             {messageActionError && (
               <div role="alert" className="mx-4 mt-3 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
