@@ -146,7 +146,7 @@ export function useMail(): UseMail {
         const saved = window.localStorage.getItem(ACTIVE_ACCOUNT_STORAGE_KEY);
         const next = [cur, saved].find(
           (id): id is string => !!id && (id === ALL_ACCOUNTS || list.some((account) => account.id === id)),
-        ) ?? (list.length > 1 ? ALL_ACCOUNTS : list[0]?.id ?? null);
+        ) ?? (list.find((account) => account.email.toLowerCase() === "merickoken54@gmail.com")?.id ?? (list.length > 1 ? ALL_ACCOUNTS : list[0]?.id ?? null));
         if (next) window.localStorage.setItem(ACTIVE_ACCOUNT_STORAGE_KEY, next);
         else window.localStorage.removeItem(ACTIVE_ACCOUNT_STORAGE_KEY);
         return next;
