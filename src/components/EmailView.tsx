@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  CalendarPlus,
   ArrowLeft,
   Star,
   Reply,
@@ -106,6 +107,27 @@ function flashSummary(input: string) {
     const candidate = safe.trim().replace(/^[-•]\s*/, "");
     if (candidate && !/^\s*(?:>|«|“)/.test(candidate) && !/bonjour\s+x{2,}|\b(?:le texte est rédigé ainsi|le message est rédigé ainsi)\b/i.test(candidate)) actionLines.push(candidate);
   }
+  // Calendar proposals only use explicit deadlines outside quoted examples.
+  const calendarItems: { label: string; date: string; hour: number; minute: number }[] = [];
+  const months: Record<string, number> = { janvier: 1, février: 2, mars: 3, avril: 4, mai: 5, juin: 6, juillet: 7, aout: 8, août: 8, septembre: 9, octobre: 10, novembre: 11, décembre: 12 };
+  for (const line of actionLines) {
+    if (!/\b(rendre|remettre|déposer|envoyer|soumettre|date limite|échéance|avant le|pour le|à rendre)\b/i.test(line)) continue;
+    const french = /(?:\b(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+)?(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre)\s+(\d{4})(?:\s*,?\s*(?:à\s*)?(\d{1,2})[:h](\d{2}))?/i.exec(line);
+    const numeric = /(?:\b|^)(\d{1,2})[/.](\d{1,2})[/.](\d{4})(?:\s*(?:à\s*)?(\d{1,2})[:h](\d{2}))?/.exec(line);
+    if (!french && !numeric) continue;
+    const match = french ?? numeric!;
+    const day = Number(match[1]);
+    const month = french ? months[match[2].toLowerCase()] : Number(match[2]);
+    const year = Number(match[3]);
+    const hour = match[4] === undefined ? 12 : Number(match[4]);
+    const minute = match[5] === undefined ? 0 : Number(match[5]);
+    const check = new Date(Date.UTC(year, month - 1, day));
+    if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day || hour > 23 || minute > 59) continue;
+    const date = [year, String(month).padStart(2, "0"), String(day).padStart(2, "0")].join("");
+    if (!calendarItems.some(item => item.date === date && item.hour === hour && item.minute === minute && item.label === line)) {
+      calendarItems.push({ label: line.slice(0, 150), date, hour, minute });
+    }
+  }
   const safetyPattern = /\b(ne\s+cliquez\s+pas|ne\s+pas\s+cliquer|surtout\s+pas|à\s+la\s+corbeille|mettez\s+.{0,45}\s+à\s+la\s+corbeille|supprimez|modifiez\s+votre\s+mot\s+de\s+passe|changez\s+votre\s+mot\s+de\s+passe)\b/i;
   const safetyActions = actionLines.flatMap(line => line.split(/(?<=[.!?])\s+/)).filter(sentence => safetyPattern.test(sentence));
   const safetyAction = safetyActions.length ? safetyActions.slice(0, 2).map(s => s.trim()).join(" ").toLocaleUpperCase("fr-FR") : "";
@@ -183,7 +205,7 @@ function flashSummary(input: string) {
     : contextParts.slice(0, 2).map(conciseText);
   const summary = summaryParts.filter(Boolean).join(" ").trim() || "Consultez le message pour connaître les détails.";
   const deadline = extractedDate !== "Aucune échéance détectée" ? clip(extractedDate, 80) : null;
-  return { action, date: clip(extractedDate, 80), snippet: context, title, summary, deadline, category };
+  return { action, date: clip(extractedDate, 80), snippet: context, title, summary, deadline, category, calendarItems: category === "security" ? [] : calendarItems };
 }
 
 interface EmailViewProps {
@@ -218,6 +240,28 @@ export default function EmailView({
   const [menuBusy, setMenuBusy] = useState(false);
   const [menuError, setMenuError] = useState("");
   const flash = useMemo(() => flashSummary(lastMsg?.body || lastMsg?.snippet || ""), [lastMsg?.body, lastMsg?.snippet]);
+  const addDeadlinesToCalendar = () => {
+    if (!flash.calendarItems.length) return;
+    const escapeIcs = (value: string) => value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const events = flash.calendarItems.map((item, index) => {
+      const time = String(item.hour).padStart(2, "0") + String(item.minute).padStart(2, "0");
+      const start = item.date + "T" + time + "00";
+      const end = new Date(Date.UTC(Number(item.date.slice(0, 4)), Number(item.date.slice(4, 6)) - 1, Number(item.date.slice(6, 8)), item.hour, item.minute + 30));
+      const endLocal = [end.getUTCFullYear(), String(end.getUTCMonth() + 1).padStart(2, "0"), String(end.getUTCDate()).padStart(2, "0")].join("") + "T" + String(end.getUTCHours()).padStart(2, "0") + String(end.getUTCMinutes()).padStart(2, "0") + "00";
+      return ["BEGIN:VEVENT", "UID:nexus-mail-" + item.date + "-" + index + "@local", "DTSTAMP:" + stamp, "DTSTART:" + start, "DTEND:" + endLocal, "SUMMARY:" + escapeIcs("Échéance : " + thread.subject), "DESCRIPTION:" + escapeIcs(item.label), "END:VEVENT"].join("\r\n");
+    });
+    const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Nexus Mail//Resume Flash//FR", "CALSCALE:GREGORIAN", ...events, "END:VCALENDAR"].join("\r\n");
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "nexus-mail-echeances.ics";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
 
   return (
     <div className="flex-1 min-w-0 min-h-0 flex flex-col animate-slide-in">
@@ -302,6 +346,13 @@ export default function EmailView({
                 <span aria-hidden="true">◷</span>
                 <span>Échéance : {flash.deadline}</span>
               </div>
+            )}
+            {flash.calendarItems.length > 0 && (
+              <button type="button" onClick={addDeadlinesToCalendar}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-sm font-medium text-white hover:bg-white/10">
+                <CalendarPlus size={16} />
+                {flash.calendarItems.length > 1 ? "Ajouter les échéances au calendrier" : "Ajouter au calendrier"}
+              </button>
             )}
           </div>
         )}
