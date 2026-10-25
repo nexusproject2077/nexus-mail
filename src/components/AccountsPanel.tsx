@@ -139,9 +139,9 @@ export default function AccountsPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
-      <div className="w-full max-w-lg bg-nexus-surface border border-nexus-border rounded-2xl shadow-2xl shadow-black/50 flex flex-col max-h-[95dvh] sm:max-h-[85dvh] min-w-0">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-nexus-border">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center bg-black/70 backdrop-blur-md p-0 sm:p-4">
+      <div className="w-full sm:max-w-lg bg-nexus-surface border border-nexus-border border-b-0 sm:border-b rounded-t-3xl sm:rounded-2xl shadow-2xl shadow-black/50 flex flex-col h-[90dvh] sm:h-auto sm:max-h-[85dvh] min-w-0 overflow-hidden">
+        <div className="shrink-0 flex items-center gap-3 px-5 py-4 border-b border-nexus-border">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-nexus-primary to-purple-500 flex items-center justify-center">
             <ServerCog size={18} className="text-white" />
           </div>
@@ -161,7 +161,7 @@ export default function AccountsPanel({
           </button>
         </div>
 
-        <div className="p-3 sm:p-5 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-5 pb-[max(40px,env(safe-area-inset-bottom))] sm:p-5 sm:pb-8">
           {!apiConfigured() && (
             <div className="mb-4 flex items-start gap-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-400">
               <Info size={14} className="mt-0.5 flex-shrink-0" />
@@ -356,7 +356,7 @@ export default function AccountsPanel({
               </div>
             </div>
           )}
-          {authenticated && <button onClick={handleLogout} className="mt-3 w-full py-2 text-xs text-nexus-text-dim hover:text-red-400">Se déconnecter</button>}
+          {authenticated && <button onClick={handleLogout} className="mt-6 mb-3 w-full rounded-xl py-3 text-xs text-nexus-text-dim hover:text-red-400 hover:bg-nexus-surface-hover transition-colors">Se déconnecter</button>}
         </div>
       </div>
     </div>
