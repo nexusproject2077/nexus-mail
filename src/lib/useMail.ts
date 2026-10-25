@@ -266,8 +266,17 @@ export function useMail(): UseMail {
   const trashThread = useCallback(async (thread: Thread) => {
     const parsed = parseLiveId(thread.id);
     if (!parsed) throw new Error("Ce message ne provient pas d'un compte connecté.");
-    await trashMessage(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
+    // Optimistic removal: do not block the interface on network latency.
     setThreads((current) => current.filter((item) => item.id !== thread.id));
+    try {
+      await trashMessage(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
+    } catch (error) {
+      // Restore the message if the provider rejects the operation.
+      setThreads((current) => current.some((item) => item.id === thread.id)
+        ? current
+        : [...current, thread].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)));
+      throw error;
+    }
   }, []);
 
   const actionThread = useCallback(async (thread: Thread, action: MessageAction) => {
