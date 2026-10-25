@@ -1,7 +1,7 @@
 "use client";
 
 import { MailOpen, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Star, Paperclip } from "lucide-react";
 import { Thread } from "@/types/email";
 import { formatEmailDate, getInitials, getAvatarColor, getLabelInfo } from "@/lib/utils";
@@ -27,6 +27,20 @@ export default function EmailList({
   hasMore = false,
   loadingMore = false,
 }: EmailListProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!hasMore || loadingMore || !onLoadMore) return;
+    const root = scrollRef.current;
+    const target = bottomRef.current;
+    if (!root || !target) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting) onLoadMore();
+    }, { root, rootMargin: "600px 0px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, onLoadMore, threads.length]);
+
   if (threads.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-nexus-text-dim">
@@ -39,7 +53,7 @@ export default function EmailList({
   }
 
   return (
-    <div className="flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (hasMore && !loadingMore && el.scrollHeight - el.scrollTop - el.clientHeight < 500) onLoadMore?.(); }}>
+    <div ref={scrollRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (hasMore && !loadingMore && el.scrollHeight - el.scrollTop - el.clientHeight < 500) onLoadMore?.(); }}>
       {threads.map((thread) => {
         const lastMsg = thread.messages[thread.messages.length - 1];
         const isSelected = selectedId === thread.id;
@@ -114,6 +128,7 @@ export default function EmailList({
           </SwipeEmailRow>
         );
       })}
+      <div ref={bottomRef} aria-hidden="true" className="h-px" />
       {hasMore && <button type="button" disabled={loadingMore} onClick={onLoadMore} className="w-full py-4 text-sm text-nexus-text-muted hover:text-nexus-text disabled:opacity-60">{loadingMore ? "Chargement des anciens emails…" : "Charger les emails plus anciens"}</button>}
     </div>
   );
