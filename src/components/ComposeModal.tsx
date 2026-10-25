@@ -82,7 +82,7 @@ export default function ComposeModal({
     if (!isOpen || !initialDraft) return;
     setTo(initialDraft.to);
     setSubject(initialDraft.subject);
-    setBody(initialDraft.body);
+    setBody(initialDraft.body ?? "");
     setHtmlBody(initialDraft.html ?? "");
     setAttachments([]);
     const source = initialDraft.forwardAttachments;
@@ -350,8 +350,8 @@ export default function ComposeModal({
 
   return (
     <div className="fixed inset-0 z-[100] w-screen h-[100dvh] sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] ">
-      <div className={`bg-nexus-surface border border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}`}>
-        <div className="flex items-center justify-between pl-4 pr-3 py-3 bg-[#141414] sm:rounded-t-xl">
+      <div className={`bg-black border-0 sm:border sm:border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}`}>
+        <div className="relative z-[120] shrink-0 flex items-center justify-between pl-4 pr-3 py-3 bg-[#000000] border-b border-white/10 sm:rounded-t-xl">
           <span className="flex items-center gap-2 text-base font-semibold">
             {mode !== "standard" && <Lock size={13} className="text-nexus-primary-light" />}
             {replyTo ? "Répondre" : "Nouveau message"}
@@ -366,7 +366,7 @@ export default function ComposeModal({
           </div>
         </div>
 
-        <div className="px-4 pt-4 pb-2 space-y-2">
+        <div className="relative z-10 shrink-0 px-4 pt-4 pb-2 space-y-2 bg-black">
           <div className="flex items-center gap-3 rounded-lg bg-[#1a1a1a] px-3 py-3">
             <span className="text-sm text-nexus-text-dim w-8">À</span>
             <input
@@ -474,7 +474,7 @@ export default function ComposeModal({
 
         <textarea
           ref={bodyInputRef}
-          value={body}
+          value={body ?? ""}
           onChange={(e) => setBody(e.target.value)}
           className="block w-full min-w-0 flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base leading-relaxed text-nexus-text outline-none resize-none whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-x-hidden overflow-y-auto placeholder:text-[#a3a3a3]"
           placeholder={
@@ -485,7 +485,7 @@ export default function ComposeModal({
         />
 
         {mode === "standard" && initialDraft?.html && (
-          <div className="min-h-0 max-h-[45vh] overflow-y-auto border-t border-nexus-border" aria-label="Aperçu du message original">
+          <div className="relative z-0 min-h-0 max-h-[45vh] overflow-y-auto overflow-x-hidden border-t border-nexus-border" aria-label="Aperçu du message original">
             <iframe
               title="Contenu HTML du message original"
               sandbox="allow-popups allow-popups-to-escape-sandbox"
