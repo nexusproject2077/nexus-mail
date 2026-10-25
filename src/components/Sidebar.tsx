@@ -2,6 +2,7 @@
 
 import {
   Inbox,
+  Package,
   Star,
   Send,
   FileEdit,
@@ -22,6 +23,7 @@ const folderIcons: Record<string, React.ReactNode> = {
   drafts: <FileEdit size={18} />,
   trash: <Trash2 size={18} />,
   vault: <Lock size={18} />,
+  deliveries: <Package size={18} />,
 };
 
 const folderLabels: Record<string, string> = {
@@ -31,6 +33,7 @@ const folderLabels: Record<string, string> = {
   drafts: "Brouillons",
   trash: "Corbeille",
   vault: "Coffre-fort",
+  deliveries: "Livraisons",
 };
 
 interface SidebarProps {
@@ -60,7 +63,7 @@ export default function Sidebar({
   selectedLabel,
   onSelectLabel,
 }: SidebarProps) {
-  const folders: Folder[] = ["inbox", "starred", "sent", "drafts", "vault", "trash"];
+  const folders: Folder[] = ["inbox", "deliveries", "starred", "sent", "drafts", "vault", "trash"];
   const userLabels = labels;
 
   return (
