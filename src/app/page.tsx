@@ -67,7 +67,7 @@ export default function NexusMail() {
       filtered = vaultMessages;
     } else if (liveInbox) {
       if (mail.selectedLabel) filtered = mail.threads;
-      else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (mail.accounts.find(a => a.id === parseLiveId(t.id)?.accountId)?.authType === "google_oauth" ? true : mail.category === "CATEGORY_PERSONAL"));
+      else if (activeFolder === "inbox") filtered = mail.threads.filter(t => t.labels.includes("INBOX") && (t.labels.includes(mail.category) || (mail.category === "CATEGORY_PERSONAL" && !t.labels.some(label => ["CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"].includes(label)))));
       else if (activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = mail.threads.filter((t) => t.isStarred);
