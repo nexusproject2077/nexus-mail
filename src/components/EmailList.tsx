@@ -15,6 +15,7 @@ interface EmailListProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  loading?: boolean;
   onRefresh?: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ export default function EmailList({
   onLoadMore,
   hasMore = false,
   loadingMore = false,
+  loading = false,
   onRefresh,
 }: EmailListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -86,7 +88,23 @@ export default function EmailList({
         <Loader2 size={25} className={refreshing ? "animate-spin text-nexus-text-muted" : "text-nexus-text-muted"} style={refreshing ? undefined : { transform: `rotate(${pull * 5}deg)` }} />
         <span className="sr-only">{refreshing ? "Synchronisation des e-mails" : "Tirer pour actualiser"}</span>
       </div>
-      {threads.length === 0 && <div className="py-12 text-center text-sm text-nexus-text-dim">Aucun message</div>}
+      {loading && (
+        <div role="status" aria-label="Chargement des e-mails" className="relative overflow-hidden">
+          {Array.from({ length: threads.length ? 2 : 7 }, (_, index) => (
+            <div key={index} className="relative flex items-center gap-3 px-4 py-4 border-b border-nexus-border/30 overflow-hidden">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-white/10 animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-2/5 rounded-md bg-white/10 animate-pulse" />
+                <div className="h-3 w-4/5 rounded-md bg-white/10 animate-pulse" />
+                <div className="h-2.5 w-3/5 rounded-md bg-white/10 animate-pulse" />
+              </div>
+              <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[mail-shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
+            </div>
+          ))}
+          <span className="sr-only">Synchronisation en cours</span>
+        </div>
+      )}
+      {!loading && threads.length === 0 && <div className="py-12 text-center text-sm text-nexus-text-dim">Aucun message</div>}
       {threads.map((thread) => {
         const lastMsg = thread.messages[thread.messages.length - 1];
         const isSelected = selectedId === thread.id;
@@ -99,7 +117,7 @@ export default function EmailList({
           <SwipeEmailRow key={thread.id} thread={thread} onSelect={onSelect} onTrash={onTrash}>
           <button
             onClick={() => onSelect(thread)}
-            className={`w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-nexus-border/50 transition-all text-left ${
+            className={`w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-nexus-border/50 transition-[background-color,opacity,transform] duration-[250ms] ease-out active:opacity-80 active:scale-[0.99] active:bg-white/10 text-left ${
               isSelected
                 ? "bg-nexus-primary/10 border-l-2 border-l-nexus-primary"
                 : thread.isUnread
@@ -195,14 +213,14 @@ function SwipeEmailRow({ thread, onTrash, children }: {
     finally { setBusy(false); }
   };
   return (
-    <div className="relative overflow-hidden select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 180ms ease-out, opacity 140ms ease-out" : "none" }}>
+    <div className="relative overflow-hidden select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 250ms ease-out, opacity 250ms ease-out" : "none" }}>
       {onTrash && <button type="button" disabled={busy} aria-label="Mettre à la corbeille" onClick={() => void remove()} className="absolute inset-y-0 right-0 w-28 bg-[#db766d] flex flex-col gap-1 items-center justify-center text-white">
         <Trash2 size={23} aria-hidden="true" />
         <span className="text-xs font-medium">Corbeille</span>
       </button>}
       <div
         className="nexus-mail-row relative bg-nexus-bg"
-        style={{ touchAction: "pan-y", transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 210ms cubic-bezier(.2,.8,.2,1)" }}
+        style={{ touchAction: "pan-y", transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 250ms ease-out" }}
         onTouchStart={event => {
           if (!onTrash || busy || event.touches.length !== 1) return;
           const touch = event.touches[0];
