@@ -351,7 +351,7 @@ export default function NexusMail() {
               onRefresh={liveInbox ? mail.refreshMessages : undefined}
               selectedId={selectedThread?.id || null}
               onSelect={handleSelectThread}
-              onTrash={activeFolder !== "trash" ? async (thread) => { try { await mail.trashThread(thread); if (selectedThread?.id === thread.id) setSelectedThread(null); } catch (error) { setMessageActionError((error as Error).message); } } : undefined}
+              onTrash={activeFolder !== "trash" && liveInbox ? async (thread) => { try { await mail.trashThread(thread); if (selectedThread?.id === thread.id) setSelectedThread(null); } catch (error) { setMessageActionError((error as Error).message); throw error; } } : undefined}
               folder={activeFolder}
               hasMore={!searchQuery.trim() && mail.hasMore}
               loadingMore={mail.loadingMore}
