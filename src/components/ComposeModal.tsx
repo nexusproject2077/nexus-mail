@@ -30,7 +30,7 @@ interface ComposeModalProps {
   isOpen: boolean;
   onClose: () => void;
   replyTo?: { subject: string; to: string; messageId?: string };
-  initialDraft?: { to: string; subject: string; body: string; html?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } };
+  initialDraft?: { to: string; subject: string; body: string; html?: string; quotedText?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } };
   onNeedUnlock: () => void;
   activeAccountId?: string | null;
   onSent?: () => void;
@@ -63,6 +63,7 @@ export default function ComposeModal({
   const [body, setBody] = useState("");
   const editorRef = useRef<HTMLDivElement>(null);
   const [htmlBody, setHtmlBody] = useState("");
+  const [showOriginal, setShowOriginal] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -84,6 +85,7 @@ export default function ComposeModal({
     setSubject(initialDraft.subject);
     setBody(initialDraft.body ?? "");
     setHtmlBody(initialDraft.html ?? "");
+    setShowOriginal(false);
     setAttachments([]);
     const source = initialDraft.forwardAttachments;
     if (!source?.items.length) {
@@ -150,6 +152,7 @@ export default function ComposeModal({
     setSubject("");
     setBody("");
     setHtmlBody("");
+    setShowOriginal(false);
     setAttachments([]);
     setEmojiOpen(false);
     if (editorRef.current) editorRef.current.innerHTML = "";
@@ -197,8 +200,9 @@ export default function ComposeModal({
         }));
         let signature = "";
         try { signature = JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").signatures?.[activeAccountId] || ""; } catch { /* no signature */ }
-        const signedText = signature ? `${body}\n\n${signature}` : body;
-        const typedIntro = initialDraft?.html ? body.split(/Le .+ a écrit :|---------- Message transféré ----------/)[0].trim() : "";
+        const plainText = initialDraft?.quotedText ? `${body}\n\n${initialDraft.quotedText}` : body;
+        const signedText = signature ? `${plainText}\n\n${signature}` : plainText;
+        const typedIntro = initialDraft?.html ? body.trim() : "";
         const escapedIntro = typedIntro.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>");
         const outgoingHtml = initialDraft?.html ? `${escapedIntro ? `<div style="white-space:pre-wrap">${escapedIntro}</div><br>` : ""}${htmlBody}` : htmlBody;
         const signedHtml = outgoingHtml && signature ? `${outgoingHtml}<p>${signature.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>")}</p>` : outgoingHtml;
@@ -485,14 +489,24 @@ export default function ComposeModal({
         />
 
         {mode === "standard" && initialDraft?.html && (
-          <div className="relative z-0 min-h-0 max-h-[45vh] overflow-y-auto overflow-x-hidden border-t border-nexus-border" aria-label="Aperçu du message original">
-            <iframe
-              title="Contenu HTML du message original"
-              sandbox="allow-popups allow-popups-to-escape-sandbox"
-              referrerPolicy="no-referrer"
-              srcDoc={htmlBody}
-              className="block w-full min-h-[320px] border-0 bg-white"
-            />
+          <div className="relative z-0 shrink-0 min-w-0 border-t border-white/10">
+            <button type="button" onClick={() => setShowOriginal(value => !value)}
+              aria-expanded={showOriginal}
+              className="flex items-center gap-2 px-5 py-3 text-sm text-nexus-text-muted hover:text-nexus-text">
+              <span className="inline-flex items-center justify-center rounded-full border border-nexus-border w-8 h-7 text-lg leading-none">···</span>
+              {showOriginal ? "Masquer le message d'origine" : "Afficher le message d'origine"}
+            </button>
+            {showOriginal && (
+              <div className="w-full min-w-0 max-h-[55dvh] overflow-y-auto overflow-x-hidden bg-white" aria-label="Message d'origine cité">
+                <iframe
+                  title="Contenu HTML du message original"
+                  sandbox="allow-popups allow-popups-to-escape-sandbox"
+                  referrerPolicy="no-referrer"
+                  srcDoc={`<meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0!important;padding:0!important;max-width:100%!important;overflow-x:hidden!important}table{max-width:100%!important}img{max-width:100%!important;height:auto}*{box-sizing:border-box}</style>${htmlBody}`}
+                  className="block w-full h-[55dvh] border-0 bg-white"
+                />
+              </div>
+            )}
           </div>
         )}
 
