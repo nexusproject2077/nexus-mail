@@ -71,6 +71,7 @@ export default function ComposeModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [showComposeOptions, setShowComposeOptions] = useState(false);
 
   const [mode, setMode] = useState<Mode>("standard");
   const [securityOpen, setSecurityOpen] = useState(false);
@@ -370,9 +371,9 @@ export default function ComposeModal({
           </div>
         </div>
 
-        <div className="relative z-10 shrink-0 px-4 pt-4 pb-2 space-y-2 bg-black">
-          <div className="flex items-center gap-3 rounded-lg bg-[#1a1a1a] px-3 py-3">
-            <span className="text-sm text-nexus-text-dim w-8">À</span>
+        <div className="relative z-10 shrink-0 px-4 pt-3 pb-2 space-y-0 bg-black">
+          <div className="flex items-center gap-3 border-b border-white/10 px-2 py-3">
+            <span className="text-sm text-nexus-text-dim w-10">À</span>
             <input
               type="email"
               value={to}
@@ -382,7 +383,7 @@ export default function ComposeModal({
             />
           </div>
           <div className="flex items-center gap-3 rounded-lg bg-[#1a1a1a] px-3 py-3">
-            <span className="text-sm text-nexus-text-muted w-8">Obj</span>
+            <span className="text-sm text-nexus-text-muted w-10">Objet</span>
             <input
               type="text"
               value={subject}
@@ -393,29 +394,21 @@ export default function ComposeModal({
           </div>
         </div>
 
-        {/* Encryption mode selector */}
-        <div className="px-4 sm:py-2.5 bg-transparent sm:bg-nexus-bg/40">
-          <div className="hidden sm:flex gap-1 p-1 bg-nexus-bg rounded-xl">
-            <ModeButton
-              active={mode === "standard"}
-              onClick={() => setMode("standard")}
-              icon={<Send size={13} />}
-              label="Standard"
-            />
-            <ModeButton
-              active={mode === "pgp"}
-              onClick={() => setMode("pgp")}
-              icon={<ShieldCheck size={13} />}
-              label="E2EE"
-            />
-            <ModeButton
-              active={mode === "confidential"}
-              onClick={() => setMode("confidential")}
-              icon={<Lock size={13} />}
-              label="Confidentiel"
-            />
-          </div>
-
+        {/* Advanced sending modes are available on demand. */}
+        <div className="px-4 bg-transparent">
+          <button type="button" onClick={() => setShowComposeOptions(value => !value)}
+            aria-expanded={showComposeOptions}
+            className="flex items-center gap-2 py-2 text-xs text-nexus-text-muted hover:text-nexus-text">
+            <ShieldCheck size={14} />
+            {mode === "standard" ? "Options d'envoi" : mode === "pgp" ? "Chiffrement E2EE" : "Mode confidentiel"}
+          </button>
+          {showComposeOptions && (
+            <div className="flex gap-1 rounded-xl bg-nexus-bg p-1 mb-2">
+              <ModeButton active={mode === "standard"} onClick={() => setMode("standard")} icon={<Send size={13} />} label="Standard" />
+              <ModeButton active={mode === "pgp"} onClick={() => setMode("pgp")} icon={<ShieldCheck size={13} />} label="E2EE" />
+              <ModeButton active={mode === "confidential"} onClick={() => setMode("confidential")} icon={<Lock size={13} />} label="Confidentiel" />
+            </div>
+          )}
           {mode === "pgp" && (
             <div className="mt-2.5 space-y-2">
               {!identity || !isUnlocked ? (
@@ -513,9 +506,9 @@ export default function ComposeModal({
         )}
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
-        <div className="relative shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))] bg-[#171717] border-t border-white/5">
+        <div className="relative shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-2 pb-[max(12px,env(safe-area-inset-bottom))] bg-black border-t border-white/10">
           <button type="button" onClick={handleSend} disabled={isSending || !to.trim()} aria-label={isSending ? "Envoi en cours" : "Envoyer le message"} title="Envoyer"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-nexus-primary-light hover:bg-white/10 disabled:opacity-40 transition-colors">
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-nexus-primary text-black hover:opacity-90 disabled:opacity-40 transition-colors">
             {isSending ? <Loader2 size={23} className="animate-spin" /> : mode === "standard" ? <Send size={23} /> : <Lock size={23} />}
           </button>
           <div className="flex items-center justify-end gap-2 sm:gap-3">
