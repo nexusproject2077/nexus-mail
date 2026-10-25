@@ -84,7 +84,7 @@ export default function Sidebar({
             <path d="M 33 11 L 16 27 L 33 43" />
             <path d="M 35 25 L 51 41 L 35 57" />
           </svg>
-          <span className="text-[36px] font-bold leading-none tracking-tight text-white">Mail</span>
+          <span className="text-[36px] font-normal leading-none tracking-tight text-white">Mail</span>
         </div>
       </div>
 
