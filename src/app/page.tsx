@@ -257,9 +257,9 @@ export default function NexusMail() {
 
       {/* Main Content */}
       <div className="relative flex-1 flex min-h-0 min-w-0 overflow-hidden">
-        {sidebarOpen && <button type="button" aria-label="Fermer le menu" onClick={() => setSidebarOpen(false)} className="absolute inset-0 z-30 bg-black/70 lg:hidden" />}
-        {sidebarOpen && (
-          <div className="absolute inset-y-0 left-0 z-40 lg:relative lg:z-auto h-full shrink-0 shadow-2xl lg:shadow-none">
+        <div className={`fixed inset-0 z-[80] lg:hidden transition-[visibility] duration-[250ms] ${sidebarOpen ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!sidebarOpen}>
+          <button type="button" aria-label="Fermer le menu" onClick={() => setSidebarOpen(false)} className={`absolute inset-0 bg-black/50 transition-opacity duration-[250ms] ease-out ${sidebarOpen ? "opacity-100" : "opacity-0"}`} />
+          <div className={`absolute inset-y-0 left-0 w-[80vw] max-w-[360px] h-[100dvh] overflow-hidden rounded-r-2xl shadow-2xl transition-transform duration-[250ms] ease-out motion-reduce:transition-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
           <Sidebar
             activeFolder={activeFolder}
             onFolderChange={(f) => {
@@ -284,7 +284,7 @@ export default function NexusMail() {
             }}
           />
           </div>
-        )}
+        </div>
 
         <div className="flex-1 flex min-w-0 min-h-0">
           {/* Email List Panel */}
