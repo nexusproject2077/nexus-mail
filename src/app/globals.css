@@ -63,8 +63,18 @@ body {
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
 }
+/* Never animate transform on the draggable row: its inline translate3d
+   must remain in control of the iOS swipe gesture at every frame. */
 .nexus-mail-row {
-  animation: nexusMailAppear 220ms both cubic-bezier(.2,.75,.3,1);
+  transform-origin: center;
+  backface-visibility: hidden;
+}
+.nexus-mail-row > button {
+  animation: nexusMailRowFade 180ms ease-out both;
+}
+@keyframes nexusMailRowFade {
+  from { opacity: .75; }
+  to { opacity: 1; }
 }
 .nexus-mail-row > button {
   transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
