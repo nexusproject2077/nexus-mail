@@ -65,32 +65,44 @@ function prepareEmailHtml(html: string): string {
 
 /** Extractive, deterministic summary: no external requests or generated claims. */
 function flashSummary(input: string) {
-  // Decode HTML entities locally before extracting meaning (including accented French text).
+  // Decode before extracting sentences. Browser parser covers all named and numeric entities.
   const decodeEntities = (value: string) => {
-    if (typeof document === "undefined") return value;
-    const textarea = document.createElement("textarea");
-    textarea.innerHTML = value;
-    return textarea.value;
+    const fallback: Record<string, string> = { eacute: "é", egrave: "è", ecirc: "ê", euml: "ë", agrave: "à", acirc: "â", icirc: "î", iuml: "ï", ocirc: "ô", oelig: "œ", ugrave: "ù", ucirc: "û", uuml: "ü", ccedil: "ç", Eacute: "É", Egrave: "È", Ecirc: "Ê", Agrave: "À", Icirc: "Î", Ccedil: "Ç", rsquo: "’", lsquo: "‘", ldquo: "“", rdquo: "”", nbsp: " ", amp: "&", quot: '"', apos: "'", lt: "<", gt: ">" };
+    const decoded = typeof document !== "undefined" ? (() => { const node = document.createElement("textarea"); node.innerHTML = value; return node.value; })() : value;
+    return decoded.replace(/&(#x[\da-f]+|#\d+|[a-z][a-z\d]+);/gi, (entity, name: string) => {
+      if (name.startsWith("#")) { const code = name[1]?.toLowerCase() === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10); return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : entity; }
+      return fallback[name] ?? entity;
+    });
   };
-  const clean = decodeEntities(input.replace(/<[^>]*>/g, " ").replace(/\\n/g, "\n"))
+  const clean = decodeEntities(decodeEntities(input.replace(/<[^>]*>/g, " ").replace(/\\n/g, "\n")))
     .replace(/https?:\/\/[^\s<>"\x27]+/gi, " ")
     .replace(/\r/g, "")
     .replace(/[ \t]+/g, " ")
     .trim();
   const withoutUrls = clean.replace(/\s+/g, " ").trim();
-  const lines = clean.split(/\n+/).map(s => s.trim().replace(/^[-•]\s*/, "")).filter(Boolean);
+  const rawLines = clean.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const quotedMarker = /\*\*\s*(?:extrait|exemple|citation|message frauduleux|faux mail)\s*\*\*|\b(?:extrait|exemple)\s+(?:du|de|d[’\x27]un)\s+(?:message|mail|courriel)|\bbonjour\s+x{2,}\b/i;
+  const endQuoteMarker = /\*\*\s*fin\s+(?:de\s+l[’\x27])?(?:extrait|citation|exemple)\s*\*\*/i;
+  let inQuotedExample = false;
+  const actionLines = rawLines.filter(line => {
+    if (endQuoteMarker.test(line)) { inQuotedExample = false; return false; }
+    if (quotedMarker.test(line) || /^\s*(?:>|«|“)/.test(line)) { inQuotedExample = true; return false; }
+    if (inQuotedExample) return false;
+    return !/\*\*|bonjour\s+x{2,}|\b(?:le texte est rédigé ainsi|le message est rédigé ainsi)\b/i.test(line);
+  }).map(s => s.replace(/^[-•]\s*/, ""));
   const sentences = withoutUrls.split(/(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÀ-ÖØ-Þ])/u).map(s => s.trim()).filter(Boolean);
   const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
   const actionPattern = /\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer|remplir|déposer|remettre|à rendre|échéances?)\b/i;
-  const task = withoutUrls.match(/(?:devoir|séquence)\s+(?:séquence\s*)?(\d+)\b/i);
-  const hasDeadline = /date\s+limite\s*:|[àa]\s+rendre\b/i.test(withoutUrls);
+  const actionText = actionLines.join(" ");
+  const task = actionText.match(/(?:devoir|séquence)\s+(?:séquence\s*)?(\d+)\b/i);
+  const hasDeadline = /date\s+limite\s*:|[àa]\s+rendre\b/i.test(actionText);
   const dueLine = /\b(ce soir|aujourd[\x27’]hui|demain|le\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?|avant le|pour le|date limite)\b/i;
   const taskVerb = /\b(remplir|déposer|remettre|rendre|envoyer|soumettre|valider)\b/i;
-  const deadlineActions = lines.filter(line => dueLine.test(line) && taskVerb.test(line));
+  const deadlineActions = actionLines.filter(line => dueLine.test(line) && taskVerb.test(line));
   const action = deadlineActions.length
-    ? deadlineActions.slice(0, 3).map(line => line.replace(/^\s*[-•]\s*/, "")).join(" ; ")
+    ? deadlineActions.slice(0, 3).join(" ; ")
     : hasDeadline && task ? "Rendre le devoir SÉQUENCE " + task[1]
-    : clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise", 160);
+    : clip(actionLines.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise", 160);
   const timestamp = /\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:\s*(?:UTC|GMT|Z|[+-]\d{2}:?\d{2}))?\b/i;
   const frenchDate = /\b(?:(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+)?\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}(?:\s*,?\s*(?:à\s*)?\d{1,2}[:h]\d{2})?\b/i;
   const numericRange = /\bdu\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\s+au\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/i;
