@@ -59,6 +59,7 @@ interface EmailViewProps {
   thread: Thread;
   onBack: () => void;
   onReply: (threadId: string, messageId: string) => void;
+  onForward: (threadId: string, messageId: string) => void;
   onNeedUnlock: () => void;
   onTrash?: () => void;
   trashBusy?: boolean;
@@ -69,6 +70,7 @@ export default function EmailView({
   thread,
   onBack,
   onReply,
+  onForward,
   onNeedUnlock,
   onTrash,
   trashBusy = false,
@@ -206,7 +208,7 @@ export default function EmailView({
           <Reply size={16} />
           Répondre
         </button>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-nexus-surface-hover hover:bg-nexus-surface-active text-nexus-text rounded-xl text-sm transition-all border border-nexus-border">
+        <button onClick={() => onForward(thread.id, lastMsg.id)} className="flex items-center gap-2 px-4 py-2.5 bg-nexus-surface-hover hover:bg-nexus-surface-active text-nexus-text rounded-xl text-sm transition-all border border-nexus-border">
           <Forward size={16} />
           Transférer
         </button>
