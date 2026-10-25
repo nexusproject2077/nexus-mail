@@ -493,13 +493,12 @@ export default function NexusMail() {
           className={`fixed bottom-6 right-6 z-40 flex h-14 flex-row items-center justify-center gap-2 overflow-hidden rounded-full bg-white text-black shadow-lg transition-[width,padding,gap] duration-300 ease-in-out motion-reduce:transition-none active:scale-[0.98] ${composeFabCompact ? "w-14 gap-0 p-0" : "w-[210px] min-w-[150px] px-5"}`}
           style={{ bottom: "max(24px, env(safe-area-inset-bottom))" }}
         >
-          <Pencil size={21} strokeWidth={2} className="shrink-0" aria-hidden="true" />
-          <span
-            aria-hidden={composeFabCompact}
-            className={`block shrink-0 whitespace-nowrap text-sm font-semibold leading-none transition-[opacity,max-width] duration-300 ease-in-out motion-reduce:transition-none ${composeFabCompact ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"}`}
-            style={{ whiteSpace: "nowrap" }}
-          >
-            Nouveau message
+          <span className="absolute inset-0 flex items-center justify-center" aria-hidden={!composeFabCompact} style={{ opacity: composeFabCompact ? 1 : 0 }}>
+            <Pencil size={21} strokeWidth={2} aria-hidden="true" />
+          </span>
+          <span className={`flex shrink-0 items-center justify-center gap-2 whitespace-nowrap transition-opacity duration-300 ease-in-out ${composeFabCompact ? "opacity-0" : "opacity-100"}`} aria-hidden={composeFabCompact}>
+            <Pencil size={21} strokeWidth={2} className="shrink-0" aria-hidden="true" />
+            <span className="whitespace-nowrap text-sm font-semibold leading-none">Nouveau message</span>
           </span>
         </button>
       )}
