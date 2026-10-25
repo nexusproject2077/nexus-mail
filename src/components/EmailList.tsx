@@ -206,9 +206,10 @@ function SwipeEmailRow({ thread, onTrash, children }: {
     setBusy(true);
     setDragging(false);
     moveTo(-window.innerWidth);
+    const deletion = onTrash(thread);
     await new Promise<void>(resolve => window.setTimeout(resolve, 160));
     setExiting(true);
-    try { await onTrash(thread); }
+    try { await deletion; }
     catch { setExiting(false); reset(); }
     finally { setBusy(false); }
   };
