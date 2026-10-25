@@ -198,7 +198,10 @@ export default function ComposeModal({
         let signature = "";
         try { signature = JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").signatures?.[activeAccountId] || ""; } catch { /* no signature */ }
         const signedText = signature ? `${body}\n\n${signature}` : body;
-        const signedHtml = htmlBody && signature ? `${htmlBody}<p>${signature.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>")}</p>` : htmlBody;
+        const typedIntro = initialDraft?.html ? body.split("---------- Message transféré ----------")[0].trim() : "";
+        const escapedIntro = typedIntro.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>");
+        const outgoingHtml = initialDraft?.html ? `${escapedIntro ? `<div>${escapedIntro}</div><br>` : ""}${htmlBody}` : htmlBody;
+        const signedHtml = outgoingHtml && signature ? `${outgoingHtml}<p>${signature.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>")}</p>` : outgoingHtml;
         await sendViaAccount(activeAccountId, {
           to: to.trim(),
           subject: subject.trim(),
