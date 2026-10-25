@@ -103,7 +103,7 @@ export default function EmailView({
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-6">
+      <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-0 py-3 sm:p-6">
         {thread.messages.map((msg, idx) => {
           const avatarColor = getAvatarColor(msg.senderEmail);
           const userLabel = msg.labelIds.find((l) => l.startsWith("Label_"));
@@ -114,7 +114,7 @@ export default function EmailView({
               key={msg.id}
               className={`mb-6 ${idx > 0 ? "pt-6 border-t border-nexus-border/50" : ""}`}
             >
-              <div className="flex min-w-0 items-start gap-2 sm:gap-4 mb-4">
+              <div className="flex min-w-0 items-start gap-2 sm:gap-4 mb-4 px-3 sm:px-0">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
                   style={{ backgroundColor: avatarColor }}
@@ -154,7 +154,7 @@ export default function EmailView({
               </div>
 
               {!!msg.attachments?.length && (
-                <div className="pl-0 sm:pl-14 mb-4 flex flex-wrap gap-2">
+                <div className="pl-3 pr-3 sm:pl-14 sm:pr-0 mb-4 flex flex-wrap gap-2">
                   {msg.attachments.map(attachment => (
                     <button key={attachment.id} type="button" className="flex items-center gap-2 rounded-lg border border-nexus-border px-3 py-2 text-xs hover:bg-nexus-surface-hover" onClick={async () => {
                       const parsed = parseLiveId(thread.id);
@@ -187,7 +187,7 @@ export default function EmailView({
                     sandbox="allow-popups allow-popups-to-escape-sandbox"
                     referrerPolicy="no-referrer"
                     srcDoc={prepareEmailHtml(msg.htmlBody)}
-                    className="w-full min-h-[420px] rounded-xl bg-white border border-nexus-border"
+                    className="block w-full min-h-[420px] rounded-none border-0 bg-transparent"
                   />
                 ) : (
                   <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-nexus-surface-hover/30 rounded-xl p-4">
