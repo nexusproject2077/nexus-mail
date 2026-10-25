@@ -288,6 +288,8 @@ export default function NexusMail() {
 
   return (
     <div className="h-dvh min-w-0 flex flex-col overflow-hidden bg-nexus-bg">
+      {/* Opaque paint behind the iOS PWA status bar; no interactive content here. */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-30 bg-black" style={{ height: "env(safe-area-inset-top, 0px)" }} />
       {/* Header */}
       <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-16 items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] border-b border-nexus-border bg-black flex-shrink-0`}> 
         <button
