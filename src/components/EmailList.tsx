@@ -217,7 +217,7 @@ function SwipeEmailRow({ thread, onTrash, children }: {
   };
   return (
     <div ref={rowRef} className="relative overflow-hidden select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 250ms ease-out, opacity 250ms ease-out" : "none" }}>
-      {onTrash && <button type="button" disabled={busy} aria-label="Mettre à la corbeille" onClick={() => void remove()} className="absolute inset-y-0 right-0 w-28 bg-[#db766d] flex flex-col gap-1 items-center justify-center text-white">
+      {onTrash && <button type="button" disabled={busy} aria-label="Mettre à la corbeille" onClick={() => void remove()} className="absolute inset-0 w-full bg-[#db766d] flex flex-col gap-1 items-center justify-center text-white transition-[opacity] duration-[250ms] ease-out">
         <Trash2 size={23} aria-hidden="true" />
         <span className="text-xs font-medium">Corbeille</span>
       </button>}
