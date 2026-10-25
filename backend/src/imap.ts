@@ -140,3 +140,16 @@ export async function trashImapMessage(account: Account, mailbox: string, uid: s
     finally { lock.release(); }
   } finally { await client.logout(); }
 }
+
+/** Provider IMAP folders, excluding standard system mailboxes. */
+export async function fetchImapLabels(account: Account): Promise<Array<{ id: string; name: string }>> {
+  const client = await open(account);
+  try {
+    const boxes = await client.list();
+    const system = new Set(["\\Inbox", "\\Sent", "\\Drafts", "\\Trash", "\\Junk", "\\Archive", "\\All", "\\Flagged"]);
+    return boxes.filter((box) => !box.specialUse || !system.has(box.specialUse))
+      .filter((box) => !/^(INBOX|Sent|Drafts|Trash|Junk|Spam|Archive)$/i.test(box.path))
+      .filter((box) => !box.flags?.has("\\Noselect"))
+      .map((box) => ({ id: box.path, name: box.path }));
+  } finally { await client.logout(); }
+}
