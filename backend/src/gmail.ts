@@ -212,3 +212,14 @@ export async function fetchGmailCategoryCounts(account: Account): Promise<Record
   }));
   return Object.fromEntries(results);
 }
+
+/** Reassign Gmail's category while keeping other labels untouched. */
+export async function setGmailCategory(account: Account, id: string, category: string): Promise<void> {
+  const allowed = ["CATEGORY_PERSONAL", "CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES", "CATEGORY_FORUMS"];
+  if (!allowed.includes(category)) throw new Error("Invalid Gmail category");
+  await gmail(account, `/messages/${encodeURIComponent(id)}/modify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ addLabelIds: [category], removeLabelIds: allowed.filter(item => item !== category) }),
+  });
+}
