@@ -6,6 +6,8 @@ import {
   getAccounts,
   getMessages,
   getMessage,
+  markMessageRead,
+  trashMessage,
   type PublicAccount,
   type MessageSummary,
 } from "./api";
@@ -65,6 +67,7 @@ export interface UseMail {
   refreshAccounts: () => Promise<void>;
   refreshMessages: () => Promise<void>;
   loadDetail: (thread: Thread) => Promise<Thread>;
+  trashThread: (thread: Thread) => Promise<void>;
 }
 
 /** Loads accounts and the active account's inbox from the backend. */
@@ -172,6 +175,11 @@ export function useMail(): UseMail {
       const parsed = parseLiveId(thread.id);
       if (!parsed) return thread;
       const detail = await getMessage(parsed.accountId, parsed.uid);
+      if (thread.isUnread) await markMessageRead(parsed.accountId, parsed.uid);
+      setThreads((current) => current.map((item) => item.id === thread.id
+        ? { ...item, isUnread: false, labels: item.labels.filter((label) => label !== "UNREAD"),
+            messages: item.messages.map((message) => ({ ...message, isUnread: false, labelIds: message.labelIds.filter((label) => label !== "UNREAD") })) }
+        : item));
       const msg = thread.messages[0];
       const enrichedMsg: Email = {
         ...msg,
@@ -188,6 +196,13 @@ export function useMail(): UseMail {
     },
     [],
   );
+
+  const trashThread = useCallback(async (thread: Thread) => {
+    const parsed = parseLiveId(thread.id);
+    if (!parsed) throw new Error("Ce message ne provient pas d'un compte connecté.");
+    await trashMessage(parsed.accountId, parsed.uid);
+    setThreads((current) => current.filter((item) => item.id !== thread.id));
+  }, []);
 
   const setActiveAccountId = useCallback((id: string | null) => {
     activeAccountRef.current = id;
@@ -211,5 +226,6 @@ export function useMail(): UseMail {
     refreshAccounts,
     refreshMessages,
     loadDetail,
+    trashThread,
   };
 }
