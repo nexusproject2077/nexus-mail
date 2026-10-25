@@ -362,6 +362,10 @@ export default function ComposeModal({
             {replyTo ? "Répondre" : "Nouveau message"}
           </span>
           <div className="flex items-center gap-1">
+            <button type="button" onClick={handleSend} disabled={isSending || !to.trim() || attachmentsLoading} aria-label="Envoyer le message" title="Envoyer"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-nexus-primary-light hover:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed">
+              {isSending ? <Loader2 size={21} className="animate-spin" /> : mode === "standard" ? <Send size={21} /> : <Lock size={21} />}
+            </button>
             <button
               onClick={() => { setVisible(false); window.setTimeout(onClose, 250); }}
               className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-white transition-colors" aria-label="Fermer"
@@ -506,11 +510,7 @@ export default function ComposeModal({
         )}
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
-        <div className="relative shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-2 pb-[max(12px,env(safe-area-inset-bottom))] bg-black border-t border-white/10">
-          <button type="button" onClick={handleSend} disabled={isSending || !to.trim()} aria-label={isSending ? "Envoi en cours" : "Envoyer le message"} title="Envoyer"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-nexus-primary text-black hover:opacity-90 disabled:opacity-40 transition-colors">
-            {isSending ? <Loader2 size={23} className="animate-spin" /> : mode === "standard" ? <Send size={23} /> : <Lock size={23} />}
-          </button>
+        <div className="relative shrink-0 flex items-center justify-end gap-3 px-4 sm:px-5 py-2 pb-[max(12px,env(safe-area-inset-bottom))] bg-black border-t border-white/10">
           <div className="flex items-center justify-end gap-2 sm:gap-3">
             <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.zip,.csv,.xlsx,.pptx" aria-label="Sélectionner des photos, PDF ou fichiers" className="hidden" onChange={event => {
               const files = Array.from(event.target.files ?? []);
