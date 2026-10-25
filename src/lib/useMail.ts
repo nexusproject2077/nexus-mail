@@ -34,7 +34,7 @@ export function parseLiveId(
 }
 
 function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"): Thread {
-  const id = liveId(accountId, s.uid);
+  const id = liveId(accountId, s.threadId ?? s.uid);
   const email: Email = {
     id,
     threadId: id,
@@ -61,6 +61,26 @@ function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"
     isStarred: s.flagged,
     labels: email.labelIds,
   };
+}
+
+/** One normalized conversation per account + provider threadId, retaining every unique message. */
+function mergeThreads(existing: Thread[], incoming: Thread[]): Thread[] {
+  const byId = new Map<string, Thread>();
+  for (const thread of [...existing, ...incoming]) {
+    const previous = byId.get(thread.id);
+    if (!previous) { byId.set(thread.id, thread); continue; }
+    const messages = new Map(previous.messages.map(message => [message.id, message]));
+    for (const message of thread.messages) messages.set(message.id, { ...messages.get(message.id), ...message });
+    const sorted = [...messages.values()].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+    const latest = sorted[sorted.length - 1];
+    byId.set(thread.id, {
+      ...previous, messages: sorted, date: latest.date, snippet: latest.snippet,
+      subject: latest.subject, isUnread: sorted.some(m => m.isUnread),
+      isStarred: sorted.some(m => m.isStarred),
+      labels: [...new Set(sorted.flatMap(m => m.labelIds))],
+    });
+  }
+  return [...byId.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 }
 
 export interface UseMail {
@@ -95,6 +115,7 @@ export function useMail(): UseMail {
   const [accounts, setAccounts] = useState<PublicAccount[]>([]);
   const [activeAccountId, setActiveAccountIdState] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const storeRef = useRef<Thread[]>([]);
   const [category, setCategory] = useState("CATEGORY_PERSONAL");
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number> | null>(null);
   const [categoryLoading, setCategoryLoading] = useState(false);
@@ -180,7 +201,7 @@ export function useMail(): UseMail {
       try {
         while (pending.length && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
           const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
-            id, page: await getMessages(id, mailbox, 100, cursor ?? undefined, !selectedLabel && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? category : undefined),
+            id, page: await getMessages(id, mailbox, 100, cursor ?? undefined, undefined),
           })));
           const upcoming: typeof pending = [];
           for (let index = 0; index < batch.length; index++) {
@@ -193,7 +214,7 @@ export function useMail(): UseMail {
             }
             for (const message of result.value.page.messages) {
               const thread = summaryToThread(id, message, mailbox);
-              allMessages.set(thread.id, thread);
+              allMessages.set(thread.id, mergeThreads(allMessages.has(thread.id) ? [allMessages.get(thread.id)!] : [], [thread])[0]);
             }
             const cursor = result.value.page.nextCursor;
             next[id] = cursor;
@@ -203,11 +224,8 @@ export function useMail(): UseMail {
             }
           }
           if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
-          setThreads(previous => {
-            const merged = new Map<string, Thread>();
-            for (const [id, thread] of allMessages) merged.set(id, thread);
-            return [...merged.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-          });
+          storeRef.current = mergeThreads(storeRef.current, [...allMessages.values()]);
+          setThreads(storeRef.current);
           cursorsRef.current = { ...next };
           setCursors({ ...next });
           setLoading(false);
@@ -224,7 +242,7 @@ export function useMail(): UseMail {
       if (requestId.current === currentRequest) { setLoading(false); setCategoryLoading(false); }
       syncInProgress.current = false;
     }
-  }, [configured, activeAccountId, selectedLabel, category, refreshCategoryCounts]);
+  }, [configured, activeAccountId, selectedLabel, refreshCategoryCounts]);
 
   const loadMore = useCallback(async () => {
     if (!configured || !activeAccountId || moreBusy.current || loading) return;
@@ -246,16 +264,14 @@ export function useMail(): UseMail {
       }
       cursorsRef.current = next;
       setCursors(next);
-      setThreads(old => {
-        const known = new Set(old.map(t => t.id));
-        return [...old, ...additions.filter(t => !known.has(t.id) && !!known.add(t.id))].sort((a,b) => Date.parse(b.date) - Date.parse(a.date));
-      });
+      storeRef.current = mergeThreads(storeRef.current, additions);
+      setThreads(storeRef.current);
       if (results.some(r => r.status === "rejected")) setError("Une page n'a pas pu être chargée. Réessaie.");
     } finally {
       moreBusy.current = false;
       setLoadingMore(false);
     }
-  }, [configured, activeAccountId, loading, selectedLabel, category]);
+  }, [configured, activeAccountId, loading, selectedLabel]);
 
   useEffect(() => {
     activeAccountRef.current = activeAccountId;
@@ -297,26 +313,27 @@ export function useMail(): UseMail {
     async (thread: Thread): Promise<Thread> => {
       const parsed = parseLiveId(thread.id);
       if (!parsed) return thread;
-      const detail = await getMessage(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
-      if (thread.isUnread) await markMessageRead(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
+      const details = await Promise.all(thread.messages.map(message => {
+        const messageId = parseLiveId(message.id);
+        return messageId ? getMessage(messageId.accountId, messageId.uid, thread.mailbox ?? "INBOX") : Promise.resolve(null);
+      }));
+      const detail = details[details.length - 1];
+      if (!detail) return thread;
+      if (thread.isUnread) await Promise.all(thread.messages.filter(m => m.isUnread).map(m => { const id = parseLiveId(m.id); return id ? markMessageRead(id.accountId, id.uid, thread.mailbox ?? "INBOX") : Promise.resolve(); }));
       setThreads((current) => current.map((item) => item.id === thread.id
         ? { ...item, isUnread: false, labels: item.labels.filter((label) => label !== "UNREAD"),
             messages: item.messages.map((message) => ({ ...message, isUnread: false, labelIds: message.labelIds.filter((label) => label !== "UNREAD") })) }
         : item));
-      const msg = thread.messages[0];
-      const enrichedMsg: Email = {
-        ...msg,
-        body: detail.text,
-        htmlBody: detail.html ?? undefined,
-        attachments: detail.attachments,
-        hasAttachment: !!detail.attachments?.length,
-        snippet: detail.snippet || msg.snippet,
-        isUnread: false,
-      };
+      const enrichedMessages: Email[] = thread.messages.map((msg, index) => {
+        const item = details[index];
+        return item ? { ...msg, body: item.text, htmlBody: item.html ?? undefined,
+          attachments: item.attachments, hasAttachment: !!item.attachments?.length,
+          snippet: item.snippet || msg.snippet, isUnread: false } : msg;
+      });
       return {
         ...thread,
         isUnread: false,
-        messages: [enrichedMsg],
+        messages: enrichedMessages,
       };
     },
     [],
@@ -376,6 +393,7 @@ export function useMail(): UseMail {
     requestId.current += 1;
     syncInProgress.current = false;
     setThreads([]);
+    storeRef.current = [];
     cursorsRef.current = {};
     setCursors({});
     setLabels([]);
