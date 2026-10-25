@@ -7,7 +7,6 @@ import {
   Send,
   FileEdit,
   Trash2,
-  Plus,
   ChevronDown,
   ShieldCheck,
   Lock,
@@ -39,7 +38,6 @@ const folderLabels: Record<string, string> = {
 interface SidebarProps {
   activeFolder: Folder;
   onFolderChange: (folder: Folder) => void;
-  onCompose: () => void;
   onOpenSecurity: () => void;
   onOpenSettings: () => void;
   unreadCount: number;
@@ -53,7 +51,6 @@ interface SidebarProps {
 export default function Sidebar({
   activeFolder,
   onFolderChange,
-  onCompose,
   onOpenSecurity,
   onOpenSettings,
   unreadCount,
@@ -68,16 +65,6 @@ export default function Sidebar({
 
   return (
     <aside className="w-full h-full min-h-0 flex flex-col bg-nexus-surface lg:border-r lg:border-nexus-border">
-      <div className="p-4">
-        <button
-          onClick={onCompose}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-nexus-primary hover:bg-nexus-primary-dark text-black rounded-2xl font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25 active:scale-[0.98]"
-        >
-          <Plus size={20} />
-          Nouveau message
-        </button>
-      </div>
-
       <nav className="flex-1 min-h-0 overflow-y-auto px-2 space-y-0.5">
         {folders.map((folder) => (
           <button
