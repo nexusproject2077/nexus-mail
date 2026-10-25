@@ -84,7 +84,7 @@ export default function ComposeModal({
     setTo(initialDraft.to);
     setSubject(initialDraft.subject);
     setBody(initialDraft.body ?? "");
-    setHtmlBody(initialDraft.html ?? "");
+    setHtmlBody((initialDraft.html ?? "").replace(/\\n/g, "<br />"));
     setShowOriginal(false);
     setAttachments([]);
     const source = initialDraft.forwardAttachments;
@@ -203,7 +203,7 @@ export default function ComposeModal({
         const plainText = initialDraft?.quotedText ? `${body}\n\n${initialDraft.quotedText}` : body;
         const signedText = signature ? `${plainText}\n\n${signature}` : plainText;
         const typedIntro = initialDraft?.html ? body.trim() : "";
-        const escapedIntro = typedIntro.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>");
+        const escapedIntro = typedIntro.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br />").replace(/\r?\n/g, "<br />");
         const outgoingHtml = initialDraft?.html ? `${escapedIntro ? `<div style="white-space:pre-wrap">${escapedIntro}</div><br>` : ""}${htmlBody}` : htmlBody;
         const signedHtml = outgoingHtml && signature ? `${outgoingHtml}<p>${signature.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>")}</p>` : outgoingHtml;
         await sendViaAccount(activeAccountId, {
@@ -480,6 +480,8 @@ export default function ComposeModal({
           ref={bodyInputRef}
           value={body ?? ""}
           onChange={(e) => setBody(e.target.value)}
+          wrap="soft"
+          style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", width: "100%", overflowX: "hidden", overflowY: "auto" }}
           className="block w-full min-w-0 flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base leading-relaxed text-nexus-text outline-none resize-none whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-x-hidden overflow-y-auto placeholder:text-[#a3a3a3]"
           placeholder={
             mode === "standard"
