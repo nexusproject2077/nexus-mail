@@ -29,7 +29,7 @@ export function parseLiveId(
   return m ? { accountId: m[1], uid: m[2] } : null;
 }
 
-function summaryToThread(accountId: string, s: MessageSummary): Thread {
+function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"): Thread {
   const id = liveId(accountId, s.uid);
   const email: Email = {
     id,
@@ -48,6 +48,7 @@ function summaryToThread(accountId: string, s: MessageSummary): Thread {
   };
   return {
     id,
+    mailbox,
     messages: [email],
     subject: s.subject,
     snippet: s.snippet,
@@ -65,6 +66,8 @@ export interface UseMail {
   setActiveAccountId: (id: string | null) => void;
   threads: Thread[];
   labels: Array<AccountLabel & { accountId: string; accountEmail: string }>;
+  selectedLabel: { accountId: string; id: string; name: string } | null;
+  selectLabel: (label: { accountId: string; id: string; name: string } | null) => void;
   loading: boolean;
   error: string | null;
   refreshAccounts: () => Promise<void>;
@@ -80,6 +83,7 @@ export function useMail(): UseMail {
   const [activeAccountId, setActiveAccountIdState] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [labels, setLabels] = useState<Array<AccountLabel & { accountId: string; accountEmail: string }>>([]);
+  const [selectedLabel, setSelectedLabel] = useState<{ accountId: string; id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
@@ -112,9 +116,10 @@ export function useMail(): UseMail {
       return;
     }
     const currentRequest = ++requestId.current;
-    const ids = activeAccountId === ALL_ACCOUNTS
+    const ids = selectedLabel ? [selectedLabel.accountId] : activeAccountId === ALL_ACCOUNTS
       ? accountsRef.current.map((account) => account.id)
       : [activeAccountId];
+    const mailbox = selectedLabel?.id ?? "INBOX";
     setLoading(true);
     try {
       const selectedAccounts = accountsRef.current.filter((account) => ids.includes(account.id));
@@ -128,12 +133,12 @@ export function useMail(): UseMail {
         : []));
       const results = await Promise.allSettled(ids.map(async (id) => ({
         id,
-        messages: await getMessages(id),
+        messages: await getMessages(id, mailbox),
       })));
       if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
       const combined = results.flatMap((result) =>
         result.status === "fulfilled"
-          ? result.value.messages.map((m) => summaryToThread(result.value.id, m))
+          ? result.value.messages.map((m) => summaryToThread(result.value.id, m, mailbox))
           : [],
       );
       combined.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
@@ -145,7 +150,7 @@ export function useMail(): UseMail {
     } finally {
       if (requestId.current === currentRequest) setLoading(false);
     }
-  }, [configured, activeAccountId]);
+  }, [configured, activeAccountId, selectedLabel]);
 
   useEffect(() => {
     activeAccountRef.current = activeAccountId;
@@ -187,8 +192,8 @@ export function useMail(): UseMail {
     async (thread: Thread): Promise<Thread> => {
       const parsed = parseLiveId(thread.id);
       if (!parsed) return thread;
-      const detail = await getMessage(parsed.accountId, parsed.uid);
-      if (thread.isUnread) await markMessageRead(parsed.accountId, parsed.uid);
+      const detail = await getMessage(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
+      if (thread.isUnread) await markMessageRead(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
       setThreads((current) => current.map((item) => item.id === thread.id
         ? { ...item, isUnread: false, labels: item.labels.filter((label) => label !== "UNREAD"),
             messages: item.messages.map((message) => ({ ...message, isUnread: false, labelIds: message.labelIds.filter((label) => label !== "UNREAD") })) }
@@ -213,7 +218,7 @@ export function useMail(): UseMail {
   const trashThread = useCallback(async (thread: Thread) => {
     const parsed = parseLiveId(thread.id);
     if (!parsed) throw new Error("Ce message ne provient pas d'un compte connecté.");
-    await trashMessage(parsed.accountId, parsed.uid);
+    await trashMessage(parsed.accountId, parsed.uid, thread.mailbox ?? "INBOX");
     setThreads((current) => current.filter((item) => item.id !== thread.id));
   }, []);
 
@@ -222,6 +227,7 @@ export function useMail(): UseMail {
     requestId.current += 1;
     setThreads([]);
     setLabels([]);
+    setSelectedLabel(null);
     setError(null);
     setLoading(false);
     setActiveAccountIdState(id);
@@ -236,6 +242,8 @@ export function useMail(): UseMail {
     setActiveAccountId,
     threads,
     labels,
+    selectedLabel,
+    selectLabel: setSelectedLabel,
     loading,
     error,
     refreshAccounts,
