@@ -140,9 +140,13 @@ export async function trashImapMessage(account: Account, mailbox: string, uid: s
   try {
     const lock = await client.getMailboxLock(mailbox);
     try {
-      // IMAP permanent removal requested: flag the exact UID, then expunge it.
-      await client.messageFlagsAdd(uid, ["\\Deleted"], { uid: true });
-      await client.messageDelete(uid, { uid: true });
+      const boxes = await client.list();
+      const trash = boxes.find(box => box.specialUse === "\\Trash")
+        ?? boxes.find(box => /^(trash|corbeille|deleted items|deleted messages|éléments supprimés)$/i.test(box.name));
+      if (!trash) throw new Error("Dossier Corbeille introuvable : suppression annulée pour protéger le message.");
+      if (trash.path === mailbox) throw new Error("Le message est déjà dans la Corbeille.");
+      const moved = await client.messageMove(uid, trash.path, { uid: true });
+      if (!moved) throw new Error("Le serveur IMAP n'a pas confirmé le déplacement vers la Corbeille.");
     } finally { lock.release(); }
   } finally { await client.logout(); }
 }
