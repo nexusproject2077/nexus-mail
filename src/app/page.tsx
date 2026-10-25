@@ -240,9 +240,6 @@ export default function NexusMail() {
               <span className="absolute top-1 right-1 w-2 h-2 bg-nexus-primary rounded-full" />
             )}
           </button>
-          <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
-            <Settings size={18} />
-          </button>
         </div>
       </header>
 
@@ -260,7 +257,8 @@ export default function NexusMail() {
               setSidebarOpen(false);
             }}
             onCompose={handleCompose}
-            onOpenSecurity={() => setSecurityOpen(true)}
+            onOpenSecurity={() => { setSidebarOpen(false); setSecurityOpen(true); }}
+            onOpenSettings={() => { setSidebarOpen(false); setAccountsOpen(true); }}
             unreadCount={unreadCount}
             vaultCount={vaultMessages.length}
             labels={mail.labels}
