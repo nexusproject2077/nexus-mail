@@ -195,18 +195,21 @@ export function useMail(): UseMail {
       setLabels(labelResults.flatMap((result) => result.status === "fulfilled"
         ? result.value.labels.map((label) => ({ ...label, accountId: result.value.account.id, accountEmail: result.value.account.email }))
         : []));
-      // Synchronise toute la boîte sans plafond : les pages restent une contrainte
-      // technique de l'API, pas une limite de messages visible par l'utilisateur.
+      // Load at most 500 messages in total across all connected accounts.
+      // Keep API requests paginated (up to 100 messages per account per round).
       const allMessages = new Map<string, Thread>();
       const next: Record<string, string | null> = {};
       const failures = new Map<string, string>();
       let pending = ids.map(id => ({ id, cursor: null as string | null }));
       const seenCursors = new Set<string>();
+      const messageLimit = 500;
+      let loadedMessages = 0;
       setLoadingMore(true);
       try {
-        while (pending.length && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
+        while (pending.length && loadedMessages < messageLimit && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
+          const perAccountLimit = Math.min(100, Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length)));
           const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
-            id, page: await getMessages(id, mailbox, 100, cursor ?? undefined, undefined),
+            id, page: await getMessages(id, mailbox, perAccountLimit, cursor ?? undefined, undefined),
           })));
           const upcoming: typeof pending = [];
           for (let index = 0; index < batch.length; index++) {
@@ -218,6 +221,8 @@ export function useMail(): UseMail {
               continue;
             }
             for (const message of result.value.page.messages) {
+              if (loadedMessages >= messageLimit) break;
+              loadedMessages++;
               const thread = summaryToThread(id, message, mailbox);
               allMessages.set(thread.id, mergeThreads(allMessages.has(thread.id) ? [allMessages.get(thread.id)!] : [], [thread])[0]);
             }
