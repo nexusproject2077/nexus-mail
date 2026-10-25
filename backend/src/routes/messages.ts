@@ -56,6 +56,7 @@ const sendSchema = z.object({
   subject: z.string().default(""),
   text: z.string().default(""),
   html: z.string().optional(),
+  attachments: z.array(z.object({ filename: z.string().min(1).max(255), contentType: z.string().max(150), data: z.string().max(14_000_000) })).max(5).optional(),
 });
 
 /** POST /api/accounts/:id/send */
@@ -70,6 +71,7 @@ messagesRouter.post("/:id/send", requireCsrf, async (req, res) => {
     res.status(400).json({ error: "Invalid message", details: parsed.error.issues });
     return;
   }
+  if ((parsed.data.attachments ?? []).reduce((total, item) => total + Buffer.byteLength(item.data, "base64"), 0) > 10 * 1024 * 1024) { res.status(413).json({ error: "Pièces jointes limitées à 10 Mo au total" }); return; }
   try {
     const result = account.authType === "google_oauth" ? await sendGmailMessage(account, parsed.data) : await sendMessage(account, parsed.data);
     res.status(201).json(result);
