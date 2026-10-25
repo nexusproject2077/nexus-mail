@@ -97,6 +97,7 @@ export function useMail(): UseMail {
   const [cursors, setCursors] = useState<Record<string, string | null>>({});
   const cursorsRef = useRef<Record<string, string | null>>({});
   const moreBusy = useRef(false);
+  const syncInProgress = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
   const activeAccountRef = useRef<string | null>(null);
@@ -127,6 +128,8 @@ export function useMail(): UseMail {
       setThreads([]);
       return;
     }
+    if (syncInProgress.current) return;
+    syncInProgress.current = true;
     const currentRequest = ++requestId.current;
     const ids = selectedLabel ? [selectedLabel.accountId] : activeAccountId === ALL_ACCOUNTS
       ? accountsRef.current.map((account) => account.id)
@@ -177,7 +180,11 @@ export function useMail(): UseMail {
             }
           }
           if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
-          setThreads([...allMessages.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)));
+          setThreads(previous => {
+            const merged = new Map(previous.map(thread => [thread.id, thread]));
+            for (const [id, thread] of allMessages) merged.set(id, thread);
+            return [...merged.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+          });
           cursorsRef.current = { ...next };
           setCursors({ ...next });
           setLoading(false);
@@ -192,6 +199,7 @@ export function useMail(): UseMail {
       if (requestId.current === currentRequest) setError((e as Error).message);
     } finally {
       if (requestId.current === currentRequest) setLoading(false);
+      syncInProgress.current = false;
     }
   }, [configured, activeAccountId, selectedLabel]);
 
@@ -339,6 +347,7 @@ export function useMail(): UseMail {
   const setActiveAccountId = useCallback((id: string | null) => {
     activeAccountRef.current = id;
     requestId.current += 1;
+    syncInProgress.current = false;
     setThreads([]);
     cursorsRef.current = {};
     setCursors({});
