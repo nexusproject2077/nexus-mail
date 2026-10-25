@@ -70,7 +70,7 @@ function bodies(part: any): { text: string; html: string | null } {
 }
 function summary(message: any): MessageSummary {
   const headers = message.payload?.headers;
-  return { uid: message.id, subject: header(headers, "Subject") || "(sans objet)", from: sender(header(headers, "From")), to: addresses(header(headers, "To")), date: header(headers, "Date") || new Date(Number(message.internalDate ?? Date.now())).toISOString(), snippet: message.snippet ?? "", seen: !(message.labelIds ?? []).includes("UNREAD"), flagged: (message.labelIds ?? []).includes("STARRED"), labelIds: Array.isArray(message.labelIds) ? message.labelIds : [] };
+  return { uid: message.id, threadId: message.threadId ?? message.id, subject: header(headers, "Subject") || "(sans objet)", from: sender(header(headers, "From")), to: addresses(header(headers, "To")), date: header(headers, "Date") || new Date(Number(message.internalDate ?? Date.now())).toISOString(), snippet: message.snippet ?? "", seen: !(message.labelIds ?? []).includes("UNREAD"), flagged: (message.labelIds ?? []).includes("STARRED"), labelIds: Array.isArray(message.labelIds) ? message.labelIds : [] };
 }
 
 export async function fetchGmailSummaries(account: Account, mailbox: string, limit: number, pageToken?: string, category?: string): Promise<{ messages: MessageSummary[]; nextCursor: string | null }> {
