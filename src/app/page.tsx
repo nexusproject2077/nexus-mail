@@ -5,12 +5,10 @@ import {
   Menu,
   Bell,
   Settings,
-  RefreshCw,
   CheckSquare,
   ChevronDown,
   ShieldCheck,
   ServerCog,
-  Loader2,
   Inbox,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
@@ -224,18 +222,6 @@ export default function NexusMail() {
                 : mail.accounts.find((a) => a.id === mail.activeAccountId)?.email ?? "Comptes"}
             </span>
           </button>
-          <button
-            onClick={() => liveInbox ? void mail.refreshMessages() : setAccountsOpen(true)}
-            disabled={mail.loading}
-            title={liveInbox ? "Synchroniser les emails" : "Connecter un compte pour synchroniser"}
-            className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40"
-          >
-            {mail.loading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <RefreshCw size={18} />
-            )}
-          </button>
           <button className="relative hidden sm:block p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
             <Bell size={18} />
             {unreadCount > 0 && (
@@ -336,6 +322,7 @@ export default function NexusMail() {
             )}
             <EmailList
               threads={filteredThreads}
+              onRefresh={liveInbox ? mail.refreshMessages : undefined}
               selectedId={selectedThread?.id || null}
               onSelect={handleSelectThread}
               onTrash={activeFolder !== "trash" ? async (thread) => { try { await mail.trashThread(thread); if (selectedThread?.id === thread.id) setSelectedThread(null); } catch (error) { setMessageActionError((error as Error).message); } } : undefined}
