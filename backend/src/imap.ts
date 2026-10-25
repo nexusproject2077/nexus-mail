@@ -189,7 +189,24 @@ export async function searchImap(account: Account, query: string, limit: number)
   try {
     const lock = await client.getMailboxLock("INBOX");
     try {
-      const uids = await client.search({ or: [{ subject: query }, { from: query }, { body: query }] }, { uid: true });
+      const tokens = query.match(/(?:"[^"]*"|\\S)+/g) ?? [];
+      const criteria: Record<string, unknown> = {};
+      const terms: string[] = [];
+      for (const token of tokens) {
+        const value = token.slice(token.indexOf(":") + 1).replace(/^"|"$/g, "");
+        if (/^from:/i.test(token) && value) criteria.from = value;
+        else if (/^to:/i.test(token) && value) criteria.to = value;
+        else if (/^subject:/i.test(token) && value) criteria.subject = value;
+        else if (/^is:unread$/i.test(token)) criteria.seen = false;
+        else if (/^is:read$/i.test(token)) criteria.seen = true;
+        else if (/^is:starred$/i.test(token)) criteria.flagged = true;
+        else if (/^has:attachment$/i.test(token)) criteria.body = "Content-Disposition: attachment";
+        else if (/^after:/i.test(token) && /^\\d{4}\\/\\d{2}\\/\\d{2}$/.test(value)) criteria.since = new Date(value.replace(/\\//g, "-") + "T00:00:00Z");
+        else if (/^before:/i.test(token) && /^\\d{4}\\/\\d{2}\\/\\d{2}$/.test(value)) criteria.before = new Date(value.replace(/\\//g, "-") + "T00:00:00Z");
+        else terms.push(token.replace(/^"|"$/g, ""));
+      }
+      if (terms.length) criteria.or = terms.flatMap(term => [{ subject: term }, { from: term }, { body: term }]);
+      const uids = await client.search(criteria, { uid: true });
       if (!uids || !uids.length) return [];
       const results: MessageSummary[] = [];
       for await (const msg of client.fetch(uids.slice(-limit).join(","), { uid: true, envelope: true, flags: true }, { uid: true })) {
