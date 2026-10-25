@@ -64,7 +64,7 @@ export default function Sidebar({
   const userLabels = labels;
 
   return (
-    <aside className="w-full h-full min-h-0 flex flex-col bg-nexus-surface border-r border-nexus-border">
+    <aside className="w-full h-full min-h-0 flex flex-col bg-nexus-surface lg:border-r lg:border-nexus-border">
       <div className="p-4">
         <button
           onClick={onCompose}
