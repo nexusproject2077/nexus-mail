@@ -34,6 +34,14 @@ export default function NexusMail() {
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [mailtoDraft, setMailtoDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("compose") !== "1") return;
+    setMailtoDraft({ to: url.searchParams.get("to") ?? "", subject: url.searchParams.get("subject") ?? "", body: url.searchParams.get("body") ?? "" });
+    setComposeOpen(true);
+    window.history.replaceState(window.history.state, "", url.pathname);
+  }, []);
   const [replyTo, setReplyTo] = useState<{
     subject: string;
     to: string;
@@ -194,6 +202,7 @@ export default function NexusMail() {
   };
 
   const handleCompose = () => {
+    setMailtoDraft(null);
     setReplyTo(null);
     setComposeOpen(true);
   };
@@ -423,9 +432,11 @@ export default function NexusMail() {
         isOpen={composeOpen}
         onClose={() => {
           setComposeOpen(false);
+          setMailtoDraft(null);
           setReplyTo(null);
         }}
         replyTo={replyTo || undefined}
+        initialDraft={mailtoDraft || undefined}
         onNeedUnlock={() => setSecurityOpen(true)}
         activeAccountId={mail.activeAccountId === "all" ? mail.accounts[0]?.id ?? null : mail.activeAccountId}
         onSent={() => void mail.refreshMessages()}
