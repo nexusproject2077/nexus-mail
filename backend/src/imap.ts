@@ -36,17 +36,19 @@ export async function fetchSummaries(
   account: Account,
   mailbox: string,
   limit: number,
-): Promise<MessageSummary[]> {
+  offset = 0,
+): Promise<{ messages: MessageSummary[]; nextCursor: string | null }> {
   const client = await open(account);
   try {
     const lock = await client.getMailboxLock(mailbox);
     try {
       const total =
         typeof client.mailbox === "object" ? client.mailbox.exists : 0;
-      if (!total) return [];
-      const start = Math.max(1, total - limit + 1);
+      if (!total || offset >= total) return { messages: [], nextCursor: null };
+      const end = Math.max(1, total - offset);
+      const start = Math.max(1, end - limit + 1);
       const summaries: MessageSummary[] = [];
-      for await (const msg of client.fetch(`${start}:${total}`, {
+      for await (const msg of client.fetch(`${start}:${end}`, {
         uid: true,
         envelope: true,
         flags: true,
@@ -63,7 +65,7 @@ export async function fetchSummaries(
           flagged: msg.flags?.has("\\Flagged") ?? false,
         });
       }
-      return summaries.reverse();
+      return { messages: summaries.reverse(), nextCursor: start > 1 ? String(offset + (end - start + 1)) : null };
     } finally {
       lock.release();
     }
