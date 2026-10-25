@@ -88,7 +88,7 @@ messagesRouter.post("/:id/messages/:uid/read", requireCsrf, async (req, res) => 
   }
   try {
     if (account.authType === "google_oauth") await markGmailRead(account, uid);
-    else await markImapRead(account, "INBOX", uid);
+    else await markImapRead(account, String(req.query.mailbox ?? "INBOX"), uid);
     res.json({ ok: true });
   } catch (e) { res.status(502).json({ error: "Unable to mark read", message: (e as Error).message }); }
 });
@@ -103,7 +103,7 @@ messagesRouter.post("/:id/messages/:uid/trash", requireCsrf, async (req, res) =>
   }
   try {
     if (account.authType === "google_oauth") await trashGmailMessage(account, uid);
-    else await trashImapMessage(account, "INBOX", uid);
+    else await trashImapMessage(account, String(req.query.mailbox ?? "INBOX"), uid);
     res.json({ ok: true });
   } catch (e) { res.status(502).json({ error: "Unable to move to Trash", message: (e as Error).message }); }
 });
