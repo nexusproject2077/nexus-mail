@@ -36,7 +36,7 @@ export function parseLiveId(
 function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"): Thread {
   const id = liveId(accountId, s.threadId ?? s.uid);
   const email: Email = {
-    id,
+    id: liveId(accountId, s.uid),
     threadId: id,
     sender: s.from.name ? `${s.from.name} <${s.from.email}>` : s.from.email,
     senderName: s.from.name || s.from.email,
@@ -317,8 +317,7 @@ export function useMail(): UseMail {
         const messageId = parseLiveId(message.id);
         return messageId ? getMessage(messageId.accountId, messageId.uid, thread.mailbox ?? "INBOX") : Promise.resolve(null);
       }));
-      const detail = details[details.length - 1];
-      if (!detail) return thread;
+      if (!details.some(Boolean)) return thread;
       if (thread.isUnread) await Promise.all(thread.messages.filter(m => m.isUnread).map(m => { const id = parseLiveId(m.id); return id ? markMessageRead(id.accountId, id.uid, thread.mailbox ?? "INBOX") : Promise.resolve(); }));
       setThreads((current) => current.map((item) => item.id === thread.id
         ? { ...item, isUnread: false, labels: item.labels.filter((label) => label !== "UNREAD"),
