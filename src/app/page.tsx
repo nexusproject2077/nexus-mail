@@ -291,7 +291,7 @@ export default function NexusMail() {
       {/* Keep an opaque, viewport-fixed layer behind the iOS status bar, like the hamburger drawer. */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[90] bg-black" style={{ height: "env(safe-area-inset-top, 0px)", transform: "translateZ(0)", WebkitTransform: "translateZ(0)" }} />
       {/* Header */}
-      <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-16 items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] border-b border-nexus-border bg-black flex-shrink-0`}> 
+      <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-16 items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2 pt-[max(8px,env(safe-area-inset-top))] border-b border-nexus-border bg-black flex-shrink-0`}>
         <button
           onClick={() => { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); }}
           className="nexus-interactive flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1a1a1a] hover:bg-[#252525] transition-colors text-white"
@@ -299,16 +299,15 @@ export default function NexusMail() {
           <Menu size={23} />
         </button>
 
-        <div className="hidden sm:flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-nexus-primary to-purple-500 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">N</span>
-          </div>
-          <span className="text-lg font-bold bg-gradient-to-r from-nexus-primary-light to-purple-400 bg-clip-text text-transparent">
-            Nexus Mail
-          </span>
+        <div className="hidden sm:flex shrink-0 items-center gap-2.5 pr-1" aria-label="Nexus Mail">
+          <svg aria-hidden="true" viewBox="0 0 32 32" className="h-8 w-8 text-white" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 6 10.5 10L5 26" />
+            <path d="m16.5 6 10.5 10-10.5 10" />
+          </svg>
+          <span className="text-[15px] font-semibold tracking-[-0.02em] text-white whitespace-nowrap">Nexus Mail</span>
         </div>
 
-        <div className="min-w-0 flex-1 max-w-2xl"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
+        <div className="min-w-0 flex-1 max-w-3xl lg:mx-2"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
 
         <div className="relative shrink-0 sm:hidden">
           <button type="button" onClick={() => setProfileMenuOpen(value => !value)} aria-label="Compte et sécurité" aria-expanded={profileMenuOpen}
@@ -323,11 +322,11 @@ export default function NexusMail() {
             </div>
           )}
         </div>
-        <div className="hidden sm:flex shrink-0 items-center gap-0 sm:gap-1 ml-auto">
+        <div className="hidden sm:flex shrink-0 items-center rounded-xl border border-white/10 bg-[#111] p-1 shadow-sm ml-auto">
           <button
             onClick={() => setSecurityOpen(true)}
             title="Chiffrement & clés"
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-medium ${
+            className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors text-xs font-medium ${
               identity && isUnlocked
                 ? "text-green-400 hover:bg-green-500/10"
                 : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"
@@ -345,7 +344,7 @@ export default function NexusMail() {
           <button
             onClick={() => setAccountsOpen(true)}
             title="Comptes de messagerie"
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-medium ${
+            className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg transition-colors text-xs font-medium ${
               liveInbox
                 ? "text-nexus-primary-light hover:bg-nexus-primary/10"
                 : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"
@@ -368,7 +367,7 @@ export default function NexusMail() {
           >
             {mail.loading || mail.loadingMore ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
           </button>
-          <button className="relative hidden sm:block p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
+          <button className="relative hidden sm:block p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text" aria-label="Notifications">
             <Bell size={18} />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-nexus-primary rounded-full" />
