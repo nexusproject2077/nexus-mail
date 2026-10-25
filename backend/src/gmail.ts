@@ -97,3 +97,13 @@ export async function markGmailRead(account: Account, id: string): Promise<void>
 export async function trashGmailMessage(account: Account, id: string): Promise<void> {
   await gmail(account, `/messages/${encodeURIComponent(id)}/trash`, { method: "POST" });
 }
+
+/** User-created Gmail labels, including their actual Gmail colors. */
+export async function fetchGmailLabels(account: Account): Promise<Array<{ id: string; name: string; color?: string }>> {
+  const response = await gmail(account, "/labels");
+  return (response.labels ?? [])
+    .filter((label: { type?: string }) => label.type === "user")
+    .map((label: { id: string; name: string; color?: { backgroundColor?: string } }) => ({
+      id: label.id, name: label.name, color: label.color?.backgroundColor,
+    }));
+}
