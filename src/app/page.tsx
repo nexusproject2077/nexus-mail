@@ -171,7 +171,7 @@ export default function NexusMail() {
       <header className="min-h-14 flex items-center gap-2 sm:gap-4 px-2 sm:px-4 border-b border-nexus-border bg-nexus-surface/80 backdrop-blur-sm flex-shrink-0">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted"
+          className="nexus-interactive p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted"
         >
           <Menu size={20} />
         </button>
@@ -328,7 +328,7 @@ export default function NexusMail() {
 
           {/* Email View Panel */}
           {selectedThread ? (
-            <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-nexus-surface/30">
+            <div className="nexus-mail-panel flex-1 min-w-0 min-h-0 flex flex-col bg-nexus-surface/30">
               <EmailView
                 thread={selectedThread}
                 onBack={() => setSelectedThread(null)}
