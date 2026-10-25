@@ -256,66 +256,46 @@ export default function ComposeModal({
   return (
     <div className="fixed inset-0 z-[100] w-screen h-[100dvh] sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] animate-fade-in">
       <div className="bg-nexus-surface border border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 bg-nexus-surface-active sm:rounded-t-xl">
-          <span className="flex items-center gap-2 text-sm font-medium">
+        <div className="flex items-center justify-between pl-4 pr-3 py-3 bg-[#141414] sm:rounded-t-xl">
+          <span className="flex items-center gap-2 text-base font-semibold">
             {mode !== "standard" && <Lock size={13} className="text-nexus-primary-light" />}
             {replyTo ? "Répondre" : "Nouveau message"}
           </span>
           <div className="flex items-center gap-1">
-            <div className="relative sm:hidden">
-              <button type="button" aria-label="Options de sécurité" aria-expanded={securityOpen} onClick={() => setSecurityOpen(value => !value)} className="p-2 rounded-lg text-nexus-text hover:bg-nexus-surface-hover">
-                {mode === "standard" ? <Send size={18} /> : mode === "pgp" ? <ShieldCheck size={18} /> : <Lock size={18} />}
-              </button>
-              {securityOpen && (
-                <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-xl border border-nexus-border bg-nexus-surface p-1 shadow-2xl">
-                  {(["standard", "pgp", "confidential"] as const).map(value => (
-                    <button key={value} type="button" onClick={() => { setMode(value); setSecurityOpen(false); }} className={"block w-full rounded-lg px-3 py-2 text-left text-sm " + (mode === value ? "bg-nexus-surface-active text-nexus-text" : "text-nexus-text-muted")}>
-                      {value === "standard" ? "Standard" : value === "pgp" ? "E2EE" : "Confidentiel"}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => setIsMinimized(true)}
-              className="hidden sm:block p-1 rounded hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors"
-            >
-              <Minus size={14} />
-            </button>
             <button
               onClick={onClose}
-              className="p-1 rounded hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors"
+              className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-white transition-colors" aria-label="Fermer"
             >
-              <X size={14} />
+              <X size={22} />
             </button>
           </div>
         </div>
 
-        <div className="border-b border-nexus-border">
-          <div className="flex items-center px-4 py-2 border-b border-nexus-border/50">
+        <div className="px-4 pt-4 pb-2 space-y-2">
+          <div className="flex items-center gap-3 rounded-lg bg-[#1a1a1a] px-3 py-3">
             <span className="text-sm text-nexus-text-dim w-8">À</span>
             <input
               type="email"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-nexus-text outline-none placeholder:text-nexus-text-dim"
+              className="min-w-0 flex-1 bg-transparent text-base sm:text-sm text-nexus-text outline-none placeholder:text-[#a3a3a3]"
               placeholder="destinataire@email.com"
             />
           </div>
-          <div className="flex items-center px-4 py-2">
-            <span className="text-sm text-nexus-text-dim w-8">Obj</span>
+          <div className="flex items-center gap-3 rounded-lg bg-[#1a1a1a] px-3 py-3">
+            <span className="text-sm text-nexus-text-muted w-8">Obj</span>
             <input
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-nexus-text outline-none placeholder:text-nexus-text-dim"
+              className="min-w-0 flex-1 bg-transparent text-base sm:text-sm text-nexus-text outline-none placeholder:text-[#a3a3a3]"
               placeholder="Objet du message"
             />
           </div>
         </div>
 
         {/* Encryption mode selector */}
-        <div className="px-4 py-2.5 border-b border-nexus-border bg-nexus-bg/40">
+        <div className="px-4 sm:py-2.5 bg-transparent sm:bg-nexus-bg/40">
           <div className="hidden sm:flex gap-1 p-1 bg-nexus-bg rounded-xl">
             <ModeButton
               active={mode === "standard"}
@@ -399,7 +379,7 @@ export default function ComposeModal({
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="flex-1 min-h-0 sm:min-h-[160px] px-4 py-3 bg-transparent text-sm text-nexus-text outline-none resize-none placeholder:text-nexus-text-dim"
+          className="flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base sm:text-sm leading-relaxed text-nexus-text outline-none resize-none placeholder:text-[#a3a3a3]"
           placeholder={
             mode === "standard"
               ? "Rédigez votre message..."
@@ -408,28 +388,12 @@ export default function ComposeModal({
         />
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] border-t border-nexus-border">
-          <button
-            onClick={handleSend}
-            disabled={isSending || !to.trim()}
-            className="flex items-center gap-2 px-5 py-2 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-black rounded-xl text-sm font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25"
-          >
-            {isSending ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : mode === "standard" ? (
-              <Send size={14} />
-            ) : (
-              <Lock size={14} />
-            )}
-            {isSending
-              ? mode === "standard"
-                ? "Envoi..."
-                : "Chiffrement..."
-              : mode === "standard"
-                ? "Envoyer"
-                : "Chiffrer & envoyer"}
+        <div className="shrink-0 flex items-center gap-3 px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] bg-[#171717] border-t border-white/5">
+          <button type="button" onClick={handleSend} disabled={isSending || !to.trim()} aria-label={isSending ? "Envoi en cours" : "Envoyer le message"} title="Envoyer"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-nexus-primary-light hover:bg-white/10 disabled:opacity-40 transition-colors">
+            {isSending ? <Loader2 size={23} className="animate-spin" /> : mode === "standard" ? <Send size={23} /> : <Lock size={23} />}
           </button>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-1 items-center justify-end gap-3">
             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={event => {
               const files = Array.from(event.target.files ?? []);
               const next = [...attachments, ...files];
@@ -438,20 +402,20 @@ export default function ComposeModal({
               } else { setAttachments(next); setError(null); }
               event.target.value = "";
             }} />
-            <button type="button" onClick={() => { if (mode !== "standard") { setError("Les pièces jointes ne sont disponibles qu'en mode standard."); return; } fileInputRef.current?.click(); }} title="Ajouter des pièces jointes" className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors">
-              <Paperclip size={16} />
+            <button type="button" onClick={() => { if (mode !== "standard") { setError("Les pièces jointes ne sont disponibles qu'en mode standard."); return; } fileInputRef.current?.click(); }} title="Ajouter des pièces jointes" className="p-2.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
+              <Paperclip size={21} />
             </button>
-            <button className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors">
-              <Smile size={16} />
+            <button className="p-2.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
+              <Smile size={21} />
             </button>
             <button
               onClick={() => {
                 onClose();
                 reset();
               }}
-              className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-red-400 transition-colors"
+              className="p-2.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-red-400 transition-colors"
             >
-              <Trash2 size={16} />
+              <Trash2 size={21} />
             </button>
           </div>
         </div>
