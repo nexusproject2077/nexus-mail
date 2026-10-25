@@ -25,6 +25,8 @@ interface EmailViewProps {
   onBack: () => void;
   onReply: (threadId: string, messageId: string) => void;
   onNeedUnlock: () => void;
+  onTrash?: () => void;
+  trashBusy?: boolean;
 }
 
 export default function EmailView({
@@ -32,6 +34,8 @@ export default function EmailView({
   onBack,
   onReply,
   onNeedUnlock,
+  onTrash,
+  trashBusy = false,
 }: EmailViewProps) {
   const lastMsg = thread.messages[thread.messages.length - 1];
 
@@ -51,7 +55,7 @@ export default function EmailView({
           <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
             <Archive size={18} />
           </button>
-          <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
+          <button onClick={onTrash} disabled={!onTrash || trashBusy} title="Déplacer vers la corbeille" aria-label="Déplacer vers la corbeille" className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40">
             <Trash2 size={18} />
           </button>
           <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
