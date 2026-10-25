@@ -61,11 +61,11 @@ export default function Sidebar({
   const userLabels = labels;
 
   return (
-    <aside className="w-[min(82vw,280px)] lg:w-64 h-full min-h-0 flex flex-col bg-nexus-surface border-r border-nexus-border">
+    <aside className="w-[min(82vw,320px)] lg:w-64 h-full min-h-0 flex flex-col bg-nexus-surface border-r border-nexus-border">
       <div className="p-4">
         <button
           onClick={onCompose}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-nexus-primary hover:bg-nexus-primary-dark text-white rounded-2xl font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25 active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-nexus-primary hover:bg-nexus-primary-dark text-black rounded-2xl font-medium transition-all hover:shadow-lg hover:shadow-nexus-primary/25 active:scale-[0.98]"
         >
           <Plus size={20} />
           Nouveau message
@@ -148,7 +148,7 @@ export default function Sidebar({
 
       <div className="p-4 border-t border-nexus-border">
         <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-nexus-primary flex items-center justify-center text-xs font-bold text-white">
+          <div className="w-8 h-8 rounded-full bg-nexus-primary flex items-center justify-center text-xs font-bold text-black">
             MK
           </div>
           <div className="flex-1 min-w-0">
