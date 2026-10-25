@@ -34,5 +34,9 @@ googleOAuthRouter.get("/google/callback", requireAuth, async (req, res) => {
     if (!profileResponse.ok || !profile.email) throw new Error("No Google email returned");
     insertGoogleAccount({ email: profile.email, label: profile.name || "Gmail", refreshToken: tokens.refresh_token }, record.owner_id);
     finish("connected");
-  } catch { finish("failed"); }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Unknown OAuth callback error";
+    console.error("[Google OAuth callback] Connection failed:", reason);
+    finish("failed");
+  }
 });
