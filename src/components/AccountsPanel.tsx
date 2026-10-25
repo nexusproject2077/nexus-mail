@@ -202,7 +202,7 @@ export default function AccountsPanel({
               <p className="text-xs text-nexus-text">Connexion requise pour accéder aux comptes.</p>
               <Input label="Identifiant" value={username} onChange={setUsername} />
               <Input label="Mot de passe" type="password" value={password} onChange={setPassword} />
-              <button onClick={handleLogin} disabled={busy || !username || !password} className="w-full py-2 bg-nexus-primary disabled:opacity-40 text-white rounded-lg text-sm">
+              <button onClick={handleLogin} disabled={busy || !username || !password} className="w-full py-2 bg-nexus-primary disabled:opacity-40 text-black rounded-lg text-sm">
                 {busy ? "Connexion…" : "Se connecter"}
               </button>
             </div>
@@ -258,7 +258,7 @@ export default function AccountsPanel({
                   aria-pressed={isActive}
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-nexus-primary"
                 >
-                  <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center ${isActive ? "bg-nexus-primary text-white" : "bg-nexus-primary/15 text-nexus-primary-light"}`}>
+                  <div className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center ${isActive ? "bg-nexus-primary text-black" : "bg-nexus-primary/15 text-nexus-primary-light"}`}>
                     {isActive ? <Check size={16} /> : <Mail size={15} />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -267,7 +267,7 @@ export default function AccountsPanel({
                         {a.label}
                       </span>
                       {isActive && (
-                        <span className="shrink-0 rounded-full bg-nexus-primary px-2 py-0.5 text-[10px] font-semibold text-white">
+                        <span className="shrink-0 rounded-full bg-nexus-primary px-2 py-0.5 text-[10px] font-semibold text-black">
                           Actif
                         </span>
                       )}
@@ -353,7 +353,7 @@ export default function AccountsPanel({
                 <button
                   onClick={handleAdd}
                   disabled={busy || !form.email || !form.password || !form.imapHost}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-40 text-black rounded-xl text-sm font-medium transition-colors"
                 >
                   {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                   {busy ? "Connexion…" : "Connecter"}
