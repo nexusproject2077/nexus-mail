@@ -15,6 +15,7 @@ export interface Email {
   isStarred: boolean;
   isImportant: boolean;
   hasAttachment?: boolean;
+  attachments?: Array<{ id: string; filename: string; contentType: string; size: number }>;
   /** Present when `body` holds a Nexus encrypted envelope. */
   encryption?: "pgp" | "confidential";
 }
