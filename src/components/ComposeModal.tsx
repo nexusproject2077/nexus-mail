@@ -21,7 +21,7 @@ import {
   ImagePlus,
   Link2,
 } from "lucide-react";
-import { sendViaAccount } from "@/lib/api";
+import { sendViaAccount, downloadAttachment } from "@/lib/api";
 import { encryptToKey, encryptConfidential } from "@/lib/crypto";
 import { useVault, addVaultMessage } from "@/lib/vault";
 import type { Thread } from "@/types/email";
@@ -30,7 +30,7 @@ interface ComposeModalProps {
   isOpen: boolean;
   onClose: () => void;
   replyTo?: { subject: string; to: string; messageId?: string };
-  initialDraft?: { to: string; subject: string; body: string };
+  initialDraft?: { to: string; subject: string; body: string; html?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } };
   onNeedUnlock: () => void;
   activeAccountId?: string | null;
   onSent?: () => void;
@@ -66,6 +66,7 @@ export default function ComposeModal({
   const [isMinimized, setIsMinimized] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -82,6 +83,24 @@ export default function ComposeModal({
     setTo(initialDraft.to);
     setSubject(initialDraft.subject);
     setBody(initialDraft.body);
+    setHtmlBody(initialDraft.html ?? "");
+    setAttachments([]);
+    const source = initialDraft.forwardAttachments;
+    if (!source?.items.length) {
+      setAttachmentsLoading(false);
+      requestAnimationFrame(() => { bodyInputRef.current?.focus(); bodyInputRef.current?.setSelectionRange(0, 0); });
+      return;
+    }
+    let cancelled = false;
+    setAttachmentsLoading(true);
+    Promise.all(source.items.map(async item => {
+      const blob = await downloadAttachment(source.accountId, source.uid, item.id, source.mailbox);
+      return new File([blob], item.filename, { type: item.contentType || blob.type });
+    })).then(files => { if (!cancelled) setAttachments(files); })
+      .catch(() => { if (!cancelled) setError("Impossible de récupérer les pièces jointes d'origine. Le transfert est bloqué pour éviter un envoi incomplet."); })
+      .finally(() => { if (!cancelled) setAttachmentsLoading(false); });
+    requestAnimationFrame(() => { bodyInputRef.current?.focus(); bodyInputRef.current?.setSelectionRange(0, 0); });
+    return () => { cancelled = true; };
   }, [isOpen, initialDraft]);
 
   const draftKey = activeAccountId ? `nexus-mail:compose-draft:${activeAccountId}` : null;
@@ -155,7 +174,11 @@ export default function ComposeModal({
   };
 
   const handleSend = async () => {
-    if (!to.trim()) return;
+    if (!to.trim() || attachmentsLoading) return;
+    if (initialDraft?.forwardAttachments?.items.length && attachments.length !== initialDraft.forwardAttachments.items.length) {
+      setError("Les pièces jointes du message original ne sont pas toutes disponibles.");
+      return;
+    }
     setError(null);
 
     // Send a real HTML email through the configured SMTP account.
@@ -442,6 +465,7 @@ export default function ComposeModal({
             </div>
           )}
 
+          {attachmentsLoading && <div className="mt-2 text-xs text-nexus-text-muted">Chargement des pièces jointes du message original…</div>}
           {error && <div className="mt-2 text-[11px] text-red-400">{error}</div>}
         </div>
 
