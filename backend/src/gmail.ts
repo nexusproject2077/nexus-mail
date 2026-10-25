@@ -116,9 +116,27 @@ export async function fetchGmailDetail(account: Account, id: string): Promise<Me
 export async function sendGmailMessage(account: Account, message: OutgoingMessage) {
   // Nodemailer generates RFC-compliant multipart/alternative and multipart/mixed
   // MIME, including UTF-8 transfer encoding and Base64 file attachments.
+  // Gmail users.getProfile only returns emailAddress, messagesTotal and threadsTotal.
+  // Google OpenID userinfo (profile scope) supplies the account's display name.
+  let displayName = account.label?.trim() || "";
+  try {
+    const token = await accessToken(account);
+    const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.ok) {
+      const profile = await response.json() as { name?: string; email?: string };
+      if (profile.name?.trim() && profile.email?.toLowerCase() === account.email.toLowerCase()) {
+        displayName = profile.name.trim();
+      }
+    }
+  } catch {
+    // Existing OAuth connections may not have the profile scope yet.
+    // Fall back to the display name saved at connection time.
+  }
   const transport = nodemailer.createTransport({ streamTransport: true, buffer: true });
   const generated = await transport.sendMail({
-    from: { name: account.label, address: account.email },
+    from: { name: displayName, address: account.email },
     to: message.to,
     subject: message.subject,
     text: message.text,
