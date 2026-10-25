@@ -26,8 +26,11 @@ export function encryptSecret(plain: string): string {
 }
 
 export function decryptSecret(sealed: string): string {
-  const [ivB64, tagB64, dataB64] = sealed.split(".");
-  if (!ivB64 || !tagB64 || !dataB64) {
+  const parts = sealed.split(".");
+  const [ivB64, tagB64, dataB64] = parts;
+  // AES-GCM produces an empty ciphertext for an empty plaintext (OAuth accounts
+  // do not use an IMAP password). The authentication tag still protects it.
+  if (parts.length !== 3 || !ivB64 || !tagB64 || dataB64 === undefined) {
     throw new Error("Malformed encrypted secret");
   }
   const decipher = createDecipheriv(
