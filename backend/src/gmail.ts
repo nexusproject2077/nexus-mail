@@ -242,6 +242,11 @@ export async function searchGmail(account: Account, query: string, limit: number
   return messages.map(summary);
 }
 
+export async function fetchGmailAttachmentMetadata(account: Account, id: string): Promise<Array<{ id: string; filename: string; contentType: string; size: number }>> {
+  const message = await gmail(account, `/messages/${encodeURIComponent(id)}?format=full`);
+  return gmailAttachments(message.payload);
+}
+
 export async function fetchGmailAttachment(account: Account, id: string, attachmentId: string): Promise<Buffer> {
   const result = await gmail(account, `/messages/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`);
   return Buffer.from(String(result.data ?? ""), "base64url");
