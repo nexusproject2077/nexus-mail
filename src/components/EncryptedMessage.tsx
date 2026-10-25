@@ -161,7 +161,7 @@ export default function EncryptedMessage({
           <button
             onClick={handleDecrypt}
             disabled={busy || !passcode}
-            className="flex items-center gap-1.5 px-4 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 px-4 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-black rounded-xl text-sm font-medium transition-colors"
           >
             {busy ? <Loader2 size={15} className="animate-spin" /> : <Unlock size={15} />}
             Ouvrir
@@ -170,14 +170,14 @@ export default function EncryptedMessage({
       ) : !identity ? (
         <button
           onClick={onNeedUnlock}
-          className="flex items-center gap-2 px-4 py-2 bg-nexus-primary hover:bg-nexus-primary-dark text-white rounded-xl text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-nexus-primary hover:bg-nexus-primary-dark text-black rounded-xl text-sm font-medium transition-colors"
         >
           <KeyRound size={15} /> Créer une identité pour déchiffrer
         </button>
       ) : !isUnlocked ? (
         <button
           onClick={onNeedUnlock}
-          className="flex items-center gap-2 px-4 py-2 bg-nexus-primary hover:bg-nexus-primary-dark text-white rounded-xl text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-nexus-primary hover:bg-nexus-primary-dark text-black rounded-xl text-sm font-medium transition-colors"
         >
           <Unlock size={15} /> Déverrouiller mon identité
         </button>
@@ -185,7 +185,7 @@ export default function EncryptedMessage({
         <button
           onClick={handleDecrypt}
           disabled={busy}
-          className="flex items-center gap-2 px-4 py-2 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-nexus-primary hover:bg-nexus-primary-dark disabled:opacity-50 text-black rounded-xl text-sm font-medium transition-colors"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
           Déchiffrer le message
