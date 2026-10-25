@@ -195,6 +195,7 @@ function SwipeEmailRow({ thread, onTrash, children }: {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
   const gesture = useRef<{ x: number; y: number; initial: number; horizontal: boolean | null } | null>(null);
   const offsetRef = useRef(0);
   const suppressClick = useRef(false);
@@ -205,23 +206,30 @@ function SwipeEmailRow({ thread, onTrash, children }: {
     if (!onTrash || busy) return;
     setBusy(true);
     setDragging(false);
-    moveTo(-window.innerWidth);
+    moveTo(-(rowRef.current?.offsetWidth ?? window.innerWidth));
+    // The provider request starts in parallel with the exit animation.
     const deletion = onTrash(thread);
-    await new Promise<void>(resolve => window.setTimeout(resolve, 160));
+    await new Promise<void>(resolve => window.setTimeout(resolve, 250));
     setExiting(true);
     try { await deletion; }
     catch { setExiting(false); reset(); }
     finally { setBusy(false); }
   };
   return (
-    <div className="relative overflow-hidden select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 250ms ease-out, opacity 250ms ease-out" : "none" }}>
+    <div ref={rowRef} className="relative overflow-hidden select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 250ms ease-out, opacity 250ms ease-out" : "none" }}>
       {onTrash && <button type="button" disabled={busy} aria-label="Mettre à la corbeille" onClick={() => void remove()} className="absolute inset-y-0 right-0 w-28 bg-[#db766d] flex flex-col gap-1 items-center justify-center text-white">
         <Trash2 size={23} aria-hidden="true" />
         <span className="text-xs font-medium">Corbeille</span>
       </button>}
       <div
-        className="nexus-mail-row relative bg-nexus-bg"
-        style={{ touchAction: "pan-y", transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 250ms ease-out" }}
+        className="nexus-mail-row relative bg-nexus-bg will-change-transform"
+        style={{
+          touchAction: "pan-y",
+          transform: `translate3d(${offset}px,0,0)`,
+          transition: dragging ? "none" : offset < 0 && offset > -revealWidth
+            ? "transform 350ms cubic-bezier(0.2, 1.25, 0.3, 1)"
+            : "transform 250ms ease-out",
+        }}
         onTouchStart={event => {
           if (!onTrash || busy || event.touches.length !== 1) return;
           const touch = event.touches[0];
@@ -233,11 +241,11 @@ function SwipeEmailRow({ thread, onTrash, children }: {
           const touch = event.touches[0];
           const dx = touch.clientX - g.x;
           const dy = touch.clientY - g.y;
-          if (g.horizontal === null && Math.hypot(dx, dy) > 7) g.horizontal = Math.abs(dx) > Math.abs(dy) * 1.15;
+          if (g.horizontal === null && Math.hypot(dx, dy) > 8) g.horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
           if (!g.horizontal) return;
           suppressClick.current = true;
           setDragging(true);
-          moveTo(Math.max(-Math.min(260, window.innerWidth * .75), Math.min(0, g.initial + dx)));
+          moveTo(Math.max(-(rowRef.current?.offsetWidth ?? window.innerWidth), Math.min(0, g.initial + dx)));
         }}
         onTouchEnd={() => {
           const g = gesture.current;
@@ -245,11 +253,16 @@ function SwipeEmailRow({ thread, onTrash, children }: {
           gesture.current = null;
           setDragging(false);
           if (!g.horizontal) return;
-          const dx = offsetRef.current;
-          if (dx <= -205) { void remove(); return; }
-          moveTo(dx < -45 ? -revealWidth : 0);
+          const distance = Math.abs(offsetRef.current);
+          const width = rowRef.current?.offsetWidth ?? window.innerWidth;
+          if (distance > width / 2) { void remove(); return; }
+          moveTo(distance > revealWidth / 2 ? -revealWidth : 0);
         }}
-        onTouchCancel={() => { gesture.current = null; setDragging(false); moveTo(offsetRef.current <= -45 ? -revealWidth : 0); }}
+        onTouchCancel={() => {
+          gesture.current = null;
+          setDragging(false);
+          moveTo(Math.abs(offsetRef.current) > revealWidth / 2 ? -revealWidth : 0);
+        }}
         onClickCapture={event => {
           if (suppressClick.current || offsetRef.current < 0) {
             event.preventDefault();
