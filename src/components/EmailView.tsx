@@ -27,7 +27,23 @@ function prepareEmailHtml(html: string): string {
   const withBase = /<head(?:\\s[^>]*)?>/i.test(html)
     ? html.replace(/<head(\\s[^>]*)?>/i, (head) => head + base)
     : '<head>' + base + '</head>' + html;
-  return withBase.replace(/<a\\b([^>]*)>/gi, (_match, attrs: string) => {
+  const buttonLinks = withBase.replace(/<button\\b([^>]*)>([\\s\\S]*?)<\\/button>/gi, (original, attrs: string, body: string) => {
+    // Support common email buttons using data-url or simple location/open handlers.
+    // Never execute the original JavaScript; only extract an HTTPS destination.
+    const dataUrl = attrs.match(/\\bdata-(?:url|href|link)\\s*=\\s*(["'])(.*?)\\1/i)?.[2];
+    const handler = attrs.match(/\\bonclick\\s*=\\s*(["'])(.*?)\\1/i)?.[2];
+    const scriptedUrl = handler?.match(/(?:window\\.open\\s*\\(|(?:window\\.|document\\.)?location(?:\\.href)?\\s*=\\s*)(["'])(https:\\/\\/[^"'\\s<>]+)\\1/i)?.[2];
+    const candidate = dataUrl ?? scriptedUrl;
+    if (!candidate) return original;
+    let safe: string;
+    try {
+      const url = new URL(candidate.replace(/&amp;/gi, "&"));
+      if (url.protocol !== "https:") return original;
+      safe = url.href.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    } catch { return original; }
+    return '<a href="' + safe + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none">' + body + '</a>';
+  });
+  return buttonLinks.replace(/<a\\b([^>]*)>/gi, (_match, attrs: string) => {
     const clean = attrs
       .replace(/\\s+target\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)/gi, "")
       .replace(/\\s+rel\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)/gi, "");
