@@ -36,6 +36,7 @@ const folderLabels: Record<string, string> = {
 };
 
 interface SidebarProps {
+  compact?: boolean;
   activeFolder: Folder;
   onFolderChange: (folder: Folder) => void;
   onOpenSecurity: () => void;
@@ -49,6 +50,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
+  compact = false,
   activeFolder,
   onFolderChange,
   onOpenSecurity,
@@ -66,7 +68,7 @@ export default function Sidebar({
   return (
     <aside className="w-full h-full min-h-0 flex flex-col bg-nexus-surface lg:border-r lg:border-nexus-border">
       <div
-        className="flex shrink-0 items-center border-b border-nexus-border/50"
+        className={`flex shrink-0 items-center border-b border-nexus-border/50 ${compact ? "lg:hidden" : ""}`}
         style={{ padding: "calc(env(safe-area-inset-top) + 16px) 16px 16px 24px" }}
       >
         <div className="flex items-center gap-0">
@@ -93,7 +95,8 @@ export default function Sidebar({
           <button
             key={folder}
             onClick={() => onFolderChange(folder)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+            title={folderLabels[folder]}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${compact ? "justify-center" : ""} ${
               activeFolder === folder
                 ? "bg-nexus-primary/15 text-nexus-primary-light font-medium"
                 : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"
@@ -108,13 +111,13 @@ export default function Sidebar({
             >
               {folderIcons[folder]}
             </span>
-            <span className="flex-1 text-left">{folderLabels[folder]}</span>
-            {folder === "inbox" && unreadCount > 0 && (
+            {!compact && <span className="flex-1 text-left">{folderLabels[folder]}</span>}
+            {!compact && folder === "inbox" && unreadCount > 0 && (
               <span className="text-xs font-semibold bg-nexus-primary/20 text-nexus-primary-light px-2 py-0.5 rounded-full">
                 {unreadCount}
               </span>
             )}
-            {folder === "vault" && vaultCount > 0 && (
+            {!compact && folder === "vault" && vaultCount > 0 && (
               <span className="text-xs font-semibold bg-nexus-primary/20 text-nexus-primary-light px-2 py-0.5 rounded-full">
                 {vaultCount}
               </span>
@@ -122,14 +125,14 @@ export default function Sidebar({
           </button>
         ))}
 
-        <div className="pt-4 pb-2 px-3">
+        {!compact && <div className="pt-4 pb-2 px-3">
           <div className="flex items-center justify-between text-xs text-nexus-text-dim uppercase tracking-wider font-medium">
             <span>Labels</span>
             <ChevronDown size={14} />
           </div>
-        </div>
+        </div>}
 
-        {userLabels.length === 0 && (
+        {userLabels.length === 0 && !compact && (
           <p className="px-3 py-2 text-xs text-nexus-text-dim">Aucun libellé personnalisé</p>
         )}
         {userLabels.map((label) => (
@@ -138,14 +141,14 @@ export default function Sidebar({
             onClick={() => onSelectLabel({ accountId: label.accountId, id: label.id, name: label.name })}
             aria-pressed={selectedLabel?.accountId === label.accountId && selectedLabel?.id === label.id}
             title={`${label.name} — ${label.accountEmail}`}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${selectedLabel?.accountId === label.accountId && selectedLabel?.id === label.id ? "bg-nexus-primary/15 text-nexus-primary-light font-medium" : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"}`}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${compact ? "justify-center" : ""} ${selectedLabel?.accountId === label.accountId && selectedLabel?.id === label.id ? "bg-nexus-primary/15 text-nexus-primary-light font-medium" : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"}`}
           >
             <span
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
               style={{ backgroundColor: label.color || "#64748b" }}
             />
-            <span className="flex-1 text-left truncate">{label.name}</span>
-            {activeAccountId === "all" && <span className="max-w-20 truncate text-[10px] text-nexus-text-dim">{label.accountEmail.split("@")[0]}</span>}
+            {!compact && <span className="flex-1 text-left truncate">{label.name}</span>}
+            {!compact && activeAccountId === "all" && <span className="max-w-20 truncate text-[10px] text-nexus-text-dim">{label.accountEmail.split("@")[0]}</span>}
           </button>
         ))}
       </nav>
@@ -153,23 +156,23 @@ export default function Sidebar({
       <div className="px-2 pb-2">
         <button
           onClick={onOpenSecurity}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-all"
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-nexus-text-muted ${compact ? "justify-center" : ""}`} hover:bg-nexus-surface-hover hover:text-nexus-text transition-all"
         >
           <span className="text-nexus-primary-light">
             <ShieldCheck size={18} />
           </span>
-          <span className="flex-1 text-left">Sécurité &amp; clés</span>
+          {!compact && <span className="flex-1 text-left">Sécurité &amp; clés</span>}
         </button>
       </div>
 
       <div className="px-2 pb-2">
-        <button type="button" onClick={onOpenSettings} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-colors">
+        <button type="button" onClick={onOpenSettings} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-nexus-text-muted ${compact ? "justify-center" : ""}`} hover:bg-nexus-surface-hover hover:text-nexus-text transition-colors">
           <Settings size={18} aria-hidden="true" />
-          <span className="flex-1 text-left">Paramètres</span>
+          {!compact && <span className="flex-1 text-left">Paramètres</span>}
         </button>
       </div>
 
-      <div className="p-4 border-t border-nexus-border">
+      {!compact && <div className="p-4 border-t border-nexus-border">
         <div className="flex items-center gap-3 px-2">
           <div className="w-8 h-8 rounded-full bg-nexus-primary flex items-center justify-center text-xs font-bold text-black">
             MK
@@ -181,7 +184,7 @@ export default function Sidebar({
             </div>
           </div>
         </div>
-      </div>
+      </div>}
     </aside>
   );
 }
