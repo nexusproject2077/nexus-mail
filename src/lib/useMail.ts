@@ -147,7 +147,7 @@ export function useMail(): UseMail {
       // technique de l'API, pas une limite de messages visible par l'utilisateur.
       const allMessages = new Map<string, Thread>();
       const next: Record<string, string | null> = {};
-      const failures = new Set<string>();
+      const failures = new Map<string, string>();
       let pending = ids.map(id => ({ id, cursor: null as string | null }));
       const seenCursors = new Set<string>();
       setLoadingMore(true);
@@ -161,7 +161,7 @@ export function useMail(): UseMail {
             const result = batch[index];
             const id = pending[index].id;
             if (result.status !== "fulfilled") {
-              failures.add(id);
+              failures.set(id, result.reason instanceof Error ? result.reason.message : "Erreur de connexion");
               next[id] = null;
               continue;
             }
@@ -183,7 +183,7 @@ export function useMail(): UseMail {
           setLoading(false);
           pending = upcoming;
         }
-        if (failures.size) setError(`Impossible de synchroniser entièrement ${failures.size} compte(s). Réessaie.`);
+        if (failures.size) setError(`Synchronisation incomplète : ${[...failures.entries()].map(([id, reason]) => `${accountsRef.current.find(a => a.id === id)?.email ?? id} — ${reason}`).join("; ")}`);
         else setError(null);
       } finally {
         if (requestId.current === currentRequest) setLoadingMore(false);
