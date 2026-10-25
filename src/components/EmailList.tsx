@@ -16,6 +16,7 @@ interface EmailListProps {
   loadingMore?: boolean;
   loading?: boolean;
   onRefresh?: () => Promise<void>;
+  onScrollDirection?: (direction: "up" | "down") => void;
 }
 
 export default function EmailList({
@@ -29,8 +30,12 @@ export default function EmailList({
   loadingMore = false,
   loading = false,
   onRefresh,
+  onScrollDirection,
 }: EmailListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastScrollTop = useRef(0);
+  const accumulatedScroll = useRef(0);
+  const lastDirection = useRef<"up" | "down" | null>(null);
   const touchStart = useRef<number | null>(null);
   const distance = useRef(0);
   const busy = useRef(false);
@@ -82,7 +87,25 @@ export default function EmailList({
   }
 
   return (
-    <div ref={scrollRef} className="nexus-mail-list flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-y-contain" onTouchStart={event => { if (onRefresh && !busy.current && event.touches.length === 1 && (scrollRef.current?.scrollTop ?? 1) <= 0) touchStart.current = event.touches[0].clientY; }} onTouchMove={event => { if (touchStart.current === null || busy.current) return; if ((scrollRef.current?.scrollTop ?? 0) > 0) { touchStart.current = null; setPull(0); return; } distance.current = Math.min(110, Math.max(0, (event.touches[0].clientY - touchStart.current) * 0.45)); setPull(distance.current); }} onTouchCancel={() => { touchStart.current = null; distance.current = 0; if (!busy.current) setPull(0); }} onScroll={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 650) requestNext(); }} onTouchEnd={event => { finishPull(); const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 900) requestNext(); }}>
+    <div ref={scrollRef} className="nexus-mail-list flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-y-contain" onTouchStart={event => { if (onRefresh && !busy.current && event.touches.length === 1 && (scrollRef.current?.scrollTop ?? 1) <= 0) touchStart.current = event.touches[0].clientY; }} onTouchMove={event => { if (touchStart.current === null || busy.current) return; if ((scrollRef.current?.scrollTop ?? 0) > 0) { touchStart.current = null; setPull(0); return; } distance.current = Math.min(110, Math.max(0, (event.touches[0].clientY - touchStart.current) * 0.45)); setPull(distance.current); }} onTouchCancel={() => { touchStart.current = null; distance.current = 0; if (!busy.current) setPull(0); }} onScroll={event => {
+        const el = event.currentTarget;
+        const top = Math.max(0, el.scrollTop);
+        const delta = top - lastScrollTop.current;
+        lastScrollTop.current = top;
+        if (top <= 8) {
+          accumulatedScroll.current = 0;
+          if (lastDirection.current !== "up") { lastDirection.current = "up"; onScrollDirection?.("up"); }
+        } else if (Math.abs(delta) > 0.5) {
+          const direction = delta > 0 ? "down" : "up";
+          accumulatedScroll.current = Math.sign(accumulatedScroll.current) === Math.sign(delta) ? accumulatedScroll.current + delta : delta;
+          if (Math.abs(accumulatedScroll.current) >= 12 && lastDirection.current !== direction) {
+            lastDirection.current = direction;
+            onScrollDirection?.(direction);
+            accumulatedScroll.current = 0;
+          }
+        }
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 650) requestNext();
+      }} onTouchEnd={event => { finishPull(); const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 900) requestNext(); }}>
       <div aria-live="polite" className="flex items-center justify-center overflow-hidden transition-[height] duration-200" style={{ height: pull }}>
         <Loader2 size={25} className={refreshing ? "animate-spin text-nexus-text-muted" : "text-nexus-text-muted"} style={refreshing ? undefined : { transform: `rotate(${pull * 5}deg)` }} />
         <span className="sr-only">{refreshing ? "Synchronisation des e-mails" : "Tirer pour actualiser"}</span>
