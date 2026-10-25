@@ -84,6 +84,7 @@ export interface MessageSummary {
 export interface MessageDetail extends MessageSummary {
   text: string;
   html: string | null;
+  attachments?: Array<{ id: string; filename: string; contentType: string; size: number }>;
 }
 
 export interface NewAccount {
@@ -175,4 +176,18 @@ export interface AccountLabel {
 export function getAccountLabels(accountId: string) {
   return req<{ labels: AccountLabel[] }>(`/api/accounts/${encodeURIComponent(accountId)}/labels`)
     .then((result) => result.labels);
+}
+
+export type MessageAction = "read" | "unread" | "star" | "unstar" | "archive";
+export function performMessageAction(accountId: string, uid: string, mailbox: string, action: MessageAction) {
+  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/action?${new URLSearchParams({ mailbox })}`, { method: "POST", body: JSON.stringify({ action }) });
+}
+export function searchAccountMessages(accountId: string, query: string) {
+  return req<{ messages: MessageSummary[] }>(`/api/accounts/${encodeURIComponent(accountId)}/search?${new URLSearchParams({ q: query })}`).then(r => r.messages);
+}
+export async function downloadAttachment(accountId: string, uid: string, attachmentId: string, mailbox = "INBOX"): Promise<Blob> {
+  if (!session && !(await restoreSession())) throw new Error("Connexion requise.");
+  const res = await fetch(`${BASE}/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/attachments/${encodeURIComponent(attachmentId)}?${new URLSearchParams({ mailbox })}`, { credentials: "include" });
+  if (!res.ok) throw new Error(`Téléchargement impossible (HTTP ${res.status})`);
+  return res.blob();
 }
