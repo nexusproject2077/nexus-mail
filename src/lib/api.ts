@@ -79,6 +79,7 @@ export interface MessageSummary {
   snippet: string;
   seen: boolean;
   flagged: boolean;
+  labelIds: string[];
 }
 
 export interface MessageDetail extends MessageSummary {
@@ -142,9 +143,10 @@ export interface MessagePage {
   nextPage?: number | null;
 }
 
-export async function getMessages(accountId: string, mailbox = "INBOX", limit = 50, cursor?: string): Promise<MessagePage> {
+export async function getMessages(accountId: string, mailbox = "INBOX", limit = 50, cursor?: string, category?: string): Promise<MessagePage> {
   const q = new URLSearchParams({ mailbox, pageSize: String(limit) });
   if (cursor) q.set("cursor", cursor);
+  if (category) q.set("category", category);
   const result = await req<MessagePage | MessageSummary[] | { messages: MessageSummary[]; nextCursor?: string | null; nextPageToken?: string | null; nextPage?: number | null }>(`/api/accounts/${encodeURIComponent(accountId)}/messages?${q}`);
   // Older deployed backends returned a bare array; never blank the inbox
   // while the paginated backend is being rolled out.
