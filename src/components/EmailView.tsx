@@ -9,6 +9,8 @@ import {
   Archive,
   MoreHorizontal,
   Tag,
+  Paperclip,
+  Download,
 } from "lucide-react";
 import { Thread } from "@/types/email";
 import {
@@ -17,6 +19,8 @@ import {
   getAvatarColor,
   getLabelInfo,
 } from "@/lib/utils";
+import { downloadAttachment } from "@/lib/api";
+import { parseLiveId } from "@/lib/useMail";
 import { isEncryptedBody } from "@/lib/crypto";
 import EncryptedMessage from "./EncryptedMessage";
 
@@ -58,6 +62,7 @@ interface EmailViewProps {
   onNeedUnlock: () => void;
   onTrash?: () => void;
   trashBusy?: boolean;
+  onAction?: (action: "read" | "unread" | "star" | "unstar" | "archive") => void;
 }
 
 export default function EmailView({
@@ -67,6 +72,7 @@ export default function EmailView({
   onNeedUnlock,
   onTrash,
   trashBusy = false,
+  onAction,
 }: EmailViewProps) {
   const lastMsg = thread.messages[thread.messages.length - 1];
 
@@ -83,13 +89,13 @@ export default function EmailView({
           {thread.subject}
         </h2>
         <div className="flex shrink-0 items-center gap-0 sm:gap-1">
-          <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
+          <button onClick={() => onAction?.("archive")} disabled={!onAction} title="Archiver" className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40">
             <Archive size={18} />
           </button>
           <button onClick={onTrash} disabled={!onTrash || trashBusy} title="Déplacer vers la corbeille" aria-label="Déplacer vers la corbeille" className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40">
             <Trash2 size={18} />
           </button>
-          <button className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
+          <button onClick={() => onAction?.(thread.isUnread ? "read" : "unread")} disabled={!onAction} title={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40">
             <MoreHorizontal size={18} />
           </button>
         </div>
@@ -140,11 +146,33 @@ export default function EmailView({
                     {formatFullDate(msg.date)}
                   </div>
                 </div>
-                <button className="p-1.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-yellow-400 transition-colors">
-                  <Star size={16} />
+                <button onClick={() => onAction?.(thread.isStarred ? "unstar" : "star")} disabled={!onAction} title={thread.isStarred ? "Retirer des favoris" : "Ajouter aux favoris"} className="p-1.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-yellow-400 transition-colors disabled:opacity-40">
+                  <Star size={16} fill={thread.isStarred ? "currentColor" : "none"} />
                 </button>
               </div>
 
+              {!!msg.attachments?.length && (
+                <div className="pl-0 sm:pl-14 mb-4 flex flex-wrap gap-2">
+                  {msg.attachments.map(attachment => (
+                    <button key={attachment.id} type="button" className="flex items-center gap-2 rounded-lg border border-nexus-border px-3 py-2 text-xs hover:bg-nexus-surface-hover" onClick={async () => {
+                      const parsed = parseLiveId(thread.id);
+                      if (!parsed) return;
+                      try {
+                        const blob = await downloadAttachment(parsed.accountId, parsed.uid, attachment.id, thread.mailbox ?? "INBOX");
+                        const url = URL.createObjectURL(blob);
+                        const anchor = document.createElement("a");
+                        anchor.href = url; anchor.download = attachment.filename; anchor.click();
+                        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+                      } catch (error) { window.alert((error as Error).message); }
+                    }}>
+                      <Paperclip size={14} />
+                      <span className="max-w-44 truncate">{attachment.filename}</span>
+                      <span className="text-nexus-text-dim">{Math.ceil(attachment.size / 1024)} Ko</span>
+                      <Download size={14} />
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="pl-0 sm:pl-14 min-w-0 break-words">
                 {msg.encryption || isEncryptedBody(msg.body) ? (
                   <EncryptedMessage
