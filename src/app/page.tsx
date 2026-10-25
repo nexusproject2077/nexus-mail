@@ -490,11 +490,15 @@ export default function NexusMail() {
           type="button"
           onClick={handleCompose}
           aria-label="Nouveau message"
-          className={`fixed bottom-6 right-6 z-40 flex h-14 items-center justify-center overflow-hidden rounded-full bg-white text-black shadow-lg transition-[width,padding] duration-300 ease-in-out motion-reduce:transition-none active:scale-[0.98] ${composeFabCompact ? "w-14 px-0" : "w-[190px] px-5"}`}
+          className={`fixed bottom-6 right-6 z-40 flex h-14 flex-row items-center justify-center gap-2 overflow-hidden rounded-full bg-white text-black shadow-lg transition-[width,padding,gap] duration-300 ease-in-out motion-reduce:transition-none active:scale-[0.98] ${composeFabCompact ? "w-14 gap-0 p-0" : "w-[210px] min-w-[150px] px-5"}`}
           style={{ bottom: "max(24px, env(safe-area-inset-bottom))" }}
         >
           <Pencil size={21} strokeWidth={2} className="shrink-0" aria-hidden="true" />
-          <span aria-hidden={composeFabCompact} className={`whitespace-nowrap overflow-hidden text-sm font-semibold transition-[max-width,opacity,margin] duration-300 ease-in-out motion-reduce:transition-none ${composeFabCompact ? "ml-0 max-w-0 opacity-0" : "ml-3 max-w-36 opacity-100"}`}>
+          <span
+            aria-hidden={composeFabCompact}
+            className={`block shrink-0 whitespace-nowrap text-sm font-semibold leading-none transition-[opacity,max-width] duration-300 ease-in-out motion-reduce:transition-none ${composeFabCompact ? "max-w-0 opacity-0" : "max-w-[160px] opacity-100"}`}
+            style={{ whiteSpace: "nowrap" }}
+          >
             Nouveau message
           </span>
         </button>
