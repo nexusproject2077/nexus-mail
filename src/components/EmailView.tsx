@@ -71,37 +71,32 @@ function flashSummary(input: string) {
     .replace(/\\n/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  // Keep numeric dates together: a dot in 24.10 must not split the sentence.
-  const sentences = clean
-    .split(/(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÀ-ÖØ-Þ])/u)
-    .map(s => s.trim())
-    .filter(Boolean);
-  const actionPattern = /\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer)\b/i;
-  const numericDate = /\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/;
-  const namedDate = /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|avant le|au plus tard|\d{1,2}\s?h(?:\d{2})?)\b/i;
-  const temporalContext = /\b(dès maintenant|cette semaine|du\s+.+?\s+au\s+.+?|jusqu['’]au|jusqu['’]à|à partir de|ce week-end|aujourd['’]hui|demain)\b/i;
+  const withoutUrls = clean.replace(/https?:\/\/[^\s<>"']+/gi, " ").replace(/\s+/g, " ").trim();
+  const sentences = withoutUrls.split(/(?<=[!?])\s+|(?<=\.)\s+(?=[A-ZÀ-ÖØ-Þ])/u).map(s => s.trim()).filter(Boolean);
   const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
-  const dateSentence = sentences.find(s => numericDate.test(s) || namedDate.test(s))
-    ?? sentences.find(s => temporalContext.test(s));
-  const compactDate = (sentence: string | undefined): string => {
-    if (!sentence) return "Aucune échéance détectée";
-    if (sentence.length <= 80) return sentence;
-    // Extract only the actual date/time from verbose CI logs, never a surrounding technical line.
-    const timestamp = sentence.match(/\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:\s*(?:UTC|GMT|Z|[+-]\d{2}:?\d{2}))?\b/i);
-    if (timestamp) return timestamp[0].replace("T", " ").replace(/Z$/i, " UTC");
-    const range = sentence.match(/\bdu\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\s+au\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/i);
-    if (range) return range[0];
-    const numeric = sentence.match(/\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/);
-    if (numeric) return numeric[0];
-    const named = sentence.match(namedDate);
-    if (named) return named[0];
-    const contextual = sentence.match(/\b(dès maintenant|cette semaine|jusqu['’]au|jusqu['’]à|à partir de|ce week-end|aujourd['’]hui|demain)\b/i);
-    return contextual?.[0] ?? "Aucune échéance précise détectée";
-  };
+  const actionPattern = /\b(veuillez|merci de|il faut|obligatoire|action|répondre|confirmer|envoyer|inscrire|participer|cliquez|valider|payer)\b/i;
+  const task = withoutUrls.match(/(?:devoir|séquence)\s+(?:séquence\s*)?(\d+)\b/i);
+  const hasDeadline = /date\s+limite\s*:|[àa]\s+rendre\b/i.test(withoutUrls);
+  const action = hasDeadline && task
+    ? "Rendre le devoir SÉQUENCE " + task[1]
+    : clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise", 120);
+
+  const timestamp = /\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:\s*(?:UTC|GMT|Z|[+-]\d{2}:?\d{2}))?\b/i;
+  const frenchDate = /\b(?:(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+)?\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}(?:\s*,?\s*(?:à\s*)?\d{1,2}[:h]\d{2})?\b/i;
+  const numericRange = /\bdu\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\s+au\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/i;
+  const numericDate = /\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/;
+  const contextDate = /\b(dès maintenant|cette semaine|jusqu['’]au|jusqu['’]à|à partir de|ce week-end|aujourd['’]hui|demain|avant le|au plus tard)\b/i;
+  // Prefer a complete deadline over the first weekday or unrelated log text.
+  const extractedDate = withoutUrls.match(frenchDate)?.[0]
+    ?? withoutUrls.match(timestamp)?.[0]?.replace("T", " ").replace(/Z$/i, " UTC")
+    ?? withoutUrls.match(numericRange)?.[0]
+    ?? withoutUrls.match(numericDate)?.[0]
+    ?? withoutUrls.match(contextDate)?.[0]
+    ?? "Aucune échéance détectée";
   return {
-    action: clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise"),
-    date: compactDate(dateSentence),
-    snippet: clip(clean || "Aucun texte disponible pour ce message", 90),
+    action,
+    date: clip(extractedDate, 80),
+    snippet: clip(withoutUrls || "Aucun texte disponible pour ce message", 90),
   };
 }
 
