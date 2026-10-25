@@ -109,6 +109,7 @@ export async function fetchDetail(
         snippet: text.replace(/\s+/g, " ").trim().slice(0, 200),
         seen: true,
         flagged: msg.flags?.has("\\Flagged") ?? false,
+        labelIds: [mailbox, ...(msg.flags?.has("\\Flagged") ? ["STARRED"] : [])],
         text,
         html: typeof parsed.html === "string" ? parsed.html : null,
         attachments: parsed.attachments.map((a, i) => ({ id: String(i), filename: a.filename ?? "piece-jointe", contentType: a.contentType, size: a.size })),
