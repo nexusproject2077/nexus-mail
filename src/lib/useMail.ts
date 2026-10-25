@@ -34,7 +34,7 @@ export function parseLiveId(
 }
 
 function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"): Thread {
-  const id = liveId(accountId, s.threadId ?? s.uid);
+  const id = liveId(accountId, s.threadId ?? s.inReplyTo ?? s.messageId ?? s.uid);
   const email: Email = {
     id: liveId(accountId, s.uid),
     threadId: id,
@@ -80,7 +80,11 @@ function mergeThreads(existing: Thread[], incoming: Thread[]): Thread[] {
       labels: [...new Set(sorted.flatMap(m => m.labelIds))],
     });
   }
-  return [...byId.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  return [...byId.values()].map(thread => {
+    const messages = [...thread.messages].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+    const latest = messages[messages.length - 1];
+    return { ...thread, messages, date: latest.date, subject: latest.subject, snippet: latest.snippet };
+  }).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 }
 
 export interface UseMail {
