@@ -151,7 +151,7 @@ export function getMessage(accountId: string, uid: string, mailbox = "INBOX") {
 
 export function sendViaAccount(
   accountId: string,
-  message: { to: string; subject: string; text: string; html?: string },
+  message: { to: string; subject: string; text: string; html?: string; attachments?: Array<{ filename: string; contentType: string; data: string }> },
 ) {
   return req<{ messageId: string }>(`/api/accounts/${accountId}/send`, {
     method: "POST",
