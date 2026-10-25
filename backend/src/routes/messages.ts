@@ -19,9 +19,13 @@ messagesRouter.get("/:id/messages", async (req, res) => {
   const mailbox = String(req.query.mailbox ?? "INBOX");
   const pageSize = Math.min(Math.max(Number(req.query.pageSize ?? req.query.limit ?? 100) || 100, 1), 100);
   const cursor = String(req.query.cursor ?? "");
+  const category = String(req.query.category ?? "");
+  const categories = ["CATEGORY_PERSONAL", "CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"];
+  if (category && !categories.includes(category)) { res.status(400).json({ error: "Invalid Gmail category" }); return; }
+  if (category && account.authType !== "google_oauth") { res.status(400).json({ error: "Gmail categories are unavailable for IMAP accounts" }); return; }
   if (cursor.length > 2048 || (account.authType !== "google_oauth" && cursor && !/^\d+$/.test(cursor))) { res.status(400).json({ error: "Invalid pagination cursor" }); return; }
   try {
-    const result = account.authType === "google_oauth" ? await fetchGmailSummaries(account, mailbox, pageSize, cursor || undefined) : await fetchSummaries(account, mailbox, pageSize, Number(cursor || 0));
+    const result = account.authType === "google_oauth" ? await fetchGmailSummaries(account, mailbox, pageSize, cursor || undefined, category || undefined) : await fetchSummaries(account, mailbox, pageSize, Number(cursor || 0));
     res.json(result);
   } catch (e) {
     res.status(502).json({ error: "Mail fetch failed", message: (e as Error).message });
