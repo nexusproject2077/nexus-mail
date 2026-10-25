@@ -180,10 +180,8 @@ export function useMail(): UseMail {
       : [activeAccountId];
     const mailbox = selectedLabel?.id ?? "INBOX";
     setLoading(true);
-    setThreads([]);
-    storeRef.current = [];
-    cursorsRef.current = {};
-    setCursors({});
+    // Preserve visible mail while a background refresh is running.
+    // Reset only when the mailbox/category really changes.
     setCategoryLoading(true);
     void refreshCategoryCounts();
     try {
