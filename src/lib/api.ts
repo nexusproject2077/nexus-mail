@@ -211,3 +211,12 @@ export async function downloadAttachment(accountId: string, uid: string, attachm
 export function getCategoryCounts(accountId: string): Promise<Record<string, number> | null> {
   return req<{ counts: Record<string, number> | null }>(`/api/accounts/${encodeURIComponent(accountId)}/category-counts`).then(r => r.counts);
 }
+
+export function blockMailSender(email: string) {
+  return req<{ ok: boolean }>("/api/accounts/blocked-senders", { method: "POST", body: JSON.stringify({ email }) });
+}
+export function changeMailCategory(accountId: string, uid: string, category: string) {
+  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/category`, {
+    method: "POST", body: JSON.stringify({ category }),
+  });
+}
