@@ -248,13 +248,16 @@ export default function NexusMail() {
 
       {/* Main Content */}
       <div className="relative flex-1 flex min-h-0 min-w-0 overflow-hidden">
+        {sidebarOpen && <button type="button" aria-label="Fermer le menu" onClick={() => setSidebarOpen(false)} className="absolute inset-0 z-30 bg-black/70 lg:hidden" />}
         {sidebarOpen && (
+          <div className="absolute inset-y-0 left-0 z-40 lg:relative lg:z-auto h-full shrink-0 shadow-2xl lg:shadow-none">
           <Sidebar
             activeFolder={activeFolder}
             onFolderChange={(f) => {
               setActiveFolder(f);
               mail.selectLabel(null);
               setSelectedThread(null);
+              setSidebarOpen(false);
             }}
             onCompose={handleCompose}
             onOpenSecurity={() => setSecurityOpen(true)}
@@ -270,6 +273,7 @@ export default function NexusMail() {
               setSidebarOpen(false);
             }}
           />
+          </div>
         )}
 
         <div className="flex-1 flex min-w-0 min-h-0">
