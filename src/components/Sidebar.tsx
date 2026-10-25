@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Lock,
 } from "lucide-react";
-import { labels } from "@/lib/mock-data";
+import type { AccountLabel } from "@/lib/api";
 import type { Folder } from "@/types/email";
 
 const folderIcons: Record<string, React.ReactNode> = {
@@ -39,6 +39,8 @@ interface SidebarProps {
   onOpenSecurity: () => void;
   unreadCount: number;
   vaultCount: number;
+  labels: Array<AccountLabel & { accountId: string; accountEmail: string }>;
+  activeAccountId: string | null;
 }
 
 export default function Sidebar({
@@ -48,11 +50,11 @@ export default function Sidebar({
   onOpenSecurity,
   unreadCount,
   vaultCount,
+  labels,
+  activeAccountId,
 }: SidebarProps) {
   const folders: Folder[] = ["inbox", "starred", "sent", "drafts", "vault", "trash"];
-  const userLabels = labels.filter(
-    (l) => !["INBOX", "STARRED", "SENT", "DRAFT", "TRASH"].includes(l.id)
-  );
+  const userLabels = labels;
 
   return (
     <aside className="w-[min(82vw,280px)] lg:w-64 h-full min-h-0 flex flex-col bg-nexus-surface border-r border-nexus-border">
@@ -107,16 +109,21 @@ export default function Sidebar({
           </div>
         </div>
 
+        {userLabels.length === 0 && (
+          <p className="px-3 py-2 text-xs text-nexus-text-dim">Aucun libellé personnalisé</p>
+        )}
         {userLabels.map((label) => (
           <button
-            key={label.id}
+            key={`${label.accountId}:${label.id}`}
+            title={`${label.name} — ${label.accountEmail}`}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-all"
           >
             <span
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: label.color }}
+              style={{ backgroundColor: label.color || "#64748b" }}
             />
             <span className="flex-1 text-left truncate">{label.name}</span>
+            {activeAccountId === "all" && <span className="max-w-20 truncate text-[10px] text-nexus-text-dim">{label.accountEmail.split("@")[0]}</span>}
           </button>
         ))}
       </nav>
