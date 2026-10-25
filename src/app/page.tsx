@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ShieldCheck,
   ServerCog,
+  CircleUserRound,
   Inbox,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
@@ -77,6 +78,7 @@ export default function NexusMail() {
   };
   const [securityOpen, setSecurityOpen] = useState(false);
   const [accountsOpen, setAccountsOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<NexusSettings>(DEFAULT_SETTINGS);
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
@@ -241,12 +243,12 @@ export default function NexusMail() {
   return (
     <div className="h-dvh min-w-0 flex flex-col overflow-hidden bg-nexus-bg">
       {/* Header */}
-      <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-14 items-center gap-2 sm:gap-4 px-2 sm:px-4 pt-[env(safe-area-inset-top,0px)] border-b border-nexus-border bg-nexus-surface/95 backdrop-blur-xl flex-shrink-0`}> 
+      <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-16 items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 pt-[max(8px,env(safe-area-inset-top))] border-b border-nexus-border bg-black flex-shrink-0`}> 
         <button
           onClick={() => { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); }}
-          className="nexus-interactive p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted"
+          className="nexus-interactive flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1a1a1a] hover:bg-[#252525] transition-colors text-white"
         >
-          <Menu size={20} />
+          <Menu size={23} />
         </button>
 
         <div className="hidden sm:flex items-center gap-2">
@@ -260,7 +262,20 @@ export default function NexusMail() {
 
         <div className="min-w-0 flex-1 max-w-2xl"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
 
-        <div className="flex shrink-0 items-center gap-0 sm:gap-1 ml-auto">
+        <div className="relative shrink-0 sm:hidden">
+          <button type="button" onClick={() => setProfileMenuOpen(value => !value)} aria-label="Compte et sécurité" aria-expanded={profileMenuOpen}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/10">
+            <CircleUserRound size={26} />
+          </button>
+          {profileMenuOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-white/15 bg-[#1a1a1a] p-1.5 shadow-2xl">
+              <button type="button" onClick={() => { setProfileMenuOpen(false); setAccountsOpen(true); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-white hover:bg-white/10"><ServerCog size={18} /> Comptes de messagerie</button>
+              <button type="button" onClick={() => { setProfileMenuOpen(false); setSecurityOpen(true); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-white hover:bg-white/10"><ShieldCheck size={18} /> Sécurité et chiffrement</button>
+              <button type="button" onClick={() => { setProfileMenuOpen(false); setSettingsOpen(true); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-white hover:bg-white/10"><Settings size={18} /> Paramètres</button>
+            </div>
+          )}
+        </div>
+        <div className="hidden sm:flex shrink-0 items-center gap-0 sm:gap-1 ml-auto">
           <button
             onClick={() => setSecurityOpen(true)}
             title="Chiffrement & clés"
