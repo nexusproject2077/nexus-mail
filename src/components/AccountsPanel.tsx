@@ -153,8 +153,8 @@ export default function AccountsPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center p-0 sm:p-4 transition-[background-color,backdrop-filter] duration-[250ms] ease-out ${visible && isOpen ? "bg-black/70 backdrop-blur-md" : "bg-black/0 backdrop-blur-none"}">
-      <div className="w-full sm:max-w-lg bg-nexus-surface border border-nexus-border border-b-0 sm:border-b rounded-t-3xl sm:rounded-2xl shadow-2xl shadow-black/50 flex flex-col h-[90dvh] sm:h-auto sm:max-h-[85dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}">
+    <div className={`fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center p-0 sm:p-4 transition-[background-color,backdrop-filter] duration-[250ms] ease-out ${visible && isOpen ? "bg-black/70 backdrop-blur-md" : "bg-black/0 backdrop-blur-none"}`}>
+      <div className={`w-full sm:max-w-lg bg-nexus-surface border border-nexus-border border-b-0 sm:border-b rounded-t-3xl sm:rounded-2xl shadow-2xl shadow-black/50 flex flex-col h-[90dvh] sm:h-auto sm:max-h-[85dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}`}>
         <div className="shrink-0 flex items-center gap-3 px-5 py-4 border-b border-nexus-border">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-nexus-primary to-purple-500 flex items-center justify-center">
             <ServerCog size={18} className="text-white" />
