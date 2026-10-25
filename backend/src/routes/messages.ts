@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getAccountWithSecret } from "../db.js";
-import { fetchSummaries, fetchDetail } from "../imap.js";
+import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage } from "../imap.js";
 import { sendMessage } from "../smtp.js";
-import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage } from "../gmail.js";
+import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
 export const messagesRouter = Router();
@@ -76,4 +76,34 @@ messagesRouter.post("/:id/send", requireCsrf, async (req, res) => {
   } catch (e) {
     res.status(502).json({ error: "Mail send failed", message: (e as Error).message });
   }
+});
+
+/** POST /api/accounts/:id/messages/:uid/read */
+messagesRouter.post("/:id/messages/:uid/read", requireCsrf, async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const uid = req.params.uid;
+  if (!uid || (account.authType !== "google_oauth" && !/^\\d+$/.test(uid))) {
+    res.status(400).json({ error: "Invalid uid" }); return;
+  }
+  try {
+    if (account.authType === "google_oauth") await markGmailRead(account, uid);
+    else await markImapRead(account, "INBOX", uid);
+    res.json({ ok: true });
+  } catch (e) { res.status(502).json({ error: "Unable to mark read", message: (e as Error).message }); }
+});
+
+/** POST /api/accounts/:id/messages/:uid/trash — reversible trash, not permanent deletion */
+messagesRouter.post("/:id/messages/:uid/trash", requireCsrf, async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const uid = req.params.uid;
+  if (!uid || (account.authType !== "google_oauth" && !/^\\d+$/.test(uid))) {
+    res.status(400).json({ error: "Invalid uid" }); return;
+  }
+  try {
+    if (account.authType === "google_oauth") await trashGmailMessage(account, uid);
+    else await trashImapMessage(account, "INBOX", uid);
+    res.json({ ok: true });
+  } catch (e) { res.status(502).json({ error: "Unable to move to Trash", message: (e as Error).message }); }
 });
