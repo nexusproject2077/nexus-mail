@@ -17,10 +17,12 @@ messagesRouter.get("/:id/messages", async (req, res) => {
     return;
   }
   const mailbox = String(req.query.mailbox ?? "INBOX");
-  const limit = Math.min(Math.max(Number(req.query.limit ?? 25), 1), 100);
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 50) || 50, 1), 100);
+  const cursor = String(req.query.cursor ?? "");
+  if (cursor.length > 2048 || (account.authType !== "google_oauth" && cursor && !/^\d+$/.test(cursor))) { res.status(400).json({ error: "Invalid pagination cursor" }); return; }
   try {
-    const messages = account.authType === "google_oauth" ? await fetchGmailSummaries(account, mailbox, limit) : await fetchSummaries(account, mailbox, limit);
-    res.json({ messages });
+    const result = account.authType === "google_oauth" ? await fetchGmailSummaries(account, mailbox, limit, cursor || undefined) : await fetchSummaries(account, mailbox, limit, Number(cursor || 0));
+    res.json(result);
   } catch (e) {
     res.status(502).json({ error: "Mail fetch failed", message: (e as Error).message });
   }
