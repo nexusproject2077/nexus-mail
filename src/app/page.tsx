@@ -231,6 +231,8 @@ export default function NexusMail() {
             onOpenSecurity={() => setSecurityOpen(true)}
             unreadCount={unreadCount}
             vaultCount={vaultMessages.length}
+            labels={mail.labels}
+            activeAccountId={mail.activeAccountId}
           />
         )}
 
