@@ -476,7 +476,7 @@ export default function ComposeModal({
           ref={bodyInputRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base leading-relaxed text-nexus-text outline-none resize-none placeholder:text-[#a3a3a3]"
+          className="block w-full min-w-0 flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base leading-relaxed text-nexus-text outline-none resize-none whitespace-pre-wrap break-words [overflow-wrap:anywhere] overflow-x-hidden overflow-y-auto placeholder:text-[#a3a3a3]"
           placeholder={
             mode === "standard"
               ? "Rédigez votre message..."
