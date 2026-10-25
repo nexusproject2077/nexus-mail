@@ -29,17 +29,24 @@ export default function EmailList({
 }: EmailListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastLoadCount = useRef(-1);
+  const requestNext = () => {
+    if (!hasMore || loadingMore || !onLoadMore || lastLoadCount.current === threads.length) return;
+    lastLoadCount.current = threads.length;
+    onLoadMore();
+  };
   useEffect(() => {
     if (!hasMore || loadingMore || !onLoadMore) return;
     const root = scrollRef.current;
     const target = bottomRef.current;
     if (!root || !target) return;
     const observer = new IntersectionObserver(entries => {
-      if (entries[0]?.isIntersecting) onLoadMore();
+      if (entries[0]?.isIntersecting) requestNext();
     }, { root, rootMargin: "600px 0px" });
     observer.observe(target);
     return () => observer.disconnect();
   }, [hasMore, loadingMore, onLoadMore, threads.length]);
+  useEffect(() => { if (!hasMore) lastLoadCount.current = -1; }, [hasMore]);
 
   if (threads.length === 0) {
     return (
@@ -53,7 +60,7 @@ export default function EmailList({
   }
 
   return (
-    <div ref={scrollRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (hasMore && !loadingMore && el.scrollHeight - el.scrollTop - el.clientHeight < 500) onLoadMore?.(); }}>
+    <div ref={scrollRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 650) requestNext(); }} onTouchEnd={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 900) requestNext(); }}>
       {threads.map((thread) => {
         const lastMsg = thread.messages[thread.messages.length - 1];
         const isSelected = selectedId === thread.id;
@@ -129,7 +136,7 @@ export default function EmailList({
         );
       })}
       <div ref={bottomRef} aria-hidden="true" className="h-px" />
-      {hasMore && <button type="button" disabled={loadingMore} onClick={onLoadMore} className="w-full py-4 text-sm text-nexus-text-muted hover:text-nexus-text disabled:opacity-60">{loadingMore ? "Chargement des anciens emails…" : "Charger les emails plus anciens"}</button>}
+      {hasMore && <div role="status" className="w-full py-4 text-center text-xs text-nexus-text-muted">{loadingMore ? "Chargement des anciens emails…" : "Fais défiler pour voir les anciens emails"}</div>}
     </div>
   );
 }
