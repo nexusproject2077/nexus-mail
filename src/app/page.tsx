@@ -193,7 +193,8 @@ export default function NexusMail() {
     const subject = /^(re|fwd|fw|tr):/i.test(msg.subject) && kind === "reply" ? msg.subject : `${prefix} ${msg.subject}`;
     const date = new Date(msg.date).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
     const quote = kind === "reply" ? `Le ${date}, ${msg.senderName || msg.senderEmail} a écrit :` : `---------- Message transféré ----------\\nDe : ${msg.sender}\\nDate : ${date}\\nObjet : ${msg.subject}\\nÀ : ${msg.toRecipients.join(", ")}`;
-    const original = msg.body || msg.snippet || "";
+    const cleanText = (value: unknown) => typeof value === "string" && !/^(null|undefined)$/i.test(value.trim()) ? value : "";
+    const original = cleanText(msg.body) || cleanText(msg.snippet);
     const body = `\\n\\n${quote}\\n${original.split("\\n").map(line => kind === "reply" ? `> ${line}` : line).join("\\n")}`;
     const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const html = msg.htmlBody
