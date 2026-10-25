@@ -71,17 +71,18 @@ export default function Sidebar({
       >
         <div className="flex items-center gap-3">
           <svg
-            className="h-8 w-8 stroke-current text-white"
+            className="h-7 w-7 text-white"
             viewBox="0 0 64 64"
             aria-label="NEXUS HUB"
             role="img"
             fill="none"
-            strokeWidth={7}
+            stroke="currentColor"
+            strokeWidth={6.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path className="opacity-90" d="M 33 11 L 16 27 L 33 43" />
-            <path className="opacity-90" d="M 35 25 L 51 41 L 35 57" />
+            <path d="M 30 11 L 14 27 L 30 43" />
+            <path d="M 38 25 L 54 41 L 38 57" />
           </svg>
           <span className="text-xl font-bold tracking-wide text-white">Mail</span>
         </div>
