@@ -1,6 +1,6 @@
 "use client";
 
-import { MailOpen, Trash2 } from "lucide-react";
+import { MailOpen, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Star, Paperclip } from "lucide-react";
 import { Thread } from "@/types/email";
@@ -15,6 +15,7 @@ interface EmailListProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
+  onRefresh?: () => Promise<void>;
 }
 
 export default function EmailList({
@@ -26,8 +27,28 @@ export default function EmailList({
   onLoadMore,
   hasMore = false,
   loadingMore = false,
+  onRefresh,
 }: EmailListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStart = useRef<number | null>(null);
+  const distance = useRef(0);
+  const busy = useRef(false);
+  const [pull, setPull] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const finishPull = () => {
+    const shouldRefresh = distance.current >= 64;
+    touchStart.current = null;
+    distance.current = 0;
+    if (!shouldRefresh || !onRefresh || busy.current) { setPull(0); return; }
+    busy.current = true;
+    setRefreshing(true);
+    setPull(64);
+    void onRefresh().catch(() => {}).finally(() => {
+      busy.current = false;
+      setRefreshing(false);
+      setPull(0);
+    });
+  };
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastLoadCount = useRef(-1);
   const requestNext = () => {
@@ -48,7 +69,7 @@ export default function EmailList({
   }, [hasMore, loadingMore, onLoadMore, threads.length]);
   useEffect(() => { if (!hasMore) lastLoadCount.current = -1; }, [hasMore]);
 
-  if (threads.length === 0) {
+  if (threads.length === 0 && !onRefresh) {
     return (
       <div className="flex-1 flex items-center justify-center text-nexus-text-dim">
         <div className="text-center">
@@ -60,7 +81,12 @@ export default function EmailList({
   }
 
   return (
-    <div ref={scrollRef} className="nexus-mail-list flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 650) requestNext(); }} onTouchEnd={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 900) requestNext(); }}>
+    <div ref={scrollRef} className="nexus-mail-list flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-y-contain" onTouchStart={event => { if (onRefresh && !busy.current && event.touches.length === 1 && (scrollRef.current?.scrollTop ?? 1) <= 0) touchStart.current = event.touches[0].clientY; }} onTouchMove={event => { if (touchStart.current === null || busy.current) return; if ((scrollRef.current?.scrollTop ?? 0) > 0) { touchStart.current = null; setPull(0); return; } distance.current = Math.min(110, Math.max(0, (event.touches[0].clientY - touchStart.current) * 0.45)); setPull(distance.current); }} onTouchCancel={() => { touchStart.current = null; distance.current = 0; if (!busy.current) setPull(0); }} onScroll={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 650) requestNext(); }} onTouchEnd={event => { finishPull(); const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 900) requestNext(); }}>
+      <div aria-live="polite" className="flex items-center justify-center overflow-hidden transition-[height] duration-200" style={{ height: pull }}>
+        <Loader2 size={25} className={refreshing ? "animate-spin text-nexus-text-muted" : "text-nexus-text-muted"} style={refreshing ? undefined : { transform: `rotate(${pull * 5}deg)` }} />
+        <span className="sr-only">{refreshing ? "Synchronisation des e-mails" : "Tirer pour actualiser"}</span>
+      </div>
+      {threads.length === 0 && <div className="py-12 text-center text-sm text-nexus-text-dim">Aucun message</div>}
       {threads.map((thread) => {
         const lastMsg = thread.messages[thread.messages.length - 1];
         const isSelected = selectedId === thread.id;
