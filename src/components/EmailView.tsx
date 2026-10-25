@@ -93,10 +93,40 @@ function flashSummary(input: string) {
     ?? withoutUrls.match(numericDate)?.[0]
     ?? withoutUrls.match(contextDate)?.[0]
     ?? "Aucune échéance détectée";
+  const contextText = withoutUrls
+    .replace(/^(?:(?:bonjour(?:\s+[^,.!]+)?|mesdames\s*,?\s*messieurs|cher(?:s|e|es)?\s+[^,.!]+)\s*[,!:.]?\s*)+/i, "")
+    .trim();
+  const contextSentences = contextText
+    .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Þ])|\n+/u)
+    .map(s => s.trim())
+    .filter(s => s.length > 12 && /[a-zà-ÿ]/i.test(s));
+  const keywords = new Set(["sécurité", "devoir", "panne", "maintenance", "important", "accès", "faille", "failles", "correctif", "correctifs", "incident", "rétabli", "rétablissement", "service", "services", "numérique", "numériques", "application", "applications", "rendu", "échéance", "indisponible", "fonctionnelle", "fonctionnel", "corriger", "problème", "problèmes", "mise", "jour", "urgence", "travaux", "réseau"]);
+  const stopWords = new Set(["avec", "dans", "pour", "mais", "cette", "cela", "depuis", "leurs", "notre", "votre", "nous", "vous", "elles", "sont", "sera", "être", "avoir", "ainsi", "plusieurs", "comme", "entre", "après", "avant", "alors", "tout", "tous", "toutes", "dont", "leur", "leurs", "afin", "aussi", "même", "très", "désormais"]);
+  const words = (s: string) => (s.toLocaleLowerCase("fr-FR").match(/[a-zà-ÿ]{3,}/gi) ?? []).filter(w => !stopWords.has(w));
+  const frequency = new Map<string, number>();
+  for (const sentence of contextSentences) for (const word of words(sentence)) frequency.set(word, (frequency.get(word) ?? 0) + 1);
+  const normalized = (s: string) => s.toLocaleLowerCase("fr-FR").replace(/[^a-zà-ÿ0-9]/gi, "");
+  const ranked = contextSentences.map((sentence, index) => {
+    const tokens = words(sentence);
+    const distinct = [...new Set(tokens)];
+    const keywordScore = distinct.filter(w => keywords.has(w)).length * 4;
+    const frequencyScore = distinct.reduce((sum, w) => sum + Math.min(frequency.get(w) ?? 0, 4), 0) / Math.max(1, Math.sqrt(distinct.length));
+    const deadlineOnly = /^(?:date limite|à rendre|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/i.test(sentence);
+    const duplicate = (action !== "Aucune action immédiate requise" && (normalized(sentence) === normalized(action) || normalized(action).includes(normalized(sentence))))
+      || (extractedDate !== "Aucune échéance détectée" && (normalized(sentence) === normalized(extractedDate) || (deadlineOnly && normalized(sentence).includes(normalized(extractedDate)))));
+    return { sentence, index, score: keywordScore + frequencyScore - (deadlineOnly ? 4 : 0), duplicate };
+  }).sort((a, b) => b.score - a.score || a.index - b.index);
+  const bestContext = ranked.find(item => !item.duplicate)?.sentence ?? ranked[0]?.sentence ?? "Aucun contexte disponible";
+  const clipAtWord = (s: string, limit: number) => {
+    if (s.length <= limit) return s;
+    const prefix = s.slice(0, limit - 1);
+    const lastSpace = prefix.lastIndexOf(" ");
+    return (lastSpace > 30 ? prefix.slice(0, lastSpace) : prefix).trimEnd().replace(/[,;:]+$/, "") + "…";
+  };
   return {
     action,
     date: clip(extractedDate, 80),
-    snippet: clip(withoutUrls || "Aucun texte disponible pour ce message", 90),
+    snippet: clipAtWord(bestContext, 120),
   };
 }
 
