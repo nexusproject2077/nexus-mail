@@ -20,6 +20,21 @@ import {
 import { isEncryptedBody } from "@/lib/crypto";
 import EncryptedMessage from "./EncryptedMessage";
 
+/** Email HTML stays sandboxed (scripts and forms disabled), but ordinary links
+ * open in a separate browser tab instead of navigating the mail iframe. */
+function prepareEmailHtml(html: string): string {
+  const base = '<base target="_blank">';
+  const withBase = /<head(?:\\s[^>]*)?>/i.test(html)
+    ? html.replace(/<head(\\s[^>]*)?>/i, (head) => head + base)
+    : '<head>' + base + '</head>' + html;
+  return withBase.replace(/<a\\b([^>]*)>/gi, (_match, attrs: string) => {
+    const clean = attrs
+      .replace(/\\s+target\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)/gi, "")
+      .replace(/\\s+rel\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)/gi, "");
+    return '<a' + clean + ' target="_blank" rel="noopener noreferrer">';
+  });
+}
+
 interface EmailViewProps {
   thread: Thread;
   onBack: () => void;
@@ -123,9 +138,9 @@ export default function EmailView({
                 ) : msg.htmlBody ? (
                   <iframe
                     title={`Contenu du message de ${msg.senderName}`}
-                    sandbox=""
+                    sandbox="allow-popups allow-popups-to-escape-sandbox"
                     referrerPolicy="no-referrer"
-                    srcDoc={msg.htmlBody}
+                    srcDoc={prepareEmailHtml(msg.htmlBody)}
                     className="w-full min-h-[420px] rounded-xl bg-white border border-nexus-border"
                   />
                 ) : (
