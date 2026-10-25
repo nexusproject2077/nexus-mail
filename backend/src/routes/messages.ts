@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getAccountWithSecret } from "../db.js";
-import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels } from "../imap.js";
+import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels, updateImapFlags, searchImap, fetchImapAttachment } from "../imap.js";
 import { sendMessage } from "../smtp.js";
-import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels } from "../gmail.js";
+import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
 export const messagesRouter = Router();
@@ -120,4 +120,58 @@ messagesRouter.get("/:id/labels", async (req, res) => {
   } catch (error) {
     res.status(502).json({ error: "Unable to fetch labels", message: (error as Error).message });
   }
+});
+
+const actionSchema = z.object({ action: z.enum(["read", "unread", "star", "unstar", "archive"]) });
+messagesRouter.post("/:id/messages/:uid/action", requireCsrf, async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const parsed = actionSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid action" }); return; }
+  const uid = req.params.uid;
+  if (!uid || (account.authType !== "google_oauth" && !/^\d+$/.test(uid))) { res.status(400).json({ error: "Invalid uid" }); return; }
+  try {
+    if (account.authType === "google_oauth") await updateGmailFlags(account, uid, parsed.data.action);
+    else await updateImapFlags(account, String(req.query.mailbox ?? "INBOX"), uid, parsed.data.action);
+    res.json({ ok: true });
+  } catch (error) { res.status(502).json({ error: "Message action failed", message: (error as Error).message }); }
+});
+
+messagesRouter.get("/:id/search", async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const q = String(req.query.q ?? "").trim().slice(0, 250);
+  if (q.length < 2) { res.status(400).json({ error: "Recherche trop courte" }); return; }
+  try {
+    const messages = account.authType === "google_oauth" ? await searchGmail(account, q, 50) : await searchImap(account, q, 50);
+    res.json({ messages });
+  } catch (error) { res.status(502).json({ error: "Search failed", message: (error as Error).message }); }
+});
+
+messagesRouter.get("/:id/messages/:uid/attachments/:attachmentId", async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const { uid, attachmentId } = req.params;
+  if (!uid || (account.authType !== "google_oauth" && !/^\d+$/.test(uid))) { res.status(400).json({ error: "Invalid uid" }); return; }
+  try {
+    let content: Buffer;
+    let filename = "piece-jointe";
+    let contentType = "application/octet-stream";
+    if (account.authType === "google_oauth") {
+      const detail = await fetchGmailDetail(account, uid);
+      const attachment = detail?.attachments?.find(a => a.id === attachmentId);
+      if (!attachment) { res.status(404).json({ error: "Attachment not found" }); return; }
+      filename = attachment.filename; contentType = attachment.contentType;
+      content = await fetchGmailAttachment(account, uid, attachmentId);
+    } else {
+      if (!/^\d+$/.test(attachmentId)) { res.status(400).json({ error: "Invalid attachment id" }); return; }
+      const result = await fetchImapAttachment(account, String(req.query.mailbox ?? "INBOX"), uid, Number(attachmentId));
+      content = result.content; filename = result.filename; contentType = result.contentType;
+    }
+    if (content.length > 25 * 1024 * 1024) { res.status(413).json({ error: "Attachment too large" }); return; }
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename.replace(/[\r\n]/g, ""))}`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.send(content);
+  } catch (error) { res.status(502).json({ error: "Attachment download failed", message: (error as Error).message }); }
 });
