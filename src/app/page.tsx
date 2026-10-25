@@ -5,6 +5,8 @@ import {
   Menu,
   Bell,
   Settings,
+  RefreshCw,
+  Loader2,
   CheckSquare,
   ChevronDown,
   ShieldCheck,
@@ -221,6 +223,16 @@ export default function NexusMail() {
                 ? "Toutes les boîtes"
                 : mail.accounts.find((a) => a.id === mail.activeAccountId)?.email ?? "Comptes"}
             </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => liveInbox ? void mail.refreshMessages() : setAccountsOpen(true)}
+            disabled={mail.loading || mail.loadingMore}
+            title={liveInbox ? "Actualiser les e-mails" : "Connecter un compte"}
+            aria-label={liveInbox ? "Actualiser les e-mails" : "Connecter un compte"}
+            className="hidden md:inline-flex items-center justify-center p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors disabled:opacity-40"
+          >
+            {mail.loading || mail.loadingMore ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
           </button>
           <button className="relative hidden sm:block p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text">
             <Bell size={18} />
