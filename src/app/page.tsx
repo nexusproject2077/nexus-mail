@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import EmailList from "@/components/EmailList";
+import DeliveriesPanel from "@/components/DeliveriesPanel";
 import EmailView from "@/components/EmailView";
 import ComposeModal from "@/components/ComposeModal";
 import SearchBar from "@/components/SearchBar";
@@ -115,7 +116,9 @@ export default function NexusMail() {
   const filteredThreads = useMemo(() => {
     let filtered: Thread[];
 
-    if (activeFolder === "vault") {
+    if (activeFolder === "deliveries") {
+      filtered = liveInbox ? mail.threads : [];
+    } else if (activeFolder === "vault") {
       filtered = vaultMessages;
     } else if (liveInbox) {
       if (mail.selectedLabel) filtered = mail.threads;
@@ -238,6 +241,7 @@ export default function NexusMail() {
     trash: "Corbeille",
     all: "Tous les messages",
     vault: "Coffre-fort chiffré",
+    deliveries: "Mes livraisons",
   };
 
   return (
@@ -361,6 +365,10 @@ export default function NexusMail() {
         </div>
 
         <div className="flex-1 flex min-w-0 min-h-0">
+          {activeFolder === "deliveries" && !selectedThread ? (
+            <DeliveriesPanel threads={liveInbox ? mail.threads : []} onOpen={(thread) => void handleSelectThread(thread)} />
+          ) : (
+          <>
           {/* Email List Panel */}
           <div
             className={`min-w-0 min-h-0 flex-col bg-nexus-bg lg:border-r lg:border-nexus-border ${
@@ -469,6 +477,8 @@ export default function NexusMail() {
                 </p>
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>
