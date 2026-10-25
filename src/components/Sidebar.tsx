@@ -69,7 +69,7 @@ export default function Sidebar({
         className="flex shrink-0 items-center border-b border-nexus-border/50"
         style={{ padding: "calc(env(safe-area-inset-top) + 16px) 16px 16px 24px" }}
       >
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0">
           <svg
             className="h-11 w-11 shrink-0 text-white"
             viewBox="0 0 64 64"
