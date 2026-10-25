@@ -23,6 +23,7 @@ export type PublicAccount = Omit<Account, "password" | "refreshToken">;
 /** A message envelope for list views. */
 export interface MessageSummary {
   uid: string;
+  threadId?: string;
   subject: string;
   from: { name: string; email: string };
   to: string[];
