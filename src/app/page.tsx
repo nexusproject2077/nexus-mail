@@ -20,6 +20,7 @@ import ComposeModal from "@/components/ComposeModal";
 import SearchBar from "@/components/SearchBar";
 import SecurityPanel from "@/components/SecurityPanel";
 import AccountsPanel from "@/components/AccountsPanel";
+import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/components/SettingsPanel";
 
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId } from "@/lib/useMail";
@@ -67,6 +68,8 @@ export default function NexusMail() {
   };
   const [securityOpen, setSecurityOpen] = useState(false);
   const [accountsOpen, setAccountsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<NexusSettings>(DEFAULT_SETTINGS);
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
   const [trashBusy, setTrashBusy] = useState(false);
   const { identity, isUnlocked, messages: vaultMessages } = useVault();
@@ -296,7 +299,7 @@ export default function NexusMail() {
             }}
             onCompose={handleCompose}
             onOpenSecurity={() => { setSidebarOpen(false); setSecurityOpen(true); }}
-            onOpenSettings={() => { setSidebarOpen(false); setAccountsOpen(true); }}
+            onOpenSettings={() => { setSidebarOpen(false); setSettingsOpen(true); }}
             unreadCount={unreadCount}
             vaultCount={vaultMessages.length}
             labels={mail.labels}
@@ -433,6 +436,7 @@ export default function NexusMail() {
         onClose={() => setSecurityOpen(false)}
       />
 
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} onAccounts={() => { setSettingsOpen(false); setAccountsOpen(true); }} onSecurity={() => { setSettingsOpen(false); setSecurityOpen(true); }} accounts={mail.accounts} onSettingsChange={setSettings} />
       <AccountsPanel
         isOpen={accountsOpen}
         onClose={() => setAccountsOpen(false)}
