@@ -151,16 +151,17 @@ function SwipeEmailRow({ thread, onTrash, children }: {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const start = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
-  const current = useRef(0);
+  const gesture = useRef<{ x: number; y: number; initial: number; horizontal: boolean | null } | null>(null);
+  const offsetRef = useRef(0);
   const suppressClick = useRef(false);
   const revealWidth = 112;
-  const reset = () => { current.current = 0; setOffset(0); setDragging(false); start.current = null; };
+  const moveTo = (value: number) => { offsetRef.current = value; setOffset(value); };
+  const reset = () => { moveTo(0); setDragging(false); gesture.current = null; };
   const remove = async () => {
     if (!onTrash || busy) return;
     setBusy(true);
     setDragging(false);
-    setOffset(-window.innerWidth);
+    moveTo(-window.innerWidth);
     await new Promise<void>(resolve => window.setTimeout(resolve, 160));
     setExiting(true);
     try { await onTrash(thread); }
@@ -174,41 +175,42 @@ function SwipeEmailRow({ thread, onTrash, children }: {
         <span className="text-xs font-medium">Corbeille</span>
       </button>}
       <div
-        className="nexus-mail-row relative bg-nexus-bg touch-pan-y"
-        style={{ transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 210ms cubic-bezier(.2,.8,.2,1)" }}
+        className="nexus-mail-row relative bg-nexus-bg"
+        style={{ touchAction: "pan-y", transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 210ms cubic-bezier(.2,.8,.2,1)" }}
         onTouchStart={event => {
           if (!onTrash || busy || event.touches.length !== 1) return;
           const touch = event.touches[0];
-          start.current = { x: touch.clientX - current.current, y: touch.clientY, horizontal: null };
+          gesture.current = { x: touch.clientX, y: touch.clientY, initial: offsetRef.current, horizontal: null };
         }}
         onTouchMove={event => {
-          if (!start.current || !onTrash || busy) return;
+          const g = gesture.current;
+          if (!g || !onTrash || busy) return;
           const touch = event.touches[0];
-          const dx = touch.clientX - start.current.x;
-          const dy = touch.clientY - start.current.y;
-          if (start.current.horizontal === null && Math.hypot(dx - current.current, dy) > 8) start.current.horizontal = Math.abs(dx - current.current) > Math.abs(dy) * 1.25;
-          if (!start.current.horizontal) return;
+          const dx = touch.clientX - g.x;
+          const dy = touch.clientY - g.y;
+          if (g.horizontal === null && Math.hypot(dx, dy) > 7) g.horizontal = Math.abs(dx) > Math.abs(dy) * 1.15;
+          if (!g.horizontal) return;
           suppressClick.current = true;
           setDragging(true);
-          current.current = Math.max(-Math.min(260, window.innerWidth * .75), Math.min(0, dx));
-          setOffset(current.current);
+          moveTo(Math.max(-Math.min(260, window.innerWidth * .75), Math.min(0, g.initial + dx)));
         }}
         onTouchEnd={() => {
-          if (!start.current) return;
-          const dx = current.current;
-          start.current = null;
+          const g = gesture.current;
+          if (!g) return;
+          gesture.current = null;
           setDragging(false);
+          if (!g.horizontal) return;
+          const dx = offsetRef.current;
           if (dx <= -205) { void remove(); return; }
-          current.current = dx < -50 ? -revealWidth : 0;
-          setOffset(current.current);
+          moveTo(dx < -45 ? -revealWidth : 0);
         }}
-        onTouchCancel={() => { start.current = null; setDragging(false); setOffset(current.current); }}
+        onTouchCancel={() => { gesture.current = null; setDragging(false); moveTo(offsetRef.current <= -45 ? -revealWidth : 0); }}
         onClickCapture={event => {
-          if (suppressClick.current || current.current < 0) {
+          if (suppressClick.current || offsetRef.current < 0) {
             event.preventDefault();
             event.stopPropagation();
             suppressClick.current = false;
-            if (current.current < 0) reset();
+            if (offsetRef.current < 0) reset();
           }
         }}
       >{children}</div>
