@@ -177,3 +177,13 @@ function gmailAttachments(part: any): Array<{ id: string; filename: string; cont
     .map((p: any) => ({ id: p.body.attachmentId, filename: p.filename, contentType: p.mimeType ?? "application/octet-stream", size: Number(p.body.size ?? 0) }));
 }
 function gmailAttachmentsRaw(part: any): any[] { return [part, ...(part?.parts ?? []).flatMap(gmailAttachmentsRaw)]; }
+
+/** Gmail label counters come from Gmail itself, not the loaded message page. */
+export async function fetchGmailCategoryCounts(account: Account): Promise<Record<string, number>> {
+  const ids = ["CATEGORY_PERSONAL", "CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES"];
+  const results = await Promise.all(ids.map(async id => {
+    const label = await gmail(account, "/labels/" + id);
+    return [id, Number(label.messagesUnread ?? 0)] as const;
+  }));
+  return Object.fromEntries(results);
+}
