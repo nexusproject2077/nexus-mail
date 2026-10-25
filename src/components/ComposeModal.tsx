@@ -65,6 +65,8 @@ export default function ComposeModal({
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bodyInputRef = useRef<HTMLTextAreaElement>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const [mode, setMode] = useState<Mode>("standard");
   const [securityOpen, setSecurityOpen] = useState(false);
@@ -81,6 +83,7 @@ export default function ComposeModal({
     setBody("");
     setHtmlBody("");
     setAttachments([]);
+    setEmojiOpen(false);
     if (editorRef.current) editorRef.current.innerHTML = "";
     setRecipientKey("");
     setPasscode("");
@@ -88,6 +91,18 @@ export default function ComposeModal({
     setSecurityOpen(false);
     setExpiryIdx(0);
     setError(null);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const input = bodyInputRef.current;
+    const start = input?.selectionStart ?? body.length;
+    const end = input?.selectionEnd ?? body.length;
+    setBody(current => current.slice(0, start) + emoji + current.slice(end));
+    setEmojiOpen(false);
+    requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
   };
 
   const handleSend = async () => {
@@ -377,6 +392,7 @@ export default function ComposeModal({
         </div>
 
         <textarea
+          ref={bodyInputRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           className="flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base sm:text-sm leading-relaxed text-nexus-text outline-none resize-none placeholder:text-[#a3a3a3]"
@@ -388,12 +404,12 @@ export default function ComposeModal({
         />
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
-        <div className="shrink-0 flex items-center gap-3 px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] bg-[#171717] border-t border-white/5">
+        <div className="relative shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))] bg-[#171717] border-t border-white/5">
           <button type="button" onClick={handleSend} disabled={isSending || !to.trim()} aria-label={isSending ? "Envoi en cours" : "Envoyer le message"} title="Envoyer"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-nexus-primary-light hover:bg-white/10 disabled:opacity-40 transition-colors">
             {isSending ? <Loader2 size={23} className="animate-spin" /> : mode === "standard" ? <Send size={23} /> : <Lock size={23} />}
           </button>
-          <div className="flex flex-1 items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-2 sm:gap-3">
             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={event => {
               const files = Array.from(event.target.files ?? []);
               const next = [...attachments, ...files];
@@ -402,10 +418,10 @@ export default function ComposeModal({
               } else { setAttachments(next); setError(null); }
               event.target.value = "";
             }} />
-            <button type="button" onClick={() => { if (mode !== "standard") { setError("Les pièces jointes ne sont disponibles qu'en mode standard."); return; } fileInputRef.current?.click(); }} title="Ajouter des pièces jointes" className="p-2.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
+            <button type="button" onClick={() => { if (mode !== "standard") { setError("Les pièces jointes ne sont disponibles qu'en mode standard."); return; } fileInputRef.current?.click(); }} title="Ajouter des pièces jointes" className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
               <Paperclip size={21} />
             </button>
-            <button className="p-2.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
+            <button type="button" onClick={() => setEmojiOpen(value => !value)} aria-label="Insérer un émoji" aria-expanded={emojiOpen} className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
               <Smile size={21} />
             </button>
             <button
@@ -413,11 +429,18 @@ export default function ComposeModal({
                 onClose();
                 reset();
               }}
-              className="p-2.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-red-400 transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-red-400 transition-colors"
             >
               <Trash2 size={21} />
             </button>
           </div>
+          {emojiOpen && (
+            <div className="absolute bottom-full right-4 mb-2 grid grid-cols-6 gap-1 rounded-xl border border-nexus-border bg-[#242424] p-2 shadow-2xl" role="group" aria-label="Choisir un émoji">
+              {["😀", "😊", "😂", "😍", "🥰", "😎", "👍", "👏", "🙏", "❤️", "🎉", "🔥", "💯", "🤝", "👋", "✨", "😢", "😉"].map(emoji => (
+                <button type="button" key={emoji} onClick={() => insertEmoji(emoji)} className="flex h-10 w-10 items-center justify-center rounded-lg text-xl hover:bg-white/10" aria-label={"Insérer " + emoji}>{emoji}</button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
