@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
+  MailOpen,
+  FolderInput,
+  Ban,
+  ChevronRight,
   ChevronDown,
   ChevronUp,
   Sparkles,
@@ -82,6 +86,8 @@ interface EmailViewProps {
   onTrash?: () => void;
   trashBusy?: boolean;
   onAction?: (action: "read" | "unread" | "star" | "unstar" | "archive") => void;
+  onBlockSender?: (email: string) => Promise<void>;
+  onChangeCategory?: (category: string) => Promise<void>;
 }
 
 export default function EmailView({
@@ -93,9 +99,15 @@ export default function EmailView({
   onTrash,
   trashBusy = false,
   onAction,
+  onBlockSender,
+  onChangeCategory,
 }: EmailViewProps) {
   const lastMsg = thread.messages[thread.messages.length - 1];
   const [flashExpanded, setFlashExpanded] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [menuBusy, setMenuBusy] = useState(false);
+  const [menuError, setMenuError] = useState("");
   const flash = useMemo(() => flashSummary(lastMsg?.body || lastMsg?.snippet || ""), [lastMsg?.body, lastMsg?.snippet]);
 
   return (
@@ -117,9 +129,51 @@ export default function EmailView({
           <button onClick={onTrash} disabled={!onTrash || trashBusy} title="Déplacer vers la corbeille" aria-label="Déplacer vers la corbeille" className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40">
             <Trash2 size={18} />
           </button>
-          <button onClick={() => onAction?.(thread.isUnread ? "read" : "unread")} disabled={!onAction} title={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} className="p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text disabled:opacity-40">
-            <MoreHorizontal size={18} />
-          </button>
+          <div className="relative">
+            <button type="button" onClick={() => { setMenuOpen(value => !value); setCategoryOpen(false); setMenuError(""); }}
+              aria-label="Plus d'options" aria-expanded={menuOpen}
+              className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text">
+              <MoreHorizontal size={18} />
+            </button>
+            {menuOpen && (
+              <>
+                <button type="button" className="fixed inset-0 z-[40] cursor-default" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-2 z-[50] w-[min(285px,calc(100vw-24px))] rounded-xl border border-white/15 bg-[#171717] p-1.5 shadow-2xl shadow-black/70 text-white text-sm">
+                  <button type="button" disabled={!onAction || menuBusy} onClick={() => { setMenuOpen(false); onAction?.("unread"); }}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-white/10 disabled:opacity-40">
+                    <MailOpen size={17} /> Marquer comme non lu
+                  </button>
+                  <button type="button" disabled={!onChangeCategory || menuBusy} onClick={() => setCategoryOpen(value => !value)}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-white/10 disabled:opacity-40">
+                    <FolderInput size={17} /> Changer de catégorie <ChevronRight size={15} className="ml-auto" />
+                  </button>
+                  {categoryOpen && (
+                    <div className="ml-7 border-l border-white/15 pl-2">
+                      {([["CATEGORY_PERSONAL", "Principale"], ["CATEGORY_PROMOTIONS", "Promotions"], ["CATEGORY_UPDATES", "Notifications"], ["CATEGORY_SOCIAL", "Réseaux sociaux"], ["CATEGORY_FORUMS", "Forums"]] as const).map(([id, name]) => (
+                        <button key={id} type="button" disabled={menuBusy} onClick={async () => {
+                          if (!onChangeCategory) return;
+                          setMenuBusy(true); setMenuError("");
+                          try { await onChangeCategory(id); setMenuOpen(false); }
+                          catch (e) { setMenuError((e as Error).message); }
+                          finally { setMenuBusy(false); }
+                        }} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-white/10 disabled:opacity-40">{name}</button>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" disabled={!onBlockSender || menuBusy || !lastMsg?.senderEmail} onClick={async () => {
+                    if (!onBlockSender || !lastMsg?.senderEmail || !window.confirm(`Bloquer ${lastMsg.senderEmail} dans Nexus Mail ?`)) return;
+                    setMenuBusy(true); setMenuError("");
+                    try { await onBlockSender(lastMsg.senderEmail); setMenuOpen(false); }
+                    catch (e) { setMenuError((e as Error).message); }
+                    finally { setMenuBusy(false); }
+                  }} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-white/10 disabled:opacity-40">
+                    <Ban size={17} /> Bloquer l'expéditeur
+                  </button>
+                  {menuError && <p role="alert" className="px-3 py-2 text-xs text-red-400">{menuError}</p>}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
