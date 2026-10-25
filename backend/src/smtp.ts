@@ -43,7 +43,8 @@ export async function sendMessage(
     content: Buffer.from(a.data, "base64"),
   }));
   const mail = {
-    from: { name: account.label, address: account.email },
+    // For password-based accounts, label is the sender name saved at setup.
+    from: { name: account.label.trim(), address: account.email },
     to: message.to,
     subject: message.subject,
     text: message.text,
