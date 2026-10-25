@@ -347,6 +347,7 @@ export default function NexusMail() {
             )}
             <EmailList
               threads={filteredThreads}
+              loading={liveInbox && mail.loading}
               onRefresh={liveInbox ? mail.refreshMessages : undefined}
               selectedId={selectedThread?.id || null}
               onSelect={handleSelectThread}
@@ -360,7 +361,7 @@ export default function NexusMail() {
 
           {/* Email View Panel */}
           {selectedThread ? (
-            <div className="nexus-mail-panel flex-1 min-w-0 min-h-0 flex flex-col bg-nexus-surface/30">
+            <div key={selectedThread.id} className="nexus-mail-panel flex-1 min-w-0 min-h-0 flex flex-col bg-nexus-surface/30 animate-[mail-open_250ms_ease-out_both] motion-reduce:animate-none">
               <EmailView
                 thread={selectedThread}
                 onBack={() => setSelectedThread(null)}
