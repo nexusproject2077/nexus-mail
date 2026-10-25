@@ -204,3 +204,7 @@ export async function downloadAttachment(accountId: string, uid: string, attachm
   if (!res.ok) throw new Error(`Téléchargement impossible (HTTP ${res.status})`);
   return res.blob();
 }
+
+export function getCategoryCounts(accountId: string): Promise<Record<string, number> | null> {
+  return req<{ counts: Record<string, number> | null }>(`/api/accounts/${encodeURIComponent(accountId)}/category-counts`).then(r => r.counts);
+}
