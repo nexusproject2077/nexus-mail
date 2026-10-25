@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   X,
   Minus,
@@ -75,7 +75,20 @@ export default function ComposeModal({
   const [expiryIdx, setExpiryIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(isOpen);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      const timer = window.setTimeout(() => setVisible(true), 16);
+      return () => window.clearTimeout(timer);
+    }
+    setVisible(false);
+    const timer = window.setTimeout(() => setMounted(false), 250);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
+  if (!mounted) return null;
 
   const reset = () => {
     setTo("");
@@ -269,8 +282,8 @@ export default function ComposeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] w-screen h-[100dvh] sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] animate-fade-in">
-      <div className="bg-nexus-surface border border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden">
+    <div className="fixed inset-0 z-[100] w-screen h-[100dvh] sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] ">
+      <div className="bg-nexus-surface border border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}">
         <div className="flex items-center justify-between pl-4 pr-3 py-3 bg-[#141414] sm:rounded-t-xl">
           <span className="flex items-center gap-2 text-base font-semibold">
             {mode !== "standard" && <Lock size={13} className="text-nexus-primary-light" />}
@@ -278,7 +291,7 @@ export default function ComposeModal({
           </span>
           <div className="flex items-center gap-1">
             <button
-              onClick={onClose}
+              onClick={() => { setVisible(false); window.setTimeout(onClose, 250); }}
               className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-white transition-colors" aria-label="Fermer"
             >
               <X size={22} />
@@ -418,10 +431,10 @@ export default function ComposeModal({
               } else { setAttachments(next); setError(null); }
               event.target.value = "";
             }} />
-            <button type="button" onClick={() => { if (mode !== "standard") { setError("Les pièces jointes ne sont disponibles qu'en mode standard."); return; } fileInputRef.current?.click(); }} title="Ajouter des pièces jointes" className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
+            <button type="button" onClick={() => { if (mode !== "standard") { setError("Les pièces jointes ne sont disponibles qu'en mode standard."); return; } fileInputRef.current?.click(); }} title="Ajouter des pièces jointes" className="flex h-11 w-11 items-center justify-center rounded-xl active:scale-[0.95] transition-transform duration-[250ms] ease-out hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
               <Paperclip size={21} />
             </button>
-            <button type="button" onClick={() => setEmojiOpen(value => !value)} aria-label="Insérer un émoji" aria-expanded={emojiOpen} className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
+            <button type="button" onClick={() => setEmojiOpen(value => !value)} aria-label="Insérer un émoji" aria-expanded={emojiOpen} className="flex h-11 w-11 items-center justify-center rounded-xl active:scale-[0.95] transition-transform duration-[250ms] ease-out hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors">
               <Smile size={21} />
             </button>
             <button
@@ -429,7 +442,7 @@ export default function ComposeModal({
                 onClose();
                 reset();
               }}
-              className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-red-400 transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-xl active:scale-[0.95] transition-transform duration-[250ms] ease-out hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-red-400 transition-colors"
             >
               <Trash2 size={21} />
             </button>
