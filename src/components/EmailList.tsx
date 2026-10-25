@@ -1,6 +1,7 @@
 "use client";
 
-import { MailOpen } from "lucide-react";
+import { MailOpen, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { Star, Paperclip } from "lucide-react";
 import { Thread } from "@/types/email";
 import { formatEmailDate, getInitials, getAvatarColor, getLabelInfo } from "@/lib/utils";
@@ -10,6 +11,7 @@ interface EmailListProps {
   selectedId: string | null;
   onSelect: (thread: Thread) => void;
   folder: string;
+  onTrash?: (thread: Thread) => Promise<void>;
 }
 
 export default function EmailList({
@@ -17,6 +19,7 @@ export default function EmailList({
   selectedId,
   onSelect,
   folder,
+  onTrash,
 }: EmailListProps) {
   if (threads.length === 0) {
     return (
@@ -40,8 +43,8 @@ export default function EmailList({
         const labelInfo = userLabel ? getLabelInfo(userLabel) : null;
 
         return (
+          <SwipeEmailRow key={thread.id} thread={thread} onSelect={onSelect} onTrash={onTrash}>
           <button
-            key={thread.id}
             onClick={() => onSelect(thread)}
             className={`w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-nexus-border/50 transition-all text-left ${
               isSelected
@@ -102,8 +105,68 @@ export default function EmailList({
               </div>
             </div>
           </button>
+          </SwipeEmailRow>
         );
       })}
+    </div>
+  );
+}
+
+function SwipeEmailRow({ thread, onSelect, onTrash, children }: {
+  thread: Thread;
+  onSelect: (thread: Thread) => void;
+  onTrash?: (thread: Thread) => Promise<void>;
+  children: React.ReactNode;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
+  const current = useRef(0);
+  const suppressClick = useRef(false);
+  const active = !!onTrash && !busy;
+  const reset = () => { current.current = 0; setOffset(0); setDragging(false); start.current = null; };
+  return (
+    <div className="relative overflow-hidden md:overflow-visible select-none md:select-text" style={{ WebkitUserSelect: "none" }}>
+      {active && <div className="absolute inset-y-0 right-0 w-full bg-red-600 flex justify-end items-center pr-6 text-white pointer-events-none">
+        <Trash2 size={22} aria-hidden="true" />
+        <span className="ml-2 text-sm font-medium">Corbeille</span>
+      </div>}
+      <div
+        className="relative bg-nexus-bg touch-pan-y"
+        style={{ transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 220ms cubic-bezier(.2,.8,.2,1)", willChange: dragging ? "transform" : "auto" }}
+        onTouchStart={event => {
+          if (!active || event.touches.length !== 1) return;
+          const t = event.touches[0];
+          start.current = { x: t.clientX, y: t.clientY, horizontal: null };
+          current.current = 0;
+        }}
+        onTouchMove={event => {
+          if (!start.current || !active) return;
+          const t = event.touches[0];
+          const dx = t.clientX - start.current.x;
+          const dy = t.clientY - start.current.y;
+          if (start.current.horizontal === null && Math.hypot(dx,dy) > 8) start.current.horizontal = Math.abs(dx) > Math.abs(dy) * 1.25;
+          if (!start.current.horizontal) return;
+          suppressClick.current = true;
+          setDragging(true);
+          current.current = Math.max(-Math.min(220, window.innerWidth * 0.65), Math.min(0, dx));
+          setOffset(current.current);
+        }}
+        onTouchEnd={async () => {
+          if (!start.current) return;
+          const dx = current.current;
+          reset();
+          if (dx > -100 || !active) return;
+          setBusy(true);
+          try { await onTrash?.(thread); }
+          finally { setBusy(false); }
+        }}
+        onTouchCancel={reset}
+        onClickCapture={event => {
+          if (suppressClick.current) { event.stopPropagation(); event.preventDefault(); suppressClick.current = false; }
+        }}
+      >{children}</div>
     </div>
   );
 }
