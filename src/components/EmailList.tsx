@@ -116,13 +116,7 @@ export default function EmailList({
           <SwipeEmailRow key={thread.id} thread={thread} onSelect={onSelect} onTrash={onTrash}>
           <button
             onClick={() => onSelect(thread)}
-            className={`w-full flex items-start gap-3 px-4 py-3.5 border-b border-nexus-border/50 transition-[background-color,opacity,transform] duration-[250ms] ease-out active:opacity-80 active:scale-[0.99] active:bg-white/10 text-left ${
-              isSelected
-                ? "bg-nexus-primary/10 border-l-2 border-l-nexus-primary"
-                : thread.isUnread
-                ? "bg-nexus-unread hover:bg-nexus-surface-hover border-l-2 border-l-transparent"
-                : "hover:bg-nexus-surface-hover border-l-2 border-l-transparent"
-            }`}
+            className={`w-full flex items-start gap-3 px-4 py-3.5 border-b border-nexus-border/40 bg-nexus-bg transition-[background-color,opacity,transform] duration-[250ms] ease-out active:opacity-80 active:scale-[0.99] active:bg-white/10 text-left hover:bg-nexus-surface-hover ${isSelected ? "border-l-2 border-l-nexus-primary" : "border-l-2 border-l-transparent"}`}
           >
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5"
@@ -142,7 +136,8 @@ export default function EmailList({
                 >
                   {senderName}{thread.messages.length > 1 ? ` (${thread.messages.length})` : ""}
                 </span>
-                <span className="text-xs text-nexus-text-dim whitespace-nowrap flex-shrink-0">
+                <span className="flex items-center gap-1.5 text-xs text-nexus-text-dim whitespace-nowrap flex-shrink-0">
+                  {thread.isUnread && <span className="h-1.5 w-1.5 rounded-full bg-nexus-primary" aria-label="Non lu" />}
                   {formatEmailDate(thread.date)}
                 </span>
               </div>
