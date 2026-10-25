@@ -193,16 +193,16 @@ export default function NexusMail() {
     const prefix = kind === "reply" ? "Re:" : "Fwd:";
     const subject = /^(re|fwd|fw|tr):/i.test(msg.subject) && kind === "reply" ? msg.subject : `${prefix} ${msg.subject}`;
     const date = new Date(msg.date).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
-    const quote = kind === "reply" ? `Le ${date}, ${msg.senderName || msg.senderEmail} a écrit :` : `---------- Message transféré ----------\\nDe : ${msg.sender}\\nDate : ${date}\\nObjet : ${msg.subject}\\nÀ : ${msg.toRecipients.join(", ")}`;
+    const quote = kind === "reply" ? `Le ${date}, ${msg.senderName || msg.senderEmail} a écrit :` : `---------- Message transféré ----------\nDe : ${msg.sender}\nDate : ${date}\nObjet : ${msg.subject}\nÀ : ${msg.toRecipients.join(", ")}`;
     const cleanText = (value: unknown) => typeof value === "string" && !/^(null|undefined)$/i.test(value.trim()) ? value : "";
-    const original = cleanText(msg.body) || cleanText(msg.snippet);
-    const quotedText = `${quote}\\n${original.split("\\n").map(line => kind === "reply" ? `> ${line}` : line).join("\\n")}`;
+    const normalizeLines = (value: string) => value.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\r\n?/g, "\n");
+    const original = normalizeLines(cleanText(msg.body) || cleanText(msg.snippet));
+    const quotedText = `${quote}\n${original.split("\n").map(line => kind === "reply" ? `> ${line}` : line).join("\n")}`;
     const body = "";
     const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const quoteHtml = escapeHtml(quote).replace(/\\\\n/g, "<br />").replace(/\\r?\\n/g, "<br />");
-    const html = msg.htmlBody
-      ? `<div style="line-height:1.6"><br /><br />${quoteHtml}</div><hr />${msg.htmlBody}`
-      : undefined;
+    const quoteHtml = escapeHtml(quote).replace(/\n/g, "<br />");
+    const originalHtml = cleanText(msg.htmlBody);
+    const html = originalHtml ? `<div style="line-height:1.6;overflow-wrap:anywhere">${quoteHtml}</div><hr />${originalHtml}` : `<div style="line-height:1.6;overflow-wrap:anywhere">${quoteHtml}<br />${escapeHtml(original).replace(/\n/g, "<br />")}</div>`;
     const parsed = parseLiveId(msg.id);
     setReplyTo(null);
     setMailtoDraft({
