@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Menu,
   Bell,
@@ -45,6 +45,18 @@ export default function NexusMail() {
   const [trashBusy, setTrashBusy] = useState(false);
   const { identity, isUnlocked, messages: vaultMessages } = useVault();
   const mail = useMail();
+  const tabListRef = useRef<HTMLDivElement>(null);
+  const [tabIndicator, setTabIndicator] = useState<{left: number; width: number} | null>(null);
+  useEffect(() => {
+    const update = () => {
+      const container = tabListRef.current;
+      const active = container?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      if (active) setTabIndicator({left: active.offsetLeft, width: active.offsetWidth});
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [mail.category, mail.categoryCounts, activeFolder]);
 
   // A live IMAP account replaces the sample inbox with real mail.
   const liveInbox = mail.configured && !!mail.activeAccountId;
@@ -299,7 +311,8 @@ export default function NexusMail() {
               </div>
             </div>
             {activeFolder === "inbox" && !mail.selectedLabel && (
-              <div role="tablist" aria-label="Catégories Gmail" className="flex gap-1 overflow-x-auto border-b border-nexus-border/40 px-2 py-2">
+              <div ref={tabListRef} role="tablist" aria-label="Catégories Gmail" className="relative flex gap-1 overflow-x-auto border-b border-nexus-border/40 px-2 py-2">
+                {tabIndicator && <span aria-hidden="true" className="absolute top-2 bottom-2 rounded-full bg-white pointer-events-none transition-[left,width] duration-[250ms] ease-out motion-reduce:transition-none" style={{left: tabIndicator.left, width: tabIndicator.width}} />}
                 {([
                   ["CATEGORY_PERSONAL", "Principale"],
                   ["CATEGORY_PROMOTIONS", "Promotions"],
@@ -308,7 +321,7 @@ export default function NexusMail() {
                 ] as const).map(([id, title]) => (
                   <button key={id} type="button" role="tab" aria-selected={mail.category === id}
                     onClick={() => mail.setCategory(id)}
-                    className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${mail.category === id ? "bg-white text-black" : "text-nexus-text-muted hover:bg-nexus-surface-hover"}`}>
+                    className={`relative z-10 shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-[color,transform,opacity] duration-[250ms] ease-out active:scale-[0.95] active:opacity-80 ${mail.category === id ? "text-black" : "text-nexus-text-muted hover:text-nexus-text"}`}>
                     {title}{mail.categoryCounts && <span className="ml-1.5 text-xs opacity-70">{mail.categoryCounts[id] ?? "—"}</span>}
                   </button>
                 ))}
