@@ -3,11 +3,20 @@ import { z } from "zod";
 import { getAccountWithSecret } from "../db.js";
 import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels, updateImapFlags, searchImap, fetchImapAttachment } from "../imap.js";
 import { sendMessage } from "../smtp.js";
-import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment } from "../gmail.js";
+import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailCategoryCounts } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
 export const messagesRouter = Router();
 messagesRouter.use(requireAuth);
+
+/** Real Gmail unread counters for every category. */
+messagesRouter.get("/:id/category-counts", async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  if (account.authType !== "google_oauth") { res.json({ counts: null }); return; }
+  try { res.json({ counts: await fetchGmailCategoryCounts(account) }); }
+  catch (error) { res.status(502).json({ error: "Category counts unavailable", message: (error as Error).message }); }
+});
 
 /** GET /api/accounts/:id/messages?mailbox=INBOX&cursor=... — all messages accessible via pagination */
 messagesRouter.get("/:id/messages", async (req, res) => {
