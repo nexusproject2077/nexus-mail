@@ -163,11 +163,15 @@ export default function ComposeModal({
           for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
           return { filename: file.name, contentType: file.type || "application/octet-stream", data: btoa(binary) };
         }));
+        let signature = "";
+        try { signature = JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").signatures?.[activeAccountId] || ""; } catch { /* no signature */ }
+        const signedText = signature ? `${body}\n\n${signature}` : body;
+        const signedHtml = htmlBody && signature ? `${htmlBody}<p>${signature.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>")}</p>` : htmlBody;
         await sendViaAccount(activeAccountId, {
           to: to.trim(),
           subject: subject.trim(),
-          text: body,
-          html: htmlBody || undefined,
+          text: signedText,
+          html: signedHtml || undefined,
           attachments: outgoing,
         });
         if (draftKey) { try { window.localStorage.removeItem(draftKey); } catch {} }
