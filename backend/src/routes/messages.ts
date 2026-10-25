@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAccountWithSecret, blockSender, listBlockedSenders } from "../db.js";
 import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels, updateImapFlags, searchImap, fetchImapAttachment } from "../imap.js";
 import { sendMessage } from "../smtp.js";
-import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
+import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailAttachmentMetadata, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
 export const messagesRouter = Router();
@@ -175,8 +175,8 @@ messagesRouter.get("/:id/messages/:uid/attachments/:attachmentId", async (req, r
     let filename = "piece-jointe";
     let contentType = "application/octet-stream";
     if (account.authType === "google_oauth") {
-      const detail = await fetchGmailDetail(account, uid);
-      const attachment = detail?.attachments?.find(a => a.id === attachmentId);
+      const attachments = await fetchGmailAttachmentMetadata(account, uid);
+      const attachment = attachments.find(a => a.id === attachmentId);
       if (!attachment) { res.status(404).json({ error: "Attachment not found" }); return; }
       filename = attachment.filename; contentType = attachment.contentType;
       content = await fetchGmailAttachment(account, uid, attachmentId);
