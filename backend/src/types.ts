@@ -36,4 +36,5 @@ export interface MessageSummary {
 export interface MessageDetail extends MessageSummary {
   text: string;
   html: string | null;
+  attachments?: Array<{ id: string; filename: string; contentType: string; size: number }>;
 }
