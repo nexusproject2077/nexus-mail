@@ -54,6 +54,7 @@ export default function NexusMail() {
   } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
+  const [desktopSidebarHovered, setDesktopSidebarHovered] = useState(false);
   const [drawerDragX, setDrawerDragX] = useState(0);
   const [drawerDragging, setDrawerDragging] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -407,8 +408,14 @@ export default function NexusMail() {
           </div>
         </div>
 
-        <div className={`hidden lg:flex shrink-0 min-h-0 overflow-hidden border-r border-nexus-border transition-[width] duration-200 ${desktopSidebarOpen ? "w-[280px]" : "w-[72px]"}`}>
-          <Sidebar compact={!desktopSidebarOpen} activeFolder={activeFolder} onFolderChange={(f) => { setActiveFolder(f); mail.selectLabel(null); setSelectedThread(null); }} onOpenSecurity={() => setSecurityOpen(true)} onOpenSettings={() => setSettingsOpen(true)} unreadCount={unreadCount} vaultCount={vaultMessages.length} labels={mail.labels} activeAccountId={mail.activeAccountId} selectedLabel={mail.selectedLabel} onSelectLabel={(label) => { mail.selectLabel(label); setActiveFolder("inbox"); setSelectedThread(null); }} />
+        <div
+          className={`relative hidden lg:block shrink-0 min-h-0 transition-[width] duration-200 ${desktopSidebarOpen ? "w-[280px]" : "w-[72px]"} ${desktopSidebarHovered && !desktopSidebarOpen ? "z-50" : "z-10"}`}
+          onMouseEnter={() => setDesktopSidebarHovered(true)}
+          onMouseLeave={() => setDesktopSidebarHovered(false)}
+        >
+          <div className={`absolute inset-y-0 left-0 overflow-hidden border-r border-nexus-border bg-nexus-surface shadow-sm transition-[width,box-shadow] duration-200 ${desktopSidebarOpen || desktopSidebarHovered ? "w-[280px]" : "w-[72px]"} ${desktopSidebarHovered && !desktopSidebarOpen ? "shadow-2xl" : ""}`}>
+            <Sidebar compact={!desktopSidebarOpen && !desktopSidebarHovered} activeFolder={activeFolder} onFolderChange={(f) => { setActiveFolder(f); mail.selectLabel(null); setSelectedThread(null); }} onOpenSecurity={() => setSecurityOpen(true)} onOpenSettings={() => setSettingsOpen(true)} unreadCount={unreadCount} vaultCount={vaultMessages.length} labels={mail.labels} activeAccountId={mail.activeAccountId} selectedLabel={mail.selectedLabel} onSelectLabel={(label) => { mail.selectLabel(label); setActiveFolder("inbox"); setSelectedThread(null); }} />
+          </div>
         </div>
         <div className="flex-1 flex min-w-0 min-h-0">
           {activeFolder === "deliveries" && !selectedThread ? (
