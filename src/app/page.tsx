@@ -420,6 +420,7 @@ export default function NexusMail() {
                 thread={selectedThread}
                 onBack={() => setSelectedThread(null)}
                 onReply={handleReply}
+                onForward={handleForward}
                 onNeedUnlock={() => setSecurityOpen(true)}
                 onTrash={parseLiveId(selectedThread.id) ? () => void handleTrash() : undefined}
                 trashBusy={trashBusy}
