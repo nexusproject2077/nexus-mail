@@ -158,12 +158,12 @@ export function sendViaAccount(
   });
 }
 
-export function markMessageRead(accountId: string, uid: string) {
-  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/read`, { method: "POST" });
+export function markMessageRead(accountId: string, uid: string, mailbox = "INBOX") {
+  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/read?${new URLSearchParams({ mailbox })}`, { method: "POST" });
 }
 
-export function trashMessage(accountId: string, uid: string) {
-  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/trash`, { method: "POST" });
+export function trashMessage(accountId: string, uid: string, mailbox = "INBOX") {
+  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/trash?${new URLSearchParams({ mailbox })}`, { method: "POST" });
 }
 
 export interface AccountLabel {
