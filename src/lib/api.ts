@@ -72,6 +72,7 @@ export interface PublicAccount {
 
 export interface MessageSummary {
   uid: string;
+  threadId?: string;
   subject: string;
   from: { name: string; email: string };
   to: string[];
