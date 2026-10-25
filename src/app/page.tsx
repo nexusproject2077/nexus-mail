@@ -180,7 +180,7 @@ export default function NexusMail() {
       await mail.actionThread(selectedThread, action);
       if (action === "archive" || action === "unread") { setSelectedThread(null); setActiveFolder("inbox"); }
       else setSelectedThread(current => current ? { ...current,
-        isUnread: action === "unread" ? true : action === "read" ? false : current.isUnread,
+        isUnread: action === "read" ? false : current.isUnread,
         isStarred: action === "star" ? true : action === "unstar" ? false : current.isStarred,
       } : current);
     } catch (error) { setMessageActionError((error as Error).message); }
