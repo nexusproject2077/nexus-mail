@@ -297,7 +297,7 @@ export default function NexusMail() {
       <div className="relative flex-1 flex min-h-0 min-w-0 overflow-hidden">
         <div className={`fixed inset-0 z-[80] lg:hidden transition-[visibility] duration-[250ms] ${sidebarOpen ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!sidebarOpen}>
           <button type="button" aria-label="Fermer le menu" onClick={closeDrawer} className={`absolute inset-0 bg-black/50 transition-opacity duration-[250ms] ease-out ${sidebarOpen ? "opacity-100" : "opacity-0"}`} />
-          <div ref={drawerRef} onTouchStart={onDrawerTouchStart} onTouchMove={onDrawerTouchMove} onTouchEnd={onDrawerTouchEnd} onTouchCancel={onDrawerTouchEnd} style={{ transform: sidebarOpen ? `translate3d(${drawerDragX}px,0,0)` : "translate3d(-100%,0,0)", transition: drawerDragging ? "none" : drawerDragX < 0 ? "transform 350ms cubic-bezier(0.2, 1.25, 0.3, 1)" : "transform 250ms ease-out" }} className="absolute inset-y-0 left-0 w-[80vw] max-w-[360px] h-[100dvh] overflow-hidden rounded-r-2xl shadow-2xl will-change-transform motion-reduce:transition-none">
+          <div ref={drawerRef} onTouchStart={onDrawerTouchStart} onTouchMove={onDrawerTouchMove} onTouchEnd={onDrawerTouchEnd} onTouchCancel={onDrawerTouchEnd} style={{ transform: sidebarOpen ? `translate3d(${drawerDragX}px,0,0)` : "translate3d(-100%,0,0)", transition: drawerDragging ? "none" : drawerDragX < 0 ? "transform 350ms cubic-bezier(0.2, 1.25, 0.3, 1)" : "transform 250ms ease-out" }} className="absolute inset-y-0 left-0 w-[80vw] max-w-[360px] h-full overflow-hidden rounded-r-[40px] shadow-2xl will-change-transform motion-reduce:transition-none">
           <Sidebar
             activeFolder={activeFolder}
             onFolderChange={(f) => {
