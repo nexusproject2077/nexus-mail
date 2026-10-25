@@ -41,6 +41,8 @@ interface SidebarProps {
   vaultCount: number;
   labels: Array<AccountLabel & { accountId: string; accountEmail: string }>;
   activeAccountId: string | null;
+  selectedLabel: { accountId: string; id: string } | null;
+  onSelectLabel: (label: { accountId: string; id: string; name: string }) => void;
 }
 
 export default function Sidebar({
@@ -52,6 +54,8 @@ export default function Sidebar({
   vaultCount,
   labels,
   activeAccountId,
+  selectedLabel,
+  onSelectLabel,
 }: SidebarProps) {
   const folders: Folder[] = ["inbox", "starred", "sent", "drafts", "vault", "trash"];
   const userLabels = labels;
@@ -115,8 +119,10 @@ export default function Sidebar({
         {userLabels.map((label) => (
           <button
             key={`${label.accountId}:${label.id}`}
+            onClick={() => onSelectLabel({ accountId: label.accountId, id: label.id, name: label.name })}
+            aria-pressed={selectedLabel?.accountId === label.accountId && selectedLabel?.id === label.id}
             title={`${label.name} — ${label.accountEmail}`}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-all"
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${selectedLabel?.accountId === label.accountId && selectedLabel?.id === label.id ? "bg-nexus-primary/15 text-nexus-primary-light font-medium" : "text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text"}`}
           >
             <span
               className="w-2.5 h-2.5 rounded-full flex-shrink-0"
