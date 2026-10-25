@@ -63,6 +63,8 @@ export default function ComposeModal({
   const [htmlBody, setHtmlBody] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<Mode>("standard");
   const [recipientKey, setRecipientKey] = useState("");
@@ -77,6 +79,7 @@ export default function ComposeModal({
     setSubject("");
     setBody("");
     setHtmlBody("");
+    setAttachments([]);
     if (editorRef.current) editorRef.current.innerHTML = "";
     setRecipientKey("");
     setPasscode("");
@@ -97,11 +100,18 @@ export default function ComposeModal({
       }
       setIsSending(true);
       try {
+        const outgoing = await Promise.all(attachments.map(async file => {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          let binary = "";
+          for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+          return { filename: file.name, contentType: file.type || "application/octet-stream", data: btoa(binary) };
+        }));
         await sendViaAccount(activeAccountId, {
           to: to.trim(),
           subject: subject.trim(),
           text: body,
           html: htmlBody || undefined,
+          attachments: outgoing,
         });
         onSent?.();
         onClose();
@@ -381,6 +391,7 @@ export default function ComposeModal({
           }
         />
 
+        {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
         <div className="flex items-center justify-between px-4 py-3 border-t border-nexus-border">
           <button
             onClick={handleSend}
@@ -403,7 +414,15 @@ export default function ComposeModal({
                 : "Chiffrer & envoyer"}
           </button>
           <div className="flex items-center gap-1">
-            <button className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors">
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={event => {
+              const files = Array.from(event.target.files ?? []);
+              const next = [...attachments, ...files];
+              if (next.length > 5 || next.reduce((total, file) => total + file.size, 0) > 10 * 1024 * 1024) {
+                setError("Maximum 5 fichiers et 10 Mo au total.");
+              } else { setAttachments(next); setError(null); }
+              event.target.value = "";
+            }} />
+            <button type="button" onClick={() => { if (mode !== "standard") { setError("Les pièces jointes ne sont disponibles qu'en mode standard."); return; } fileInputRef.current?.click(); }} title="Ajouter des pièces jointes" className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors">
               <Paperclip size={16} />
             </button>
             <button className="p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors">
