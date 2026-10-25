@@ -120,7 +120,7 @@ export function useMail(): UseMail {
   const [activeAccountId, setActiveAccountIdState] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
   const storeRef = useRef<Thread[]>([]);
-  const [category, setCategory] = useState("CATEGORY_PERSONAL");
+  const [category, setCategory] = useState("ALL");
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number> | null>(null);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [labels, setLabels] = useState<Array<AccountLabel & { accountId: string; accountEmail: string }>>([]);
