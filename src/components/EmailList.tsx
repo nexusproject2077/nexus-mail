@@ -60,7 +60,7 @@ export default function EmailList({
   }
 
   return (
-    <div ref={scrollRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 650) requestNext(); }} onTouchEnd={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 900) requestNext(); }}>
+    <div ref={scrollRef} className="nexus-mail-list flex-1 min-h-0 min-w-0 overflow-y-auto" onScroll={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 650) requestNext(); }} onTouchEnd={event => { const el = event.currentTarget; if (el.scrollHeight - el.scrollTop - el.clientHeight < 900) requestNext(); }}>
       {threads.map((thread) => {
         const lastMsg = thread.messages[thread.messages.length - 1];
         const isSelected = selectedId === thread.id;
@@ -136,7 +136,7 @@ export default function EmailList({
         );
       })}
       <div ref={bottomRef} aria-hidden="true" className="h-px" />
-      {hasMore && <div role="status" className="w-full py-4 text-center text-xs text-nexus-text-muted">{loadingMore ? "Chargement des anciens emails…" : "Fais défiler pour voir les anciens emails"}</div>}
+      {hasMore && <div role="status" className="nexus-mail-loading w-full py-4 text-center text-xs text-nexus-text-muted">{loadingMore ? "Chargement des anciens emails…" : "Fais défiler pour voir les anciens emails"}</div>}
     </div>
   );
 }
@@ -163,7 +163,7 @@ function SwipeEmailRow({ thread, onSelect, onTrash, children }: {
         <span className="ml-2 text-sm font-medium">Corbeille</span>
       </div>}
       <div
-        className="relative bg-nexus-bg touch-pan-y"
+        className="nexus-mail-row relative bg-nexus-bg touch-pan-y"
         style={{ transform: `translate3d(${offset}px,0,0)`, transition: dragging ? "none" : "transform 220ms cubic-bezier(.2,.8,.2,1)", willChange: dragging ? "transform" : "auto" }}
         onTouchStart={event => {
           if (!active || event.touches.length !== 1) return;
