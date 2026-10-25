@@ -11,7 +11,7 @@ assertProductionSecret();
 const app = express();
 app.disable("x-powered-by");
 app.use(cors({ origin: config.corsOrigin, credentials: true, methods: ["GET", "POST", "DELETE"], allowedHeaders: ["Content-Type", "X-CSRF-Token"] }));
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "15mb" }));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "nexus-mail-backend" });
