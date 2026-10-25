@@ -165,11 +165,25 @@ function flashSummary(input: string) {
   const contextParts = [situation?.sentence, impact && impact.state > 0 ? impact.sentence : undefined]
     .filter((s): s is string => Boolean(s)).map(concise);
   const context = contextParts.length ? contextParts.join(" ") : "Aucun contexte disponible";
-  return {
-    action,
-    date: clip(extractedDate, 80),
-    snippet: context,
-  };
+  const category = /phishing|hameçonnage|filoutage|courriel frauduleux|faux (?:mail|courriel)/i.test(withoutUrls)
+    ? "security" : /devoir|séquence|moodle|rendu|remettre|déposer|formulaire/i.test(withoutUrls)
+    ? "assignment" : /maintenance|panne|faille|services numériques|rétabli|indisponible/i.test(withoutUrls)
+    ? "maintenance" : "general";
+  const title = category === "security" ? "Alerte de sécurité"
+    : category === "assignment" ? (deadlineActions.length > 1 ? "Plusieurs travaux à rendre" : "Travail à préparer")
+    : category === "maintenance" ? "État des services numériques"
+    : "À retenir";
+  const conciseText = (value: string) => value
+    .replace(/^(?:bonjour(?:\\s+[^,.!]+)?|mesdames,? messieurs)[,!:.]?\\s*/i, "")
+    .replace(/\\s+/g, " ").trim();
+  const summaryParts = category === "assignment" && deadlineActions.length
+    ? deadlineActions.slice(0, 2).map(conciseText)
+    : category === "security" && safetyAction
+    ? [conciseText(contextParts[0] ?? ""), conciseText(safetyAction)]
+    : contextParts.slice(0, 2).map(conciseText);
+  const summary = summaryParts.filter(Boolean).join(" ").trim() || "Consultez le message pour connaître les détails.";
+  const deadline = extractedDate !== "Aucune échéance détectée" ? clip(extractedDate, 80) : null;
+  return { action, date: clip(extractedDate, 80), snippet: context, title, summary, deadline, category };
 }
 
 interface EmailViewProps {
@@ -280,11 +294,16 @@ export default function EmailView({
           {flashExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
         </button>
         {flashExpanded && (
-          <ul className="list-disc space-y-2 px-7 pb-4 text-sm leading-relaxed text-white/90 break-words [overflow-wrap:anywhere]">
-            <li><strong className="font-medium text-white">Action :</strong> {flash.action}</li>
-            <li><strong className="font-medium text-white">Date :</strong> {flash.date}</li>
-            <li><strong className="font-medium text-white">Contexte :</strong> {flash.snippet}</li>
-          </ul>
+          <div className="px-4 pb-4 space-y-3 break-words [overflow-wrap:anywhere]">
+            <h3 className="text-[17px] font-semibold leading-snug text-white">{flash.title}</h3>
+            <p className="text-sm leading-relaxed text-white/85">{flash.summary}</p>
+            {flash.deadline && (
+              <div className="flex items-center gap-2 text-xs text-white/65">
+                <span aria-hidden="true">◷</span>
+                <span>Échéance : {flash.deadline}</span>
+              </div>
+            )}
+          </div>
         )}
       </section>
 
