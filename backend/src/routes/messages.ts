@@ -85,7 +85,7 @@ messagesRouter.post("/:id/messages/:uid/read", requireCsrf, async (req, res) => 
   const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
   if (!account) { res.status(404).json({ error: "Account not found" }); return; }
   const uid = req.params.uid;
-  if (!uid || (account.authType !== "google_oauth" && !/^\\d+$/.test(uid))) {
+  if (!uid || (account.authType !== "google_oauth" && !/^\d+$/.test(uid))) {
     res.status(400).json({ error: "Invalid uid" }); return;
   }
   try {
@@ -100,7 +100,7 @@ messagesRouter.post("/:id/messages/:uid/trash", requireCsrf, async (req, res) =>
   const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
   if (!account) { res.status(404).json({ error: "Account not found" }); return; }
   const uid = req.params.uid;
-  if (!uid || (account.authType !== "google_oauth" && !/^\\d+$/.test(uid))) {
+  if (!uid || (account.authType !== "google_oauth" && !/^\d+$/.test(uid))) {
     res.status(400).json({ error: "Invalid uid" }); return;
   }
   try {
