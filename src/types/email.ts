@@ -21,6 +21,7 @@ export interface Email {
 
 export interface Thread {
   id: string;
+  mailbox?: string;
   messages: Email[];
   subject: string;
   snippet: string;
