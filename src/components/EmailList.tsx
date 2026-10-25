@@ -56,10 +56,8 @@ export default function EmailList({
     });
   };
   const bottomRef = useRef<HTMLDivElement>(null);
-  const lastLoadCount = useRef(-1);
   const requestNext = () => {
-    if (!hasMore || loadingMore || !onLoadMore || lastLoadCount.current === threads.length) return;
-    lastLoadCount.current = threads.length;
+    if (!hasMore || loadingMore || !onLoadMore) return;
     onLoadMore();
   };
   useEffect(() => {
@@ -73,7 +71,6 @@ export default function EmailList({
     observer.observe(target);
     return () => observer.disconnect();
   }, [hasMore, loadingMore, onLoadMore, threads.length]);
-  useEffect(() => { if (!hasMore) lastLoadCount.current = -1; }, [hasMore]);
 
   if (threads.length === 0 && !onRefresh) {
     return (
@@ -197,7 +194,7 @@ export default function EmailList({
         );
       })}
       <div ref={bottomRef} aria-hidden="true" className="h-px" />
-      {hasMore && <div role="status" className="nexus-mail-loading w-full py-4 text-center text-xs text-nexus-text-muted">{loadingMore ? "Chargement des anciens emails…" : "Fais défiler pour voir les anciens emails"}</div>}
+      {(hasMore || loadingMore) && <div role="status" className="nexus-mail-loading flex items-center justify-center gap-2 w-full py-4 text-center text-xs text-nexus-text-muted">{loadingMore && <Loader2 size={17} className="animate-spin" />}{loadingMore ? "Chargement des anciens e-mails…" : "Fais défiler pour voir les anciens e-mails"}</div>}
     </div>
   );
 }
