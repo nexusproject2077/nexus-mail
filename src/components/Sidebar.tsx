@@ -77,7 +77,7 @@ export default function Sidebar({
             role="img"
             fill="none"
             stroke="currentColor"
-            strokeWidth={6.5}
+            strokeWidth={4}
             strokeLinecap="round"
             strokeLinejoin="round"
           >
