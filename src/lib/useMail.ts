@@ -6,6 +6,8 @@ import {
   getAccounts,
   getMessages,
   getMessage,
+  getAccountLabels,
+  type AccountLabel,
   markMessageRead,
   trashMessage,
   type PublicAccount,
@@ -62,6 +64,7 @@ export interface UseMail {
   activeAccountId: string | null;
   setActiveAccountId: (id: string | null) => void;
   threads: Thread[];
+  labels: Array<AccountLabel & { accountId: string; accountEmail: string }>;
   loading: boolean;
   error: string | null;
   refreshAccounts: () => Promise<void>;
@@ -76,6 +79,7 @@ export function useMail(): UseMail {
   const [accounts, setAccounts] = useState<PublicAccount[]>([]);
   const [activeAccountId, setActiveAccountIdState] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [labels, setLabels] = useState<Array<AccountLabel & { accountId: string; accountEmail: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
@@ -113,6 +117,15 @@ export function useMail(): UseMail {
       : [activeAccountId];
     setLoading(true);
     try {
+      const selectedAccounts = accountsRef.current.filter((account) => ids.includes(account.id));
+      const labelResults = await Promise.allSettled(selectedAccounts.map(async (account) => ({
+        account,
+        labels: await getAccountLabels(account.id),
+      })));
+      if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
+      setLabels(labelResults.flatMap((result) => result.status === "fulfilled"
+        ? result.value.labels.map((label) => ({ ...label, accountId: result.value.account.id, accountEmail: result.value.account.email }))
+        : []));
       const results = await Promise.allSettled(ids.map(async (id) => ({
         id,
         messages: await getMessages(id),
@@ -208,6 +221,7 @@ export function useMail(): UseMail {
     activeAccountRef.current = id;
     requestId.current += 1;
     setThreads([]);
+    setLabels([]);
     setError(null);
     setLoading(false);
     setActiveAccountIdState(id);
@@ -221,6 +235,7 @@ export function useMail(): UseMail {
     activeAccountId,
     setActiveAccountId,
     threads,
+    labels,
     loading,
     error,
     refreshAccounts,
