@@ -382,7 +382,7 @@ export default function ComposeModal({
               placeholder="destinataire@email.com"
             />
           </div>
-          <div className="flex items-center gap-3 rounded-lg bg-[#1a1a1a] px-3 py-3">
+          <div className="flex items-center gap-3 border-b border-white/10 px-2 py-3">
             <span className="text-sm text-nexus-text-muted w-10">Objet</span>
             <input
               type="text"
