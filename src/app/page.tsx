@@ -320,6 +320,9 @@ export default function NexusMail() {
               onSelect={handleSelectThread}
               onTrash={activeFolder !== "trash" ? async (thread) => { try { await mail.trashThread(thread); if (selectedThread?.id === thread.id) setSelectedThread(null); } catch (error) { setMessageActionError((error as Error).message); } } : undefined}
               folder={activeFolder}
+              hasMore={!searchQuery.trim() && mail.hasMore}
+              loadingMore={mail.loadingMore}
+              onLoadMore={() => void mail.loadMore()}
             />
           </div>
 
