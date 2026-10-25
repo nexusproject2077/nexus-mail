@@ -24,6 +24,7 @@ import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/component
 
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId } from "@/lib/useMail";
+import { blockMailSender, changeMailCategory } from "@/lib/api";
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
@@ -177,7 +178,7 @@ export default function NexusMail() {
     setMessageActionError(null);
     try {
       await mail.actionThread(selectedThread, action);
-      if (action === "archive") setSelectedThread(null);
+      if (action === "archive" || action === "unread") { setSelectedThread(null); setActiveFolder("inbox"); }
       else setSelectedThread(current => current ? { ...current,
         isUnread: action === "unread" ? true : action === "read" ? false : current.isUnread,
         isStarred: action === "star" ? true : action === "unstar" ? false : current.isStarred,
@@ -429,6 +430,14 @@ export default function NexusMail() {
                 onTrash={parseLiveId(selectedThread.id) ? () => void handleTrash() : undefined}
                 trashBusy={trashBusy}
                 onAction={parseLiveId(selectedThread.id) ? (action) => void handleAction(action) : undefined}
+                onBlockSender={async (email) => { await blockMailSender(email); setSelectedThread(null); }}
+                onChangeCategory={parseLiveId(selectedThread.id) && mail.accounts.find(a => a.id === parseLiveId(selectedThread.id)?.accountId)?.authType === "google_oauth" ? async (category) => {
+                  const parsed = parseLiveId(selectedThread.id);
+                  if (!parsed) throw new Error("Message indisponible");
+                  await changeMailCategory(parsed.accountId, parsed.uid, category);
+                  setSelectedThread(null);
+                  await mail.refreshMessages();
+                } : undefined}
               />
             </div>
           ) : (
