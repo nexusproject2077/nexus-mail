@@ -338,7 +338,7 @@ export default function ComposeModal({
               type="email"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-base sm:text-sm text-nexus-text outline-none placeholder:text-[#a3a3a3]"
+              className="min-w-0 flex-1 bg-transparent text-base text-nexus-text outline-none placeholder:text-[#a3a3a3]"
               placeholder="destinataire@email.com"
             />
           </div>
@@ -348,7 +348,7 @@ export default function ComposeModal({
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-base sm:text-sm text-nexus-text outline-none placeholder:text-[#a3a3a3]"
+              className="min-w-0 flex-1 bg-transparent text-base text-nexus-text outline-none placeholder:text-[#a3a3a3]"
               placeholder="Objet du message"
             />
           </div>
@@ -411,7 +411,7 @@ export default function ComposeModal({
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}
                 placeholder="Passcode partagé (hors bande)"
-                className="w-full bg-nexus-bg border border-nexus-border rounded-lg px-2.5 py-1.5 text-xs text-nexus-text outline-none focus:border-nexus-primary transition-colors placeholder:text-nexus-text-dim"
+                className="w-full bg-nexus-bg border border-nexus-border rounded-lg px-2.5 py-1.5 text-base text-nexus-text outline-none focus:border-nexus-primary transition-colors placeholder:text-nexus-text-dim"
               />
             </div>
           )}
@@ -422,7 +422,7 @@ export default function ComposeModal({
               <select
                 value={expiryIdx}
                 onChange={(e) => setExpiryIdx(Number(e.target.value))}
-                className="flex-1 bg-nexus-bg border border-nexus-border rounded-lg px-2.5 py-1.5 text-xs text-nexus-text outline-none focus:border-nexus-primary transition-colors"
+                className="flex-1 bg-nexus-bg border border-nexus-border rounded-lg px-2.5 py-1.5 text-base text-nexus-text outline-none focus:border-nexus-primary transition-colors"
               >
                 {EXPIRY_OPTIONS.map((o, i) => (
                   <option key={i} value={i}>
@@ -440,7 +440,7 @@ export default function ComposeModal({
           ref={bodyInputRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base sm:text-sm leading-relaxed text-nexus-text outline-none resize-none placeholder:text-[#a3a3a3]"
+          className="flex-1 min-h-0 sm:min-h-[160px] px-5 py-5 bg-transparent text-base leading-relaxed text-nexus-text outline-none resize-none placeholder:text-[#a3a3a3]"
           placeholder={
             mode === "standard"
               ? "Rédigez votre message..."
