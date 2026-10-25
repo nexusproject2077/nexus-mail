@@ -143,11 +143,10 @@ export function useMail(): UseMail {
       setAccounts(list);
       accountsRef.current = list;
       setActiveAccountIdState((cur) => {
-        const preferred = list.find((account) => account.email.toLowerCase() === "merickoken54@gmail.com")?.id;
+        // Unified inbox by default: fetch across every connected account.
+        // Preserve explicit account selections made during the current session.
         const next = (cur && (cur === ALL_ACCOUNTS || list.some((account) => account.id === cur)) ? cur : null)
-          ?? preferred
-          ?? list[0]?.id
-          ?? null;
+          ?? (list.length ? ALL_ACCOUNTS : null);
         if (next) window.localStorage.setItem(ACTIVE_ACCOUNT_STORAGE_KEY, next);
         else window.localStorage.removeItem(ACTIVE_ACCOUNT_STORAGE_KEY);
         return next;
