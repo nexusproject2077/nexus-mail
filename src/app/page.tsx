@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Menu,
   Bell,
@@ -29,6 +29,8 @@ export default function NexusMail() {
   const [activeFolder, setActiveFolder] = useState<Folder>("inbox");
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Thread[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<{
     subject: string;
@@ -46,6 +48,17 @@ export default function NexusMail() {
   // A live IMAP account replaces the sample inbox with real mail.
   const liveInbox = mail.configured && !!mail.activeAccountId;
 
+  useEffect(() => {
+    if (!liveInbox || searchQuery.trim().length < 2) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      mail.searchMessages(searchQuery.trim()).then(results => {
+        if (!cancelled) { setSearchResults(results); setSearchError(null); }
+      }).catch(error => { if (!cancelled) setSearchError((error as Error).message); });
+    }, 400);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [searchQuery, liveInbox, mail.searchMessages]);
+
   const filteredThreads = useMemo(() => {
     let filtered: Thread[];
 
@@ -61,6 +74,7 @@ export default function NexusMail() {
       filtered = []; // Never display sample emails as a real inbox.
     }
 
+    if (liveInbox && searchQuery.trim().length >= 2) return searchResults;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -76,7 +90,7 @@ export default function NexusMail() {
     }
 
     return filtered;
-  }, [activeFolder, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel]);
+  }, [activeFolder, searchQuery, vaultMessages, liveInbox, mail.threads, mail.selectedLabel, searchResults]);
 
   const unreadCount = mail.threads.filter((t) => t.isUnread).length;
 
@@ -105,6 +119,19 @@ export default function NexusMail() {
     } finally {
       setTrashBusy(false);
     }
+  };
+
+  const handleAction = async (action: "read" | "unread" | "star" | "unstar" | "archive") => {
+    if (!selectedThread) return;
+    setMessageActionError(null);
+    try {
+      await mail.actionThread(selectedThread, action);
+      if (action === "archive") setSelectedThread(null);
+      else setSelectedThread(current => current ? { ...current,
+        isUnread: action === "unread" ? true : action === "read" ? false : current.isUnread,
+        isStarred: action === "star" ? true : action === "unstar" ? false : current.isStarred,
+      } : current);
+    } catch (error) { setMessageActionError((error as Error).message); }
   };
 
   const handleReply = (threadId: string, messageId: string) => {
@@ -269,6 +296,7 @@ export default function NexusMail() {
                 <ChevronDown size={12} />
               </div>
             </div>
+            {searchError && <div role="alert" className="mx-4 mt-3 text-xs text-red-400">{searchError}</div>}
             {messageActionError && (
               <div role="alert" className="mx-4 mt-3 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
                 Action impossible : {messageActionError}
@@ -304,6 +332,7 @@ export default function NexusMail() {
                 onNeedUnlock={() => setSecurityOpen(true)}
                 onTrash={parseLiveId(selectedThread.id) ? () => void handleTrash() : undefined}
                 trashBusy={trashBusy}
+                onAction={parseLiveId(selectedThread.id) ? (action) => void handleAction(action) : undefined}
               />
             </div>
           ) : (
