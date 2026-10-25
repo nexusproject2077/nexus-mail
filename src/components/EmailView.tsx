@@ -80,13 +80,28 @@ function flashSummary(input: string) {
   const numericDate = /\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/;
   const namedDate = /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|avant le|au plus tard|\d{1,2}\s?h(?:\d{2})?)\b/i;
   const temporalContext = /\b(dès maintenant|cette semaine|du\s+.+?\s+au\s+.+?|jusqu['’]au|jusqu['’]à|à partir de|ce week-end|aujourd['’]hui|demain)\b/i;
-  const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n).trimEnd() + "…" : s;
+  const clip = (s: string, n = 180) => s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
   const dateSentence = sentences.find(s => numericDate.test(s) || namedDate.test(s))
     ?? sentences.find(s => temporalContext.test(s));
+  const compactDate = (sentence: string | undefined): string => {
+    if (!sentence) return "Aucune échéance détectée";
+    if (sentence.length <= 80) return sentence;
+    // Extract only the actual date/time from verbose CI logs, never a surrounding technical line.
+    const timestamp = sentence.match(/\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:\s*(?:UTC|GMT|Z|[+-]\d{2}:?\d{2}))?\b/i);
+    if (timestamp) return timestamp[0].replace("T", " ").replace(/Z$/i, " UTC");
+    const range = sentence.match(/\bdu\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\s+au\s+\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/i);
+    if (range) return range[0];
+    const numeric = sentence.match(/\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b/);
+    if (numeric) return numeric[0];
+    const named = sentence.match(namedDate);
+    if (named) return named[0];
+    const contextual = sentence.match(/\b(dès maintenant|cette semaine|jusqu['’]au|jusqu['’]à|à partir de|ce week-end|aujourd['’]hui|demain)\b/i);
+    return contextual?.[0] ?? "Aucune échéance précise détectée";
+  };
   return {
     action: clip(sentences.find(s => actionPattern.test(s)) ?? "Aucune action immédiate requise"),
-    date: clip(dateSentence ?? "Aucune échéance détectée", 320),
-    snippet: clip(clean || "Aucun texte disponible pour ce message", 100),
+    date: compactDate(dateSentence),
+    snippet: clip(clean || "Aucun texte disponible pour ce message", 90),
   };
 }
 
@@ -198,7 +213,7 @@ export default function EmailView({
           {flashExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
         </button>
         {flashExpanded && (
-          <ul className="list-disc space-y-2 px-7 pb-4 text-sm leading-relaxed text-white/90 break-words">
+          <ul className="list-disc space-y-2 px-7 pb-4 text-sm leading-relaxed text-white/90 break-words [overflow-wrap:anywhere]">
             <li><strong className="font-medium text-white">Action :</strong> {flash.action}</li>
             <li><strong className="font-medium text-white">Date :</strong> {flash.date}</li>
             <li><strong className="font-medium text-white">Contexte :</strong> {flash.snippet}</li>
