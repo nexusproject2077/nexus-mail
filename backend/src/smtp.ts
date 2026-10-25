@@ -6,6 +6,7 @@ export interface OutgoingMessage {
   subject: string;
   text: string;
   html?: string;
+  attachments?: Array<{ filename: string; contentType: string; data: string }>;
 }
 
 /** Send a message through the account's SMTP server. */
@@ -25,6 +26,7 @@ export async function sendMessage(
     subject: message.subject,
     text: message.text,
     html: message.html,
+    attachments: message.attachments?.map(a => ({ filename: a.filename, contentType: a.contentType, content: Buffer.from(a.data, "base64") })),
   });
   return { messageId: info.messageId };
 }
