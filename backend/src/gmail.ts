@@ -132,16 +132,17 @@ export async function fetchGmailSummaries(account: Account, mailbox: string, lim
 export async function fetchGmailDetail(account: Account, id: string): Promise<MessageDetail | null> {
   const message = await gmail(account, `/messages/${encodeURIComponent(id)}?format=full`);
   const base = summary(message); const content = bodies(message.payload);
-  // Inline images referenced by Content-ID need to be embedded for the email iframe.
+  // Resolve inline CID images in the message itself. Gmail may encode CIDs with
+  // angle brackets, case differences or percent-escaped characters.
   let renderedHtml = content.html;
-  if (renderedHtml?.includes("cid:")) {
+  if (renderedHtml && /cid:/i.test(renderedHtml)) {
     const parts = gmailAttachmentsRaw(message.payload);
     let totalBytes = 0;
     for (const part of parts) {
-      const cid = header(part.headers, "Content-ID").replace(/^</, "").replace(/>$/, "");
-      const mime = String(part.mimeType ?? "");
+      const cid = header(part.headers, "Content-ID").trim().replace(/^<|>$/g, "");
+      const mime = String(part.mimeType ?? "").toLowerCase();
       const size = Number(part.body?.size ?? 0);
-      if (!cid || !["image/png", "image/jpeg", "image/gif", "image/webp"].includes(mime) || size > 1_500_000 || totalBytes + size > 4_000_000) continue;
+      if (!cid || !["image/png", "image/jpeg", "image/gif", "image/webp"].includes(mime) || size > 5_000_000 || totalBytes + size > 12_000_000) continue;
       let encoded = part.body?.data as string | undefined;
       if (!encoded && part.body?.attachmentId) {
         try {
@@ -150,9 +151,13 @@ export async function fetchGmailDetail(account: Account, id: string): Promise<Me
         } catch { continue; }
       }
       if (!encoded) continue;
-      totalBytes += size;
       const dataUri = "data:" + mime + ";base64," + Buffer.from(encoded, "base64url").toString("base64");
-      renderedHtml = renderedHtml.split("cid:" + cid).join(dataUri);
+      renderedHtml = renderedHtml.replace(/cid:([^"'\\s<>]+)/gi, (original: string, value: string) => {
+        let normalized = value;
+        try { normalized = decodeURIComponent(value); } catch { /* preserve original */ }
+        return normalized.toLowerCase() === cid.toLowerCase() ? dataUri : original;
+      });
+      totalBytes += size;
     }
   }
   return { ...base, snippet: message.snippet || content.text.replace(/\s+/g, " ").trim().slice(0, 200), text: content.text, html: renderedHtml, attachments: gmailAttachments(message.payload) };
