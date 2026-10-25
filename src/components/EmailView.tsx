@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MailOpen,
   FolderInput,
@@ -62,6 +62,37 @@ function prepareEmailHtml(html: string): string {
       .replace(/\s+rel\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
     return '<a' + clean + ' target="_blank" rel="noopener noreferrer">';
   });
+}
+
+function InlineImagePreview({ accountId, uid, mailbox, attachment }: {
+  accountId: string;
+  uid: string;
+  mailbox: string;
+  attachment: { id: string; filename: string; contentType: string; size: number };
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setUrl(null);
+    setError(false);
+    void downloadAttachment(accountId, uid, attachment.id, mailbox).then(blob => {
+      if (cancelled) return;
+      objectUrl = URL.createObjectURL(blob);
+      setUrl(objectUrl);
+    }).catch(() => { if (!cancelled) setError(true); });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [accountId, uid, mailbox, attachment.id]);
+  if (error) return <span className="text-xs text-nexus-text-dim">Aperçu indisponible : {attachment.filename}</span>;
+  if (!url) return <span className="text-xs text-nexus-text-dim">Chargement de l’image…</span>;
+  return <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${attachment.filename}`} className="block w-fit max-w-full">
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img src={url} alt={attachment.filename} loading="lazy" className="max-h-[420px] max-w-full rounded-xl object-contain" />
+  </a>;
 }
 
 /** Extractive, deterministic summary: no external requests or generated claims. */
@@ -430,6 +461,25 @@ export default function EmailView({
                   ))}
                 </div>
               )}
+              {!!msg.attachments?.length && (() => {
+                const parsed = parseLiveId(msg.id);
+                if (!parsed) return null;
+                const images = msg.attachments.filter(attachment =>
+                  /^(image\/(jpeg|png|webp))$/i.test(attachment.contentType) ||
+                  /\.(jpe?g|png|webp)$/i.test(attachment.filename)
+                );
+                if (!images.length) return null;
+                return <div className="pl-3 pr-3 sm:pl-14 sm:pr-0 mb-4 flex flex-wrap gap-3">
+                  {images.map(attachment => <InlineImagePreview
+                    key={attachment.id}
+                    accountId={parsed.accountId}
+                    uid={parsed.uid}
+                    mailbox={thread.mailbox ?? "INBOX"}
+                    attachment={attachment}
+                  />)}
+                </div>;
+              })()}
+
               <div className="pl-0 sm:pl-14 min-w-0 break-words">
                 {msg.encryption || isEncryptedBody(msg.body) ? (
                   <EncryptedMessage
