@@ -289,7 +289,7 @@ export default function NexusMail() {
                 <h1 className="text-sm font-semibold text-nexus-text truncate">
                   {mail.selectedLabel?.name ?? folderTitle[activeFolder]}
                 </h1>
-                <span className="text-xs text-nexus-text-dim bg-nexus-surface-hover px-2 py-0.5 rounded-full">
+                <span className="text-xs text-nexus-text-dim bg-nexus-surface-hover px-2 py-0.5 rounded-xl">
                   {filteredThreads.length}
                 </span>
               </div>
@@ -308,7 +308,7 @@ export default function NexusMail() {
                 ] as const).map(([id, title]) => (
                   <button key={id} type="button" role="tab" aria-selected={mail.category === id}
                     onClick={() => mail.setCategory(id)}
-                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${mail.category === id ? "bg-white text-black" : "text-nexus-text-muted hover:bg-nexus-surface-hover"}`}>
+                    className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${mail.category === id ? "bg-white text-black" : "text-nexus-text-muted hover:bg-nexus-surface-hover"}`}>
                     {title}{mail.categoryCounts && <span className="ml-1.5 text-xs opacity-70">{mail.categoryCounts[id] ?? "—"}</span>}
                   </button>
                 ))}
