@@ -83,7 +83,20 @@ export default function AccountsPanel({
     return () => { cancelled = true; };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(isOpen);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      const timer = window.setTimeout(() => setVisible(true), 16);
+      return () => window.clearTimeout(timer);
+    }
+    setVisible(false);
+    const timer = window.setTimeout(() => setMounted(false), 250);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
+  if (!mounted) return null;
 
   const set = (patch: Partial<NewAccount>) =>
     setForm((f) => ({ ...f, ...patch }));
@@ -135,12 +148,13 @@ export default function AccountsPanel({
   const handleSelect = (id: string) => {
     onSelectAccount(id);
     setError(null);
-    onClose();
+    setVisible(false);
+    window.setTimeout(onClose, 250);
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center bg-black/70 backdrop-blur-md p-0 sm:p-4">
-      <div className="w-full sm:max-w-lg bg-nexus-surface border border-nexus-border border-b-0 sm:border-b rounded-t-3xl sm:rounded-2xl shadow-2xl shadow-black/50 flex flex-col h-[90dvh] sm:h-auto sm:max-h-[85dvh] min-w-0 overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center p-0 sm:p-4 transition-[background-color,backdrop-filter] duration-[250ms] ease-out ${visible && isOpen ? "bg-black/70 backdrop-blur-md" : "bg-black/0 backdrop-blur-none"}">
+      <div className="w-full sm:max-w-lg bg-nexus-surface border border-nexus-border border-b-0 sm:border-b rounded-t-3xl sm:rounded-2xl shadow-2xl shadow-black/50 flex flex-col h-[90dvh] sm:h-auto sm:max-h-[85dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}">
         <div className="shrink-0 flex items-center gap-3 px-5 py-4 border-b border-nexus-border">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-nexus-primary to-purple-500 flex items-center justify-center">
             <ServerCog size={18} className="text-white" />
@@ -154,7 +168,7 @@ export default function AccountsPanel({
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => { setVisible(false); window.setTimeout(onClose, 250); }}
             className="p-1.5 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-dim hover:text-nexus-text transition-colors"
           >
             <X size={18} />
@@ -278,10 +292,10 @@ export default function AccountsPanel({
 
           {!showForm ? (
             <div className="space-y-2">
-              <button onClick={handleGoogle} disabled={!apiConfigured() || backendOnline !== true || !authenticated || busy} className="w-full flex items-center justify-center gap-2 py-2.5 bg-white text-slate-800 hover:bg-slate-100 disabled:opacity-40 rounded-xl text-sm font-medium transition-colors">
+              <button onClick={handleGoogle} disabled={!apiConfigured() || backendOnline !== true || !authenticated || busy} className="w-full flex items-center justify-center gap-2 py-2.5 active:scale-[0.95] active:opacity-80 transition-all duration-[250ms] ease-out bg-white text-slate-800 hover:bg-slate-100 disabled:opacity-40 rounded-xl text-sm font-medium transition-colors">
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />} Se connecter avec Google
               </button>
-              <button onClick={() => setShowForm(true)} disabled={!apiConfigured() || backendOnline !== true || !authenticated} className="w-full flex items-center justify-center gap-2 py-2.5 border border-nexus-border hover:bg-nexus-surface-hover disabled:opacity-40 text-nexus-text rounded-xl text-sm font-medium transition-colors">
+              <button onClick={() => setShowForm(true)} disabled={!apiConfigured() || backendOnline !== true || !authenticated} className="w-full flex items-center justify-center gap-2 py-2.5 active:scale-[0.95] active:opacity-80 transition-all duration-[250ms] ease-out border border-nexus-border hover:bg-nexus-surface-hover disabled:opacity-40 text-nexus-text rounded-xl text-sm font-medium transition-colors">
                 <Plus size={16} /> Ajouter un compte IMAP / SMTP
               </button>
             </div>
