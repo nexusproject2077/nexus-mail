@@ -198,8 +198,9 @@ export default function NexusMail() {
     const quotedText = `${quote}\\n${original.split("\\n").map(line => kind === "reply" ? `> ${line}` : line).join("\\n")}`;
     const body = "";
     const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const quoteHtml = escapeHtml(quote).replace(/\\\\n/g, "<br />").replace(/\\r?\\n/g, "<br />");
     const html = msg.htmlBody
-      ? `<div style="white-space:pre-wrap"><br><br>${escapeHtml(quote)}</div><hr>${msg.htmlBody}`
+      ? `<div style="line-height:1.6"><br /><br />${quoteHtml}</div><hr />${msg.htmlBody}`
       : undefined;
     const parsed = parseLiveId(msg.id);
     setReplyTo(null);
