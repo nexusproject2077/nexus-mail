@@ -70,12 +70,14 @@ function bodies(part: any): { text: string; html: string | null } {
 }
 function summary(message: any): MessageSummary {
   const headers = message.payload?.headers;
-  return { uid: message.id, subject: header(headers, "Subject") || "(sans objet)", from: sender(header(headers, "From")), to: addresses(header(headers, "To")), date: header(headers, "Date") || new Date(Number(message.internalDate ?? Date.now())).toISOString(), snippet: message.snippet ?? "", seen: !(message.labelIds ?? []).includes("UNREAD"), flagged: (message.labelIds ?? []).includes("STARRED") };
+  return { uid: message.id, subject: header(headers, "Subject") || "(sans objet)", from: sender(header(headers, "From")), to: addresses(header(headers, "To")), date: header(headers, "Date") || new Date(Number(message.internalDate ?? Date.now())).toISOString(), snippet: message.snippet ?? "", seen: !(message.labelIds ?? []).includes("UNREAD"), flagged: (message.labelIds ?? []).includes("STARRED"), labelIds: Array.isArray(message.labelIds) ? message.labelIds : [] };
 }
 
-export async function fetchGmailSummaries(account: Account, mailbox: string, limit: number, pageToken?: string): Promise<{ messages: MessageSummary[]; nextCursor: string | null }> {
+export async function fetchGmailSummaries(account: Account, mailbox: string, limit: number, pageToken?: string, category?: string): Promise<{ messages: MessageSummary[]; nextCursor: string | null }> {
   const label = mailbox === "INBOX" ? "INBOX" : mailbox;
   const params = new URLSearchParams({ labelIds: label, maxResults: String(limit) });
+  // Gmail supports repeated labelIds filters; category + inbox are intersected.
+  if (category) params.append("labelIds", category);
   if (pageToken) params.set("pageToken", pageToken);
   const list = await gmail(account, `/messages?${params}`);
   const messages = await Promise.all((list.messages ?? []).map((item: { id: string }) => gmail(account, `/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`)));
