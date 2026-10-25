@@ -135,11 +135,15 @@ export function deleteAccount(id: string) {
   return req<null>(`/api/accounts/${id}`, { method: "DELETE" });
 }
 
-export function getMessages(accountId: string, mailbox = "INBOX", limit = 25) {
+export interface MessagePage {
+  messages: MessageSummary[];
+  nextCursor: string | null;
+}
+
+export function getMessages(accountId: string, mailbox = "INBOX", limit = 50, cursor?: string): Promise<MessagePage> {
   const q = new URLSearchParams({ mailbox, limit: String(limit) });
-  return req<{ messages: MessageSummary[] }>(
-    `/api/accounts/${accountId}/messages?${q}`,
-  ).then((r) => r.messages);
+  if (cursor) q.set("cursor", cursor);
+  return req<MessagePage>(`/api/accounts/${encodeURIComponent(accountId)}/messages?${q}`);
 }
 
 export function getMessage(accountId: string, uid: string, mailbox = "INBOX") {
