@@ -11,6 +11,14 @@ import {
   ShieldCheck,
   Lock,
   Settings,
+  Clock3,
+  ChevronsRight,
+  ShoppingBag,
+  SendHorizonal,
+  MailWarning,
+  ListMinus,
+  CalendarClock,
+  Archive,
 } from "lucide-react";
 import type { AccountLabel } from "@/lib/api";
 import type { Folder } from "@/types/email";
@@ -23,6 +31,14 @@ const folderIcons: Record<string, React.ReactNode> = {
   trash: <Trash2 size={18} />,
   vault: <Lock size={18} />,
   deliveries: <Package size={18} />,
+  snoozed: <Clock3 size={18} />,
+  important: <ChevronsRight size={18} />,
+  purchases: <ShoppingBag size={18} />,
+  scheduled: <CalendarClock size={18} />,
+  outbox: <SendHorizonal size={18} />,
+  all: <Archive size={18} />,
+  spam: <MailWarning size={18} />,
+  subscriptions: <ListMinus size={18} />,
 };
 
 const folderLabels: Record<string, string> = {
@@ -33,6 +49,14 @@ const folderLabels: Record<string, string> = {
   trash: "Corbeille",
   vault: "Coffre-fort",
   deliveries: "Livraisons",
+  snoozed: "En attente",
+  important: "Important",
+  purchases: "Achats",
+  scheduled: "Envois programmés",
+  outbox: "Boîte d’envoi",
+  all: "Tous les messages",
+  spam: "Spam",
+  subscriptions: "Gérer les abonnements",
 };
 
 interface SidebarProps {
@@ -62,7 +86,7 @@ export default function Sidebar({
   selectedLabel,
   onSelectLabel,
 }: SidebarProps) {
-  const folders: Folder[] = ["inbox", "deliveries", "starred", "sent", "drafts", "vault", "trash"];
+  const folders: Folder[] = ["inbox", "starred", "snoozed", "important", "purchases", "sent", "scheduled", "outbox", "drafts", "all", "spam", "trash", "subscriptions", "deliveries", "vault"];
   const userLabels = labels;
 
   return (
