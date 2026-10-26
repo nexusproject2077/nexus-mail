@@ -241,3 +241,11 @@ export function changeMailCategory(accountId: string, uid: string, category: str
     method: "POST", body: JSON.stringify({ category }),
   });
 }
+
+export interface MailSubscription {
+  sender: string; name: string; count: number; lastReceived: string;
+  unsubscribeUrl?: string; oneClickUrl?: string; mailto?: string;
+}
+export function getMailSubscriptions(accountId: string) {
+  return req<{ subscriptions: MailSubscription[] }>(`/api/accounts/${encodeURIComponent(accountId)}/subscriptions`).then(r => r.subscriptions);
+}
