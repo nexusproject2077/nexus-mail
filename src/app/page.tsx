@@ -120,7 +120,7 @@ export default function NexusMail() {
   const [specialThreads, setSpecialThreads] = useState<Thread[]>([]);
   const [specialLoading, setSpecialLoading] = useState(false);
   useEffect(() => {
-    if (!["drafts", "starred", "important", "purchases", "sent", "trash", "spam", "all", "subscriptions"].includes(activeFolder)) {
+    if (!["drafts", "starred", "important", "purchases", "sent", "trash", "spam", "all", "subscriptions", "snoozed"].includes(activeFolder)) {
       setSpecialThreads([]);
       setSpecialLoading(false);
       return;
@@ -133,11 +133,11 @@ export default function NexusMail() {
     setSpecialLoading(true);
     void (async () => {
       const gmailFolders: Record<string, string> = {
-        drafts: "DRAFT", starred: "STARRED", important: "IMPORTANT",
+        drafts: "DRAFT", starred: "STARRED", important: "IMPORTANT", snoozed: "SNOOZED",
         sent: "SENT", trash: "TRASH", spam: "SPAM", all: "ALL",
       };
       const imapFolders: Record<string, string> = {
-        drafts: "Drafts", sent: "Sent", trash: "Trash", spam: "Junk", all: "INBOX",
+        drafts: "Drafts", sent: "Sent", trash: "Trash", spam: "Junk", all: "All",
       };
       const results = await Promise.allSettled(ids.map(async account => {
         if (activeFolder === "purchases" || activeFolder === "subscriptions" ||
@@ -184,7 +184,7 @@ export default function NexusMail() {
       else if (activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = [...specialThreads, ...mail.threads.filter(t => t.isStarred)].filter((t, index, items) => items.findIndex(other => other.id === t.id) === index);
-      else if (["drafts", "important", "purchases", "sent", "trash", "spam", "all", "subscriptions"].includes(activeFolder)) filtered = specialThreads;
+      else if (["drafts", "important", "purchases", "sent", "trash", "spam", "all", "subscriptions", "snoozed"].includes(activeFolder)) filtered = specialThreads;
       else filtered = []; // sent/trash not yet backed by IMAP
     } else {
       filtered = []; // Never display sample emails as a real inbox.
