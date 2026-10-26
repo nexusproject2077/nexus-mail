@@ -22,6 +22,7 @@ import EmailView from "@/components/EmailView";
 import ComposeModal from "@/components/ComposeModal";
 import SearchBar from "@/components/SearchBar";
 import OutboxPanel from "@/components/OutboxPanel";
+import SubscriptionsPanel from "@/components/SubscriptionsPanel";
 import SecurityPanel from "@/components/SecurityPanel";
 import AccountsPanel from "@/components/AccountsPanel";
 import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/components/SettingsPanel";
@@ -121,7 +122,7 @@ export default function NexusMail() {
   const [specialThreads, setSpecialThreads] = useState<Thread[]>([]);
   const [specialLoading, setSpecialLoading] = useState(false);
   useEffect(() => {
-    if (!["drafts", "starred", "important", "purchases", "sent", "trash", "spam", "all", "subscriptions", "snoozed"].includes(activeFolder)) {
+    if (!["drafts", "starred", "important", "purchases", "sent", "trash", "spam", "all", "snoozed"].includes(activeFolder)) {
       setSpecialThreads([]);
       setSpecialLoading(false);
       return;
@@ -504,7 +505,9 @@ export default function NexusMail() {
                 <button type="button" onClick={() => setAccountsOpen(true)} className="mt-3 rounded-lg bg-nexus-primary px-3 py-2 text-black">Configurer la synchronisation</button>
               </div>
             )}
-            {activeFolder === "scheduled" || activeFolder === "outbox" ? (
+            {activeFolder === "subscriptions" ? (
+              <SubscriptionsPanel accountIds={mail.accounts.map(account => account.id)} />
+            ) : activeFolder === "scheduled" || activeFolder === "outbox" ? (
               <OutboxPanel
                 accountIds={mail.activeAccountId === "all" ? mail.accounts.map(account => account.id) : mail.activeAccountId ? [mail.activeAccountId] : []}
                 scheduled={activeFolder === "scheduled"}
