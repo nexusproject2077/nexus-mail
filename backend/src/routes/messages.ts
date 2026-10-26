@@ -7,9 +7,18 @@ import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead,
 import { requireAuth, requireCsrf } from "../auth.js";
 
 import { enqueue, listQueued, cancelQueued } from "../outgoing-queue.js";
+import { discoverSubscriptions } from "../subscriptions.js";
 
 export const messagesRouter = Router();
 messagesRouter.use(requireAuth);
+
+/** Newsletter senders grouped by List-Unsubscribe metadata. */
+messagesRouter.get("/:id/subscriptions", async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  try { res.json({ subscriptions: await discoverSubscriptions(account) }); }
+  catch (error) { res.status(502).json({ error: "Subscription scan failed", message: (error as Error).message }); }
+});
 
 /** Real Gmail unread counters for every category. */
 messagesRouter.get("/:id/category-counts", async (req, res) => {
