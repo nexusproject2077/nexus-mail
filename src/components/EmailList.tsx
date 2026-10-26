@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Mail, MailOpen, Trash2, Loader2 } from "lucide-react";
+import { Archive, Clock3, Mail, MailOpen, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Thread } from "@/types/email";
 import { formatEmailDate, getInitials, getAvatarColor, getLabelInfo } from "@/lib/utils";
@@ -12,6 +12,7 @@ interface EmailListProps {
   folder: string;
   onTrash?: (thread: Thread) => Promise<void>;
   onQuickAction?: (thread: Thread, action: "archive" | "read" | "unread") => Promise<void>;
+  onSnooze?: (thread: Thread, snoozedUntil: string) => Promise<void>;
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -27,6 +28,7 @@ export default function EmailList({
   folder,
   onTrash,
   onQuickAction,
+  onSnooze,
   onLoadMore,
   hasMore = false,
   loadingMore = false,
@@ -43,6 +45,19 @@ export default function EmailList({
   const busy = useRef(false);
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [snoozingThreadId, setSnoozingThreadId] = useState<string | null>(null);
+  const [snoozeValue, setSnoozeValue] = useState("");
+  const [snoozeBusy, setSnoozeBusy] = useState(false);
+  const defaultSnoozeValue = () => {
+    const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    date.setHours(8, 0, 0, 0);
+    const offset = date.getTimezoneOffset();
+    return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
+  };
+  const openSnooze = (threadId: string) => {
+    setSnoozingThreadId(threadId);
+    setSnoozeValue(defaultSnoozeValue());
+  };
   const finishPull = () => {
     const shouldRefresh = distance.current >= 64;
     touchStart.current = null;
@@ -197,11 +212,25 @@ export default function EmailList({
               </div>
             </div>
           </button>
-          {(onQuickAction || onTrash) && (
+          {(onQuickAction || onTrash || onSnooze) && (
             <div className="absolute right-3 top-2 hidden items-center gap-0.5 rounded-lg border border-nexus-border bg-nexus-surface px-1 py-0.5 shadow-lg group-hover/mail:flex group-focus-within/mail:flex max-lg:hidden" role="group" aria-label="Actions rapides">
               {onQuickAction && <button type="button" title="Archiver" aria-label="Archiver" className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onQuickAction(thread, "archive"); }}><Archive size={17} /></button>}
               {onTrash && <button type="button" title="Supprimer" aria-label="Mettre à la corbeille" className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onTrash(thread).catch(() => {}); }}><Trash2 size={17} /></button>}
               {onQuickAction && <button type="button" title={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} aria-label={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onQuickAction(thread, thread.isUnread ? "read" : "unread"); }}>{thread.isUnread ? <MailOpen size={17} /> : <Mail size={17} />}</button>}
+              {onSnooze && <button type="button" title="Mettre en attente" aria-label="Mettre en attente" aria-expanded={snoozingThreadId === thread.id} className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); openSnooze(thread.id); }}><Clock3 size={17} /></button>}
+              {onSnooze && snoozingThreadId === thread.id && (
+                <form className="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-nexus-border bg-nexus-surface p-3 shadow-2xl" onSubmit={(event) => {
+                  event.preventDefault();
+                  const date = new Date(snoozeValue);
+                  if (Number.isNaN(date.valueOf()) || date.valueOf() < Date.now() + 60_000 || snoozeBusy) return;
+                  setSnoozeBusy(true);
+                  void onSnooze(thread, date.toISOString()).then(() => setSnoozingThreadId(null)).catch(() => {}).finally(() => setSnoozeBusy(false));
+                }} onClick={event => event.stopPropagation()}>
+                  <label className="block text-xs font-medium text-nexus-text" htmlFor={`snooze-${thread.id}`}>Réapparaître le</label>
+                  <input id={`snooze-${thread.id}`} required min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)} type="datetime-local" value={snoozeValue} onChange={event => setSnoozeValue(event.target.value)} className="mt-2 w-full rounded-lg border border-nexus-border bg-nexus-bg px-2 py-2 text-sm text-nexus-text" />
+                  <div className="mt-3 flex justify-end gap-2"><button type="button" className="rounded-lg px-2 py-1.5 text-xs text-nexus-text-muted hover:bg-nexus-surface-hover" onClick={() => setSnoozingThreadId(null)}>Annuler</button><button type="submit" disabled={snoozeBusy} className="rounded-lg bg-nexus-primary px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-50">{snoozeBusy ? "Patientez…" : "Mettre en attente"}</button></div>
+                </form>
+              )}
             </div>
           )}
           </div>

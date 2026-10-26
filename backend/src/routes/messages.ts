@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { getAccountWithSecret, blockSender, listBlockedSenders } from "../db.js";
+import { getAccountWithSecret, blockSender, listBlockedSenders, activeSnoozedUids, forgetSnoozedMessage, listSnoozedMessages, snoozeMessage } from "../db.js";
 import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels, updateImapFlags, searchImap, fetchImapAttachment } from "../imap.js";
 import { fetchGmailDetail, fetchGmailSummaries, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailAttachmentMetadata, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
@@ -45,10 +45,56 @@ messagesRouter.get("/:id/messages", async (req, res) => {
   if (cursor.length > 2048 || (account.authType !== "google_oauth" && cursor && !/^\d+$/.test(cursor))) { res.status(400).json({ error: "Invalid pagination cursor" }); return; }
   try {
     const result = account.authType === "google_oauth" ? await fetchGmailSummaries(account, mailbox, pageSize, cursor || undefined, category || undefined) : await fetchSummaries(account, mailbox, pageSize, Number(cursor || 0));
+    if (mailbox === "INBOX") {
+      const snoozed = activeSnoozedUids(req.auth!.ownerId, account.id, mailbox);
+      result.messages = result.messages.filter(message => !snoozed.has(message.uid));
+    }
     res.json(result);
   } catch (e) {
     res.status(502).json({ error: "Mail fetch failed", message: (e as Error).message });
   }
+});
+
+const snoozeSchema = z.object({ snoozedUntil: z.string().datetime({ offset: true }) });
+/** Store a portable snooze. The provider message stays in place, avoiding loss or moves. */
+messagesRouter.post("/:id/messages/:uid/snooze", requireCsrf, async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const parsed = snoozeSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid snooze date" }); return; }
+  const uid = req.params.uid;
+  if (!uid || (account.authType !== "google_oauth" && !/^\d+$/.test(uid))) { res.status(400).json({ error: "Invalid uid" }); return; }
+  const snoozedUntil = Date.parse(parsed.data.snoozedUntil);
+  if (!Number.isFinite(snoozedUntil) || snoozedUntil < Date.now() + 60_000 || snoozedUntil > Date.now() + 365 * 86400_000) {
+    res.status(400).json({ error: "Choisissez une date entre 1 minute et 1 an" }); return;
+  }
+  const mailbox = String(req.query.mailbox ?? "INBOX");
+  try {
+    // Confirm the source still exists before persisting an invisible row.
+    const message = account.authType === "google_oauth"
+      ? await fetchGmailDetail(account, uid)
+      : await fetchDetail(account, mailbox, uid, false);
+    if (!message) { res.status(404).json({ error: "Message not found" }); return; }
+    snoozeMessage(req.auth!.ownerId, account.id, uid, mailbox, snoozedUntil);
+    res.status(201).json({ ok: true, snoozedUntil: new Date(snoozedUntil).toISOString() });
+  } catch (error) { res.status(502).json({ error: "Unable to snooze message", message: (error as Error).message }); }
+});
+
+/** Fetch locally snoozed messages. Missing provider messages are cleaned up. */
+messagesRouter.get("/:id/snoozed", async (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  try {
+    const records = listSnoozedMessages(req.auth!.ownerId, account.id);
+    const settled = await Promise.allSettled(records.map(async record => {
+      const message = account.authType === "google_oauth"
+        ? await fetchGmailDetail(account, record.uid)
+        : await fetchDetail(account, record.mailbox, record.uid, false);
+      if (!message) { forgetSnoozedMessage(req.auth!.ownerId, account.id, record.uid, record.mailbox); return null; }
+      return { ...message, snoozedUntil: new Date(record.snoozedUntil).toISOString() };
+    }));
+    res.json({ messages: settled.flatMap(item => item.status === "fulfilled" && item.value ? [item.value] : []) });
+  } catch (error) { res.status(502).json({ error: "Unable to list snoozed messages", message: (error as Error).message }); }
 });
 
 /** GET /api/accounts/:id/messages/:uid?mailbox=INBOX */

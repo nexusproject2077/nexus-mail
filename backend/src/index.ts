@@ -1,5 +1,6 @@
 import express from "express";
 import { startQueueWorker } from "./outgoing-queue.js";
+import { expireSnoozedMessages } from "./db.js";
 import cors from "cors";
 import { config, assertProductionSecret } from "./config.js";
 import { accountsRouter } from "./routes/accounts.js";
@@ -26,5 +27,9 @@ app.use("/api/accounts", messagesRouter);
 
 app.listen(config.port, config.host, () => {
   startQueueWorker();
+  // Expiry is durable and does not depend on an open browser tab.
+  expireSnoozedMessages();
+  const snoozeTimer = setInterval(expireSnoozedMessages, 30_000);
+  snoozeTimer.unref();
   console.log(`Nexus Mail backend listening on ${config.host}:${config.port}`);
 });

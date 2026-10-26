@@ -236,3 +236,62 @@ export function getActiveEmailAlias(ownerId: string, accountId: string, id: stri
 export function deactivateEmailAlias(ownerId: string, accountId: string, id: string, gmailFilterId?: string): boolean {
   return db.prepare("UPDATE email_aliases SET active = 0, gmail_filter_id = ? WHERE id = ? AND owner_id = ? AND account_id = ? AND active = 1").run(gmailFilterId ?? null, id, ownerId, accountId).changes > 0;
 }
+
+/**
+ * Local Gmail-style snooze state. Providers do not offer a portable snooze
+ * operation (and Gmail's public API does not expose its UI snooze label), so
+ * the message is deliberately left untouched at the provider. The server
+ * hides it from INBOX until the due time and restores visibility atomically.
+ */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS snoozed_messages (
+    owner_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    uid TEXT NOT NULL,
+    mailbox TEXT NOT NULL,
+    snoozed_until INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (owner_id, account_id, uid, mailbox)
+  );
+  CREATE INDEX IF NOT EXISTS snoozed_messages_active_idx
+    ON snoozed_messages(owner_id, account_id, snoozed_until);
+`);
+
+export interface SnoozedMessage {
+  accountId: string;
+  uid: string;
+  mailbox: string;
+  snoozedUntil: number;
+}
+
+export function expireSnoozedMessages(now = Date.now()): void {
+  db.prepare("DELETE FROM snoozed_messages WHERE snoozed_until <= ?").run(now);
+}
+
+export function snoozeMessage(ownerId: string, accountId: string, uid: string, mailbox: string, snoozedUntil: number): void {
+  const now = Date.now();
+  // Upsert makes competing clicks idempotent: the most recently chosen date wins.
+  db.prepare(`INSERT INTO snoozed_messages (owner_id, account_id, uid, mailbox, snoozed_until, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(owner_id, account_id, uid, mailbox) DO UPDATE SET snoozed_until = excluded.snoozed_until, created_at = excluded.created_at`)
+    .run(ownerId, accountId, uid, mailbox, snoozedUntil, now);
+}
+
+export function activeSnoozedUids(ownerId: string, accountId: string, mailbox: string, now = Date.now()): Set<string> {
+  expireSnoozedMessages(now);
+  return new Set((db.prepare("SELECT uid FROM snoozed_messages WHERE owner_id = ? AND account_id = ? AND mailbox = ? AND snoozed_until > ?")
+    .all(ownerId, accountId, mailbox, now) as { uid: string }[]).map(row => row.uid));
+}
+
+export function listSnoozedMessages(ownerId: string, accountId: string, now = Date.now()): SnoozedMessage[] {
+  expireSnoozedMessages(now);
+  return (db.prepare(`SELECT account_id, uid, mailbox, snoozed_until FROM snoozed_messages
+    WHERE owner_id = ? AND account_id = ? AND snoozed_until > ? ORDER BY snoozed_until ASC LIMIT 200`)
+    .all(ownerId, accountId, now) as Array<{ account_id: string; uid: string; mailbox: string; snoozed_until: number }>)
+    .map(row => ({ accountId: row.account_id, uid: row.uid, mailbox: row.mailbox, snoozedUntil: row.snoozed_until }));
+}
+
+export function forgetSnoozedMessage(ownerId: string, accountId: string, uid: string, mailbox: string): void {
+  db.prepare("DELETE FROM snoozed_messages WHERE owner_id = ? AND account_id = ? AND uid = ? AND mailbox = ?")
+    .run(ownerId, accountId, uid, mailbox);
+}

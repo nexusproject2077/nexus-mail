@@ -14,6 +14,7 @@ import {
   type AccountLabel,
   markMessageRead,
   trashMessage,
+  snoozeMessage,
   type PublicAccount,
   type MessageSummary,
 } from "./api";
@@ -110,6 +111,7 @@ export interface UseMail {
   loadDetail: (thread: Thread) => Promise<Thread>;
   trashThread: (thread: Thread) => Promise<void>;
   actionThread: (thread: Thread, action: MessageAction) => Promise<void>;
+  snoozeThread: (thread: Thread, snoozedUntil: string) => Promise<void>;
   searchMessages: (query: string) => Promise<Thread[]>;
 }
 
@@ -420,6 +422,19 @@ export function useMail(): UseMail {
     }
   }, []);
 
+  const snoozeThread = useCallback(async (thread: Thread, snoozedUntil: string) => {
+    const messageIds = [...new Set(thread.messages.map(message => {
+      const parsed = parseLiveId(message.id);
+      if (!parsed) throw new Error("Identifiant de message invalide.");
+      return JSON.stringify([parsed.accountId, parsed.uid]);
+    }))].map(value => JSON.parse(value) as [string, string]);
+    if (!messageIds.length) throw new Error("Aucun message à mettre en attente.");
+    await Promise.all(messageIds.map(([accountId, uid]) =>
+      snoozeMessage(accountId, uid, thread.mailbox ?? "INBOX", snoozedUntil)));
+    storeRef.current = storeRef.current.filter(item => item.id !== thread.id);
+    setThreads(current => current.filter(item => item.id !== thread.id));
+  }, []);
+
   const searchMessages = useCallback(async (query: string): Promise<Thread[]> => {
     if (query.trim().length < 2) return [];
     const ids = activeAccountId === ALL_ACCOUNTS ? accountsRef.current.map(a => a.id) : activeAccountId ? [activeAccountId] : [];
@@ -469,6 +484,7 @@ export function useMail(): UseMail {
     loadDetail,
     trashThread,
     actionThread,
+    snoozeThread,
     searchMessages,
   };
 }

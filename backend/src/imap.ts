@@ -101,6 +101,7 @@ export async function fetchDetail(
   account: Account,
   mailbox: string,
   uid: string,
+  markRead = true,
 ): Promise<MessageDetail | null> {
   const client = await open(account);
   try {
@@ -116,10 +117,12 @@ export async function fetchDetail(
       const env = msg.envelope;
       const text = parsed.text ?? "";
       // Best-effort: mark the message as read.
-      try {
-        await client.messageFlagsAdd(String(uid), ["\\Seen"], { uid: true });
-      } catch {
-        /* read-only mailbox — ignore */
+      if (markRead) {
+        try {
+          await client.messageFlagsAdd(String(uid), ["\\Seen"], { uid: true });
+        } catch {
+          /* read-only mailbox — ignore */
+        }
       }
       return {
         uid,

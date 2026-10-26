@@ -223,6 +223,14 @@ export type MessageAction = "read" | "unread" | "star" | "unstar" | "archive";
 export function performMessageAction(accountId: string, uid: string, mailbox: string, action: MessageAction) {
   return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/action?${new URLSearchParams({ mailbox })}`, { method: "POST", body: JSON.stringify({ action }) });
 }
+export function snoozeMessage(accountId: string, uid: string, mailbox: string, snoozedUntil: string) {
+  return req<{ ok: boolean; snoozedUntil: string }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/snooze?${new URLSearchParams({ mailbox })}`, {
+    method: "POST", body: JSON.stringify({ snoozedUntil }),
+  });
+}
+export function getSnoozedMessages(accountId: string) {
+  return req<{ messages: MessageSummary[] }>(`/api/accounts/${encodeURIComponent(accountId)}/snoozed`).then(result => result.messages);
+}
 export function searchAccountMessages(accountId: string, query: string) {
   return req<{ messages: MessageSummary[] }>(`/api/accounts/${encodeURIComponent(accountId)}/search?${new URLSearchParams({ q: query })}`).then(r => r.messages);
 }

@@ -29,7 +29,7 @@ import AliasesPanel from "@/components/AliasesPanel";
 
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId, summaryToThread } from "@/lib/useMail";
-import { blockMailSender, cancelQueuedMail, changeMailCategory, getMessages, searchAccountMessages, type QueuedMail } from "@/lib/api";
+import { blockMailSender, cancelQueuedMail, changeMailCategory, getMessages, getSnoozedMessages, searchAccountMessages, type QueuedMail } from "@/lib/api";
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
@@ -171,6 +171,14 @@ export default function NexusMail() {
   // A live IMAP account replaces the sample inbox with real mail.
   const liveInbox = mail.configured && !!mail.activeAccountId;
 
+  // The backend releases snoozes without a browser, while this lightweight
+  // visible-tab refresh makes a due message reappear promptly for an open inbox.
+  useEffect(() => {
+    if (!liveInbox || activeFolder !== "inbox") return;
+    const timer = window.setInterval(() => { void mail.refreshMessages(); }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [activeFolder, liveInbox, mail.refreshMessages]);
+
   useEffect(() => {
     if (!liveInbox || searchQuery.trim().length < 2) return;
     let cancelled = false;
@@ -198,13 +206,17 @@ export default function NexusMail() {
     setSpecialLoading(true);
     void (async () => {
       const gmailFolders: Record<string, string> = {
-        drafts: "DRAFT", starred: "STARRED", important: "IMPORTANT", snoozed: "SNOOZED",
+        drafts: "DRAFT", starred: "STARRED", important: "IMPORTANT",
         sent: "SENT", trash: "TRASH", spam: "SPAM", all: "ALL",
       };
       const imapFolders: Record<string, string> = {
         drafts: "Drafts", sent: "Sent", trash: "Trash", spam: "Junk", all: "All",
       };
       const results = await Promise.allSettled(ids.map(async account => {
+        if (activeFolder === "snoozed") {
+          const messages = await getSnoozedMessages(account.id);
+          return messages.map(message => summaryToThread(account.id, message, "INBOX"));
+        }
         if (activeFolder === "purchases" || activeFolder === "subscriptions" ||
             (account.authType !== "google_oauth" && ["starred", "important"].includes(activeFolder))) {
           const query = activeFolder === "purchases" ? "category:purchases" :
@@ -586,6 +598,16 @@ export default function NexusMail() {
                     if (action === "archive") setSelectedThread(null);
                     else setSelectedThread(current => current ? { ...current, isUnread: action === "unread" } : current);
                   }
+                } catch (error) {
+                  setMessageActionError((error as Error).message);
+                  throw error;
+                }
+              } : undefined}
+              onSnooze={liveInbox && activeFolder === "inbox" ? async (thread, snoozedUntil) => {
+                setMessageActionError(null);
+                try {
+                  await mail.snoozeThread(thread, snoozedUntil);
+                  if (selectedThread?.id === thread.id) setSelectedThread(null);
                 } catch (error) {
                   setMessageActionError((error as Error).message);
                   throw error;
