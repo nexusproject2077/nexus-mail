@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MailOpen,
   FolderInput,
@@ -93,6 +93,61 @@ function InlineImagePreview({ accountId, uid, mailbox, attachment }: {
     {/* eslint-disable-next-line @next/next/no-img-element */}
     <img src={url} alt={attachment.filename} loading="lazy" className="max-h-[420px] max-w-full rounded-xl object-contain" />
   </a>;
+}
+
+/** Resize the sandboxed email frame to its actual content instead of a fixed height. */
+function AdaptiveEmailFrame({ html, title }: { html: string; title: string }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(1);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    let observer: ResizeObserver | undefined;
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      const doc = frame.contentDocument;
+      if (!doc) return;
+      const body = doc.body;
+      const root = doc.documentElement;
+      if (!body || !root) return;
+      const next = Math.max(body.scrollHeight, body.offsetHeight, root.scrollHeight, root.offsetHeight, 1);
+      setHeight(previous => previous === next ? previous : next);
+    };
+    const onLoad = () => {
+      observer?.disconnect();
+      const doc = frame.contentDocument;
+      if (!doc) return;
+      // Images and responsive email layouts may change height after load.
+      observer = new ResizeObserver(measure);
+      if (doc.body) observer.observe(doc.body);
+      if (doc.documentElement) observer.observe(doc.documentElement);
+      doc.querySelectorAll("img").forEach(img => {
+        img.addEventListener("load", measure);
+        img.addEventListener("error", measure);
+      });
+      measure();
+    };
+    frame.addEventListener("load", onLoad);
+    if (frame.contentDocument?.readyState === "complete") onLoad();
+    return () => { disposed = true; frame.removeEventListener("load", onLoad); observer?.disconnect(); };
+  }, [html]);
+
+  return (
+    <div className="w-full min-w-0 overflow-hidden rounded-[28px] bg-white">
+      <iframe
+        ref={frameRef}
+        title={title}
+        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        referrerPolicy="no-referrer"
+        srcDoc={prepareEmailHtml(html)}
+        scrolling="no"
+        style={{ height: height + "px" }}
+        className="block w-full border-0 bg-white"
+      />
+    </div>
+  );
 }
 
 /** Extractive, deterministic summary: no external requests or generated claims. */
@@ -487,12 +542,9 @@ export default function EmailView({
                     onNeedUnlock={onNeedUnlock}
                   />
                 ) : msg.htmlBody ? (
-                  <iframe
+                  <AdaptiveEmailFrame
                     title={`Contenu du message de ${msg.senderName}`}
-                    sandbox="allow-popups allow-popups-to-escape-sandbox"
-                    referrerPolicy="no-referrer"
-                    srcDoc={prepareEmailHtml(msg.htmlBody)}
-                    className="block w-full min-h-[420px] rounded-none border-0 bg-transparent"
+                    html={msg.htmlBody}
                   />
                 ) : (
                   <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-nexus-surface-hover/30 rounded-xl p-4">
