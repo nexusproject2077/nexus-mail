@@ -152,7 +152,7 @@ export async function fetchGmailDetail(account: Account, id: string): Promise<Me
       }
       if (!encoded) continue;
       const dataUri = "data:" + mime + ";base64," + Buffer.from(encoded, "base64url").toString("base64");
-      renderedHtml = renderedHtml.replace(/cid:([^"'\\s<>]+)/gi, (original: string, value: string) => {
+      renderedHtml = renderedHtml.replace(/cid:([^"'\s<>]+)/gi, (original: string, value: string) => {
         let normalized = value;
         try { normalized = decodeURIComponent(value); } catch { /* preserve original */ }
         return normalized.toLowerCase() === cid.toLowerCase() ? dataUri : original;
