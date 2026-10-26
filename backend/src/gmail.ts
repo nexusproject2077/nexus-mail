@@ -110,7 +110,9 @@ function summary(message: any): MessageSummary {
 
 export async function fetchGmailSummaries(account: Account, mailbox: string, limit: number, pageToken?: string, category?: string): Promise<{ messages: MessageSummary[]; nextCursor: string | null }> {
   const label = mailbox === "INBOX" ? "INBOX" : mailbox;
-  const params = new URLSearchParams({ labelIds: label, maxResults: String(limit) });
+  const params = new URLSearchParams({ maxResults: String(limit) });
+  // Gmail has no ALL label: omit labelIds to include every mailbox.
+  if (label !== "ALL") params.set("labelIds", label);
   // Gmail supports repeated labelIds filters; category + inbox are intersected.
   if (category) params.append("labelIds", category);
   if (pageToken) params.set("pageToken", pageToken);
