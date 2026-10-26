@@ -576,6 +576,19 @@ export default function NexusMail() {
               onSelect={handleSelectThread}
               onTrash={activeFolder !== "trash" && liveInbox ? async (thread) => { try { await mail.trashThread(thread); if (selectedThread?.id === thread.id) setSelectedThread(null); } catch (error) { setMessageActionError((error as Error).message); throw error; } } : undefined}
               folder={activeFolder}
+              onQuickAction={liveInbox && activeFolder !== "trash" ? async (thread, action) => {
+                setMessageActionError(null);
+                try {
+                  await mail.actionThread(thread, action);
+                  if (selectedThread?.id === thread.id) {
+                    if (action === "archive") setSelectedThread(null);
+                    else setSelectedThread(current => current ? { ...current, isUnread: action === "unread" } : current);
+                  }
+                } catch (error) {
+                  setMessageActionError((error as Error).message);
+                  throw error;
+                }
+              } : undefined}
               onScrollDirection={(direction) => setComposeFabCompact(direction === "down")}
               hasMore={!searchQuery.trim() && mail.hasMore}
               loadingMore={mail.loadingMore}
