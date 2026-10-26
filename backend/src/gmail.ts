@@ -267,3 +267,20 @@ export async function setGmailCategory(account: Account, id: string, category: s
     body: JSON.stringify({ addLabelIds: [category], removeLabelIds: allowed.filter(item => item !== category) }),
   });
 }
+
+/** Recent newsletter headers without downloading full message bodies. */
+export async function fetchGmailSubscriptionHeaders(account: Account): Promise<Array<{ from: string; name: string; date: string; unsubscribe: string; post: string }>> {
+  const list = await gmail(account, `/messages?${new URLSearchParams({ maxResults: "200", q: "newer_than:90d" })}`);
+  const results: Array<{ from: string; name: string; date: string; unsubscribe: string; post: string }> = [];
+  for (const item of list.messages ?? []) {
+    const msg = await gmail(account, `/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=List-Unsubscribe&metadataHeaders=List-Unsubscribe-Post`);
+    const headers = (msg.payload?.headers ?? []) as Array<{ name: string; value: string }>;
+    const get = (name: string) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value ?? "";
+    const fromHeader = get("From");
+    const match = fromHeader.match(/^(.*?)\s*<([^<>]+)>\s*$/);
+    results.push({ from: match?.[2] ?? fromHeader.trim(), name: match?.[1]?.replace(/^"|"$/g, "") ?? "",
+      date: get("Date") || new Date(Number(msg.internalDate ?? Date.now())).toISOString(),
+      unsubscribe: get("List-Unsubscribe"), post: get("List-Unsubscribe-Post") });
+  }
+  return results;
+}
