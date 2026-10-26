@@ -21,7 +21,7 @@ import {
   ImagePlus,
   Link2,
 } from "lucide-react";
-import { sendViaAccount, downloadAttachment } from "@/lib/api";
+import { sendViaAccount, scheduleViaAccount, downloadAttachment } from "@/lib/api";
 import { encryptToKey, encryptConfidential } from "@/lib/crypto";
 import { useVault, addVaultMessage } from "@/lib/vault";
 import type { Thread } from "@/types/email";
@@ -66,6 +66,7 @@ export default function ComposeModal({
   const [showOriginal, setShowOriginal] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -207,13 +208,22 @@ export default function ComposeModal({
         const escapedIntro = typedIntro.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br />").replace(/\r?\n/g, "<br />");
         const outgoingHtml = initialDraft?.html ? `${escapedIntro ? `<div style="white-space:pre-wrap">${escapedIntro}</div><br>` : ""}${htmlBody}` : htmlBody;
         const signedHtml = outgoingHtml && signature ? `${outgoingHtml}<p>${signature.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\n/g, "<br>")}</p>` : outgoingHtml;
-        await sendViaAccount(activeAccountId, {
+        const messagePayload = {
           to: to.trim(),
           subject: subject.trim(),
           text: signedText,
           html: signedHtml || undefined,
           attachments: outgoing,
-        });
+        };
+        if (scheduleAt) {
+          const timestamp = new Date(scheduleAt).getTime();
+          if (!Number.isFinite(timestamp) || timestamp < Date.now() + 60_000) {
+            throw new Error("Choisis une date au moins 1 minute dans le futur.");
+          }
+          await scheduleViaAccount(activeAccountId, messagePayload, new Date(timestamp).toISOString());
+        } else {
+          await sendViaAccount(activeAccountId, messagePayload);
+        }
         if (draftKey) { try { window.localStorage.removeItem(draftKey); } catch {} }
         onSent?.();
         onClose();
@@ -362,6 +372,15 @@ export default function ComposeModal({
             {replyTo ? "Répondre" : "Nouveau message"}
           </span>
           <div className="flex items-center gap-1">
+            {mode === "standard" && (
+              <label className="flex items-center gap-1 text-[11px] text-nexus-text-muted">
+                <Timer size={15} aria-hidden="true" />
+                <span className="sr-only">Programmer l'envoi (facultatif)</span>
+                <input type="datetime-local" aria-label="Programmer l'envoi" value={scheduleAt}
+                  onChange={event => setScheduleAt(event.target.value)}
+                  className="max-w-[145px] rounded-lg border border-nexus-border bg-black px-1 py-1 text-[11px] text-white" />
+              </label>
+            )}
             <button type="button" onClick={handleSend} disabled={isSending || !to.trim() || attachmentsLoading} aria-label="Envoyer le message" title="Envoyer"
               className="flex h-10 w-10 items-center justify-center rounded-xl text-nexus-primary-light hover:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed">
               {isSending ? <Loader2 size={21} className="animate-spin" /> : mode === "standard" ? <Send size={21} /> : <Lock size={21} />}
