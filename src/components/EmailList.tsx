@@ -56,8 +56,10 @@ export default function EmailList({
     });
   };
   const bottomRef = useRef<HTMLDivElement>(null);
+  const userScrolledRef = useRef(false);
   const requestNext = () => {
-    if (!hasMore || loadingMore || !onLoadMore) return;
+    if (!hasMore || loadingMore || !onLoadMore || !userScrolledRef.current) return;
+    userScrolledRef.current = false;
     onLoadMore();
   };
   useEffect(() => {
@@ -66,8 +68,8 @@ export default function EmailList({
     const target = bottomRef.current;
     if (!root || !target) return;
     const observer = new IntersectionObserver(entries => {
-      if (entries[0]?.isIntersecting) requestNext();
-    }, { root, rootMargin: "600px 0px" });
+      if (entries[0]?.isIntersecting && userScrolledRef.current) requestNext();
+    }, { root, rootMargin: "0px" });
     observer.observe(target);
     return () => observer.disconnect();
   }, [hasMore, loadingMore, onLoadMore, threads.length]);
@@ -86,6 +88,8 @@ export default function EmailList({
   return (
     <div ref={scrollRef} className="nexus-mail-list flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-y-contain" onTouchStart={event => { if (onRefresh && !busy.current && event.touches.length === 1 && (scrollRef.current?.scrollTop ?? 1) <= 0) touchStart.current = event.touches[0].clientY; }} onTouchMove={event => { if (touchStart.current === null || busy.current) return; if ((scrollRef.current?.scrollTop ?? 0) > 0) { touchStart.current = null; setPull(0); return; } distance.current = Math.min(110, Math.max(0, (event.touches[0].clientY - touchStart.current) * 0.45)); setPull(distance.current); }} onTouchCancel={() => { touchStart.current = null; distance.current = 0; if (!busy.current) setPull(0); }} onScroll={event => {
         const el = event.currentTarget;
+        if (el.scrollTop > 0) userScrolledRef.current = true;
+        if (userScrolledRef.current && hasMore && !loadingMore && el.scrollHeight - el.scrollTop - el.clientHeight < 80) requestNext();
         const top = Math.max(0, el.scrollTop);
         const delta = top - lastScrollTop.current;
         lastScrollTop.current = top;
