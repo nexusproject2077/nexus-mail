@@ -1,4 +1,5 @@
 import express from "express";
+import { startQueueWorker } from "./outgoing-queue.js";
 import cors from "cors";
 import { config, assertProductionSecret } from "./config.js";
 import { accountsRouter } from "./routes/accounts.js";
@@ -24,5 +25,6 @@ app.use("/api/accounts", accountsRouter);
 app.use("/api/accounts", messagesRouter);
 
 app.listen(config.port, config.host, () => {
+  startQueueWorker();
   console.log(`Nexus Mail backend listening on ${config.host}:${config.port}`);
 });
