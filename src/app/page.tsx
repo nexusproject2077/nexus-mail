@@ -27,7 +27,7 @@ import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/component
 
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId, summaryToThread } from "@/lib/useMail";
-import { blockMailSender, changeMailCategory, getMessages } from "@/lib/api";
+import { blockMailSender, changeMailCategory, getMessages, searchAccountMessages } from "@/lib/api";
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
@@ -125,7 +125,7 @@ export default function NexusMail() {
       setSpecialLoading(false);
       return;
     }
-    const ids = mail.activeAccountId === "all" ? mail.accounts : mail.accounts.filter(account => account.id === mail.activeAccountId);
+    const ids = activeFolder === "starred" || mail.activeAccountId === "all" ? mail.accounts : mail.accounts.filter(account => account.id === mail.activeAccountId);
     if (!ids.length) return;
     let cancelled = false;
     setSpecialThreads([]);
@@ -133,7 +133,10 @@ export default function NexusMail() {
     void (async () => {
       const mailbox = activeFolder === "drafts" ? "DRAFT" : "STARRED";
       const results = await Promise.allSettled(ids.map(async account => {
-        if (account.authType !== "google_oauth" && activeFolder === "starred") return [];
+        if (account.authType !== "google_oauth" && activeFolder === "starred") {
+          const messages = await searchAccountMessages(account.id, "is:starred");
+          return messages.map(message => summaryToThread(account.id, message, "INBOX"));
+        }
         const folder = account.authType === "google_oauth" ? mailbox : "Drafts";
         const found: Thread[] = [];
         let cursor: string | undefined;
