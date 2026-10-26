@@ -120,24 +120,36 @@ export default function NexusMail() {
   const [specialThreads, setSpecialThreads] = useState<Thread[]>([]);
   const [specialLoading, setSpecialLoading] = useState(false);
   useEffect(() => {
-    if (activeFolder !== "drafts" && activeFolder !== "starred") {
+    if (!["drafts", "starred", "important", "purchases", "sent", "trash", "spam", "all", "subscriptions"].includes(activeFolder)) {
       setSpecialThreads([]);
       setSpecialLoading(false);
       return;
     }
-    const ids = activeFolder === "starred" || mail.activeAccountId === "all" ? mail.accounts : mail.accounts.filter(account => account.id === mail.activeAccountId);
+    const ids = ["starred", "important", "purchases", "subscriptions"].includes(activeFolder) || mail.activeAccountId === "all"
+      ? mail.accounts : mail.accounts.filter(account => account.id === mail.activeAccountId);
     if (!ids.length) return;
     let cancelled = false;
     setSpecialThreads([]);
     setSpecialLoading(true);
     void (async () => {
-      const mailbox = activeFolder === "drafts" ? "DRAFT" : "STARRED";
+      const gmailFolders: Record<string, string> = {
+        drafts: "DRAFT", starred: "STARRED", important: "IMPORTANT",
+        sent: "SENT", trash: "TRASH", spam: "SPAM", all: "ALL",
+      };
+      const imapFolders: Record<string, string> = {
+        drafts: "Drafts", sent: "Sent", trash: "Trash", spam: "Junk", all: "INBOX",
+      };
       const results = await Promise.allSettled(ids.map(async account => {
-        if (account.authType !== "google_oauth" && activeFolder === "starred") {
-          const messages = await searchAccountMessages(account.id, "is:starred");
+        if (activeFolder === "purchases" || activeFolder === "subscriptions" ||
+            (account.authType !== "google_oauth" && ["starred", "important"].includes(activeFolder))) {
+          const query = activeFolder === "purchases" ? "category:purchases" :
+            activeFolder === "subscriptions" ? "unsubscribe" :
+            activeFolder === "important" ? "is:important" : "is:starred";
+          const messages = await searchAccountMessages(account.id, query);
           return messages.map(message => summaryToThread(account.id, message, "INBOX"));
         }
-        const folder = account.authType === "google_oauth" ? mailbox : "Drafts";
+        const folder = account.authType === "google_oauth" ? gmailFolders[activeFolder] : imapFolders[activeFolder];
+        if (!folder) return [];
         const found: Thread[] = [];
         let cursor: string | undefined;
         const visited = new Set<string>();
@@ -172,7 +184,7 @@ export default function NexusMail() {
       else if (activeFolder === "all") filtered = mail.threads;
       else if (activeFolder === "starred")
         filtered = [...specialThreads, ...mail.threads.filter(t => t.isStarred)].filter((t, index, items) => items.findIndex(other => other.id === t.id) === index);
-      else if (activeFolder === "drafts") filtered = specialThreads;
+      else if (["drafts", "important", "purchases", "sent", "trash", "spam", "all", "subscriptions"].includes(activeFolder)) filtered = specialThreads;
       else filtered = []; // sent/trash not yet backed by IMAP
     } else {
       filtered = []; // Never display sample emails as a real inbox.
@@ -284,6 +296,13 @@ export default function NexusMail() {
     inbox: "Boîte de réception",
     starred: "Favoris",
     sent: "Messages envoyés",
+    snoozed: "En attente",
+    important: "Important",
+    purchases: "Achats",
+    scheduled: "Envois programmés",
+    outbox: "Boîte d’envoi",
+    spam: "Spam",
+    subscriptions: "Gérer les abonnements",
     drafts: "Brouillons",
     trash: "Corbeille",
     all: "Tous les messages",
