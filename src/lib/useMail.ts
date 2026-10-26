@@ -196,21 +196,19 @@ export function useMail(): UseMail {
           ? result.value.labels.map((label) => ({ ...label, accountId: result.value.account.id, accountEmail: result.value.account.email }))
           : []));
       });
-      // Load at most 500 messages in total across all connected accounts.
-      // Keep API requests paginated (up to 100 messages per account per round).
+      // Fetch only the first ten messages on initial load; older messages load on scroll.
       const allMessages = new Map<string, Thread>();
       const next: Record<string, string | null> = {};
       const failures = new Map<string, string>();
       let pending = ids.map(id => ({ id, cursor: null as string | null }));
       const seenCursors = new Set<string>();
-      const messageLimit = 500;
+      const messageLimit = 10;
       const gmailCategory = !selectedLabel && category !== "ALL" ? category : undefined;
       let loadedMessages = 0;
-      let firstPage = true;
       setLoadingMore(true);
       try {
         while (pending.length && loadedMessages < messageLimit && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
-          const perAccountLimit = Math.min(firstPage ? 8 : 50, Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length)));
+          const perAccountLimit = Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length));
           const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
             id, page: await getMessages(id, mailbox, perAccountLimit, cursor ?? undefined, gmailCategory && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? gmailCategory : undefined),
           })));
@@ -243,7 +241,6 @@ export function useMail(): UseMail {
           setCursors({ ...next });
           setLoading(false);
           pending = upcoming;
-          firstPage = false;
         }
         if (failures.size) setError(`Synchronisation incomplète : ${[...failures.entries()].map(([id, reason]) => `${accountsRef.current.find(a => a.id === id)?.email ?? id} — ${reason}`).join("; ")}`);
         else setError(null);
@@ -265,8 +262,9 @@ export function useMail(): UseMail {
     setLoadingMore(true);
     const currentRequest = requestId.current;
     const mailbox = selectedLabel?.id ?? "INBOX";
+    const perAccountLimit = Math.max(1, Math.floor(10 / entries.length));
     try {
-      const results = await Promise.allSettled(entries.map(async ([id, cursor]) => ({ id, page: await getMessages(id, mailbox, 50, cursor, !selectedLabel && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? (category === "ALL" ? undefined : category) : undefined) })));
+      const results = await Promise.allSettled(entries.map(async ([id, cursor]) => ({ id, page: await getMessages(id, mailbox, perAccountLimit, cursor, !selectedLabel && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? (category === "ALL" ? undefined : category) : undefined) })));
       if (requestId.current !== currentRequest) return;
       const next = { ...cursorsRef.current };
       const additions: Thread[] = [];
