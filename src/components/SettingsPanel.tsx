@@ -57,7 +57,11 @@ export default function SettingsPanel({ open, onClose, onAccounts, onSecurity, a
       {group("Notifications", <>
         {line("Alertes générales", toggle(settings.notifications,v=>change({...settings,notifications:v})))}
         {Object.entries(settings.categories).map(([category,enabled]) => <div key={category}>{line(category,toggle(enabled,v=>change({...settings,categories:{...settings.categories,[category]:v}})))}</div>)}
-        <p className="px-4 py-3 text-xs text-nexus-text-muted">Préférences enregistrées. Les notifications push iOS nécessitent une inscription Web Push côté serveur.</p>
+        <div className="px-4 py-3 space-y-2 text-xs text-nexus-text-muted">
+          <p>Ces réglages enregistrent tes préférences. Ils n'activent pas encore les alertes en arrière-plan.</p>
+          <p className="font-medium text-amber-300">Notifications push : en préparation. Garde Gmail installé tant que Nexus Mail ne confirme pas la réception des alertes lorsque l'application est fermée.</p>
+          <p>Sur iPhone, les notifications Web Push nécessitent une application ajoutée à l'écran d'accueil, une autorisation explicite et un service push côté serveur.</p>
+        </div>
       </>)}
       {group("Sécurité & chiffrement", <>
         <button onClick={onSecurity} className="w-full flex items-center justify-between px-4 py-4 text-sm">Clés de chiffrement E2EE <ChevronRight size={18}/></button>
