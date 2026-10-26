@@ -160,7 +160,7 @@ messagesRouter.get("/:id/search", async (req, res) => {
   const q = String(req.query.q ?? "").trim().slice(0, 250);
   if (q.length < 2) { res.status(400).json({ error: "Recherche trop courte" }); return; }
   try {
-    const messages = account.authType === "google_oauth" ? await searchGmail(account, q, 50) : await searchImap(account, q, 50);
+    const messages = account.authType === "google_oauth" ? await searchGmail(account, q, 50) : await searchImap(account, q, q === "is:starred" ? 500 : 50);
     res.json({ messages });
   } catch (error) { res.status(502).json({ error: "Search failed", message: (error as Error).message }); }
 });
