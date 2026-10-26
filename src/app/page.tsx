@@ -21,6 +21,7 @@ import DeliveriesPanel from "@/components/DeliveriesPanel";
 import EmailView from "@/components/EmailView";
 import ComposeModal from "@/components/ComposeModal";
 import SearchBar from "@/components/SearchBar";
+import OutboxPanel from "@/components/OutboxPanel";
 import SecurityPanel from "@/components/SecurityPanel";
 import AccountsPanel from "@/components/AccountsPanel";
 import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/components/SettingsPanel";
@@ -503,7 +504,12 @@ export default function NexusMail() {
                 <button type="button" onClick={() => setAccountsOpen(true)} className="mt-3 rounded-lg bg-nexus-primary px-3 py-2 text-black">Configurer la synchronisation</button>
               </div>
             )}
-            <EmailList
+            {activeFolder === "scheduled" || activeFolder === "outbox" ? (
+              <OutboxPanel
+                accountIds={mail.activeAccountId === "all" ? mail.accounts.map(account => account.id) : mail.activeAccountId ? [mail.activeAccountId] : []}
+                scheduled={activeFolder === "scheduled"}
+              />
+            ) : <EmailList
               threads={filteredThreads}
               loading={liveInbox && (mail.loading || specialLoading)}
               onRefresh={liveInbox ? mail.refreshMessages : undefined}
@@ -515,7 +521,7 @@ export default function NexusMail() {
               hasMore={!searchQuery.trim() && mail.hasMore}
               loadingMore={mail.loadingMore}
               onLoadMore={() => void mail.loadMore()}
-            />
+            />}
           </div>
 
           {/* Email View Panel */}
