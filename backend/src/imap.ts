@@ -31,6 +31,23 @@ function addr(a?: { name?: string; address?: string } | null): {
   return { name: a?.name ?? "", email: a?.address ?? "" };
 }
 
+/** Resolve provider-specific IMAP system mailbox names using SPECIAL-USE flags. */
+async function resolveSystemMailbox(client: ImapFlow, requested: string): Promise<string | null> {
+  if (!["Drafts", "Sent", "Trash", "Junk", "All"].includes(requested)) return requested;
+  const boxes = await client.list();
+  const flags: Record<string, string> = { Drafts: "\\Drafts", Sent: "\\Sent", Trash: "\\Trash", Junk: "\\Junk", All: "\\All" };
+  const alternatives: Record<string, RegExp> = {
+    Drafts: /^(drafts?|brouillons)$/i,
+    Sent: /^(sent( items| mail| messages)?|envoyés|messages envoyés)$/i,
+    Trash: /^(trash|deleted( items| messages)?|corbeille)$/i,
+    Junk: /^(junk|spam|courrier indésirable)$/i,
+    All: /^(all( mail| messages)?|tous les messages|archives?)$/i,
+  };
+  return boxes.find(box => box.specialUse === flags[requested])?.path
+    ?? boxes.find(box => alternatives[requested].test(box.name))?.path
+    ?? null;
+}
+
 /** Fetch the most recent `limit` message envelopes from a mailbox, newest first. */
 export async function fetchSummaries(
   account: Account,
@@ -40,7 +57,9 @@ export async function fetchSummaries(
 ): Promise<{ messages: MessageSummary[]; nextCursor: string | null }> {
   const client = await open(account);
   try {
-    const lock = await client.getMailboxLock(mailbox);
+    const resolvedMailbox = await resolveSystemMailbox(client, mailbox);
+    if (!resolvedMailbox) return { messages: [], nextCursor: null };
+    const lock = await client.getMailboxLock(resolvedMailbox);
     try {
       const total =
         typeof client.mailbox === "object" ? client.mailbox.exists : 0;
