@@ -20,6 +20,7 @@ import {
   Tag,
   Paperclip,
   Download,
+  ShieldAlert,
 } from "lucide-react";
 import { Thread } from "@/types/email";
 import {
@@ -32,10 +33,11 @@ import { downloadAttachment } from "@/lib/api";
 import { parseLiveId } from "@/lib/useMail";
 import { isEncryptedBody } from "@/lib/crypto";
 import EncryptedMessage from "./EncryptedMessage";
+import { assessPhishing } from "@/lib/phishing";
 
 /** Email HTML stays sandboxed (scripts and forms disabled), but ordinary links
  * open in a separate browser tab instead of navigating the mail iframe. */
-function prepareEmailHtml(html: string): string {
+function prepareEmailHtml(html: string, blockLinks = false): string {
   const base = '<base target="_blank">';
   const withBase = /<head(?:\s[^>]*)?>/i.test(html)
     ? html.replace(/<head(\s[^>]*)?>/i, (head) => head + base)
@@ -58,9 +60,10 @@ function prepareEmailHtml(html: string): string {
   });
   return buttonLinks.replace(/<a\b([^>]*)>/gi, (_match, attrs: string) => {
     const clean = attrs
+      .replace(/\s+href\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
       .replace(/\s+target\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
       .replace(/\s+rel\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
-    return '<a' + clean + ' target="_blank" rel="noopener noreferrer">';
+    return '<a' + clean + (blockLinks ? ' href="about:blank" aria-disabled="true"' : ' target="_blank" rel="noopener noreferrer"') + '>';
   });
 }
 
@@ -96,7 +99,7 @@ function InlineImagePreview({ accountId, uid, mailbox, attachment }: {
 }
 
 /** Resize the sandboxed email frame to its actual content instead of a fixed height. */
-function AdaptiveEmailFrame({ html, title }: { html: string; title: string }) {
+function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: string; blockLinks: boolean }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(1);
 
@@ -141,7 +144,7 @@ function AdaptiveEmailFrame({ html, title }: { html: string; title: string }) {
         title={title}
         sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer"
-        srcDoc={prepareEmailHtml(html)}
+        srcDoc={prepareEmailHtml(html, blockLinks)}
         scrolling="no"
         style={{ height: height + "px" }}
         className="block w-full border-0 bg-white"
@@ -326,6 +329,7 @@ export default function EmailView({
   const [menuBusy, setMenuBusy] = useState(false);
   const [menuError, setMenuError] = useState("");
   const flash = useMemo(() => flashSummary(lastMsg?.body || lastMsg?.snippet || ""), [lastMsg?.body, lastMsg?.snippet]);
+  const phishing = useMemo(() => assessPhishing({ sender: lastMsg?.senderEmail ?? "", subject: thread.subject, text: lastMsg?.body, html: lastMsg?.htmlBody }), [lastMsg?.senderEmail, lastMsg?.body, lastMsg?.htmlBody, thread.subject]);
   const addDeadlinesToCalendar = () => {
     if (!flash.calendarItems.length) return;
     const escapeIcs = (value: string) => value.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
@@ -444,6 +448,12 @@ export default function EmailView({
         )}
       </section>
 
+      {phishing.level !== "none" && (
+        <section role="alert" className={`mx-3 sm:mx-6 mt-3 rounded-xl border px-4 py-3 ${phishing.level === "high" ? "border-red-400/60 bg-red-500/15 text-red-100" : "border-amber-400/60 bg-amber-500/15 text-amber-100"}`}>
+          <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 shrink-0" size={20} /><div><p className="font-semibold">{phishing.level === "high" ? "Lien potentiellement dangereux bloqué" : "Message potentiellement suspect"}</p><p className="mt-1 text-sm">{phishing.reasons.join(" ")}</p>{phishing.level === "high" && <p className="mt-1 text-sm">N’ouvrez pas les liens et ne communiquez aucune information personnelle sans vérifier le site officiel.</p>}</div></div>
+        </section>
+      )}
+
       <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-0 py-3 sm:p-6">
         {thread.messages.map((msg, idx) => {
           const avatarColor = getAvatarColor(msg.senderEmail);
@@ -545,6 +555,7 @@ export default function EmailView({
                   <AdaptiveEmailFrame
                     title={`Contenu du message de ${msg.senderName}`}
                     html={msg.htmlBody}
+                    blockLinks={phishing.level === "high"}
                   />
                 ) : (
                   <div className="text-sm text-nexus-text leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-nexus-surface-hover/30 rounded-xl p-4">
