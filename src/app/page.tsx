@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Menu,
   Pencil,
-  Bell,
   Settings,
   RefreshCw,
   Loader2,
@@ -382,12 +381,6 @@ export default function NexusMail() {
                 ? "Toutes les boîtes"
                 : mail.accounts.find((a) => a.id === mail.activeAccountId)?.email ?? "Comptes"}
             </span>
-          </button>
-          <button className="relative hidden sm:block p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text" aria-label="Notifications">
-            <Bell size={18} />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-nexus-primary rounded-full" />
-            )}
           </button>
         </div>
       </header>
