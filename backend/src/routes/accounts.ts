@@ -5,6 +5,7 @@ import {
   insertAccount,
   deleteAccount,
   getAccountWithSecret,
+  listEmailAliases, createEmailAlias, deactivateEmailAlias,
 } from "../db.js";
 import { testConnection } from "../imap.js";
 import { requireAuth, requireCsrf } from "../auth.js";
@@ -28,6 +29,26 @@ const createSchema = z.object({
 
 accountsRouter.get("/", (req, res) => {
   res.json({ accounts: listAccounts(req.auth!.ownerId) });
+});
+
+accountsRouter.get("/:id/aliases", (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  res.json({ aliases: listEmailAliases(req.auth!.ownerId, account.id) });
+});
+accountsRouter.post("/:id/aliases", requireCsrf, (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const parsed = z.object({ label: z.string().trim().min(1).max(80) }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid alias label" }); return; }
+  const at = account.email.lastIndexOf("@");
+  if (at <= 0) { res.status(400).json({ error: "Cette adresse ne prend pas en charge les alias" }); return; }
+  const alias = `${account.email.slice(0, at).replace(/\+.*/, "")}+nexus-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}${account.email.slice(at)}`;
+  res.status(201).json({ alias: createEmailAlias(req.auth!.ownerId, account.id, alias, parsed.data.label) });
+});
+accountsRouter.post("/:id/aliases/:aliasId/deactivate", requireCsrf, (req, res) => {
+  if (!deactivateEmailAlias(req.auth!.ownerId, req.params.id, req.params.aliasId)) { res.status(404).json({ error: "Alias not found or already disabled" }); return; }
+  res.json({ ok: true });
 });
 
 accountsRouter.post("/", requireCsrf, async (req, res) => {

@@ -138,6 +138,10 @@ export async function connectGoogle(): Promise<void> {
 export function deleteAccount(id: string) {
   return req<null>(`/api/accounts/${id}`, { method: "DELETE" });
 }
+export type EmailAlias = { id: string; accountId: string; alias: string; label: string; active: boolean; createdAt: string };
+export function getEmailAliases(accountId: string) { return req<{ aliases: EmailAlias[] }>(`/api/accounts/${encodeURIComponent(accountId)}/aliases`).then(r => r.aliases); }
+export function createEmailAlias(accountId: string, label: string) { return req<{ alias: EmailAlias }>(`/api/accounts/${encodeURIComponent(accountId)}/aliases`, { method: "POST", body: JSON.stringify({ label }) }).then(r => r.alias); }
+export function deactivateEmailAlias(accountId: string, aliasId: string) { return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/aliases/${encodeURIComponent(aliasId)}/deactivate`, { method: "POST" }); }
 
 export interface MessagePage {
   messages: MessageSummary[];

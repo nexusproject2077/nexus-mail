@@ -25,6 +25,7 @@ import SubscriptionsPanel from "@/components/SubscriptionsPanel";
 import SecurityPanel from "@/components/SecurityPanel";
 import AccountsPanel from "@/components/AccountsPanel";
 import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/components/SettingsPanel";
+import AliasesPanel from "@/components/AliasesPanel";
 
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId, summaryToThread } from "@/lib/useMail";
@@ -148,6 +149,7 @@ export default function NexusMail() {
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aliasesOpen, setAliasesOpen] = useState(false);
   const [settings, setSettings] = useState<NexusSettings>(DEFAULT_SETTINGS);
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
   const [trashBusy, setTrashBusy] = useState(false);
@@ -711,7 +713,8 @@ export default function NexusMail() {
         onClose={() => setSecurityOpen(false)}
       />
 
-      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} onAccounts={() => { setSettingsOpen(false); setAccountsOpen(true); }} onSecurity={() => { setSettingsOpen(false); setSecurityOpen(true); }} accounts={mail.accounts} onSettingsChange={setSettings} />
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} onAccounts={() => { setSettingsOpen(false); setAccountsOpen(true); }} onAliases={() => { setSettingsOpen(false); setAliasesOpen(true); }} onSecurity={() => { setSettingsOpen(false); setSecurityOpen(true); }} accounts={mail.accounts} onSettingsChange={setSettings} />
+      <AliasesPanel open={aliasesOpen} onClose={() => setAliasesOpen(false)} accounts={mail.accounts} />
       <AccountsPanel
         isOpen={accountsOpen}
         onClose={() => setAccountsOpen(false)}

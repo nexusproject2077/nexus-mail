@@ -26,8 +26,8 @@ export function readSettings(): NexusSettings {
     return { ...DEFAULT_SETTINGS, ...saved, signatures: { ...DEFAULT_SETTINGS.signatures, ...saved.signatures }, categories: { ...DEFAULT_SETTINGS.categories, ...saved.categories } };
   } catch { return DEFAULT_SETTINGS; }
 }
-export default function SettingsPanel({ open, onClose, onAccounts, onSecurity, accounts, onSettingsChange }: {
-  open: boolean; onClose: () => void; onAccounts: () => void; onSecurity: () => void;
+export default function SettingsPanel({ open, onClose, onAccounts, onAliases, onSecurity, accounts, onSettingsChange }: {
+  open: boolean; onClose: () => void; onAccounts: () => void; onAliases: () => void; onSecurity: () => void;
   accounts: { id: string; email: string }[]; onSettingsChange: (value: NexusSettings) => void;
 }) {
   const [settings, setSettings] = useState<NexusSettings>(DEFAULT_SETTINGS);
@@ -51,6 +51,7 @@ export default function SettingsPanel({ open, onClose, onAccounts, onSecurity, a
     <main className="mx-auto max-w-xl space-y-7 px-4 py-6">
       {group("Comptes & synchronisation", <>
         <button className="w-full flex justify-between items-center px-4 py-4 text-sm" onClick={onAccounts}><span>Gérer les comptes ({accounts.length})</span><ChevronRight size={18}/></button>
+        <button className="w-full flex justify-between items-center px-4 py-4 text-sm" onClick={onAliases}><span>Adresses protégées et jetables</span><ChevronRight size={18}/></button>
         {line("Fréquence de synchronisation", select(settings.sync, [["push","Temps réel (actualisation 30 s)"],["15","15 minutes"],["30","30 minutes"],["60","60 minutes"],["manual","Manuelle"]], v => change({...settings,sync:v as NexusSettings["sync"]})) )}
         {accounts.map(account => <div key={account.id} className="px-4 py-3 space-y-2"><label htmlFor={`sig-${account.id}`} className="text-sm">{account.email} · Signature</label><textarea id={`sig-${account.id}`} rows={2} placeholder="Envoyé depuis Nexus Mail" value={settings.signatures[account.id] || ""} onChange={e=>change({...settings,signatures:{...settings.signatures,[account.id]:e.target.value}})} className="w-full rounded-xl border border-nexus-border bg-nexus-bg p-3 text-sm outline-none"/></div>)}
       </>)}

@@ -212,3 +212,22 @@ export function blockSender(ownerId: string, email: string): void {
 export function listBlockedSenders(ownerId: string): string[] {
   return (db.prepare("SELECT email FROM blocked_senders WHERE owner_id = ? ORDER BY created_at DESC").all(ownerId) as { email: string }[]).map(row => row.email);
 }
+
+db.exec(`CREATE TABLE IF NOT EXISTS email_aliases (
+  id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, account_id TEXT NOT NULL, alias TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL
+); CREATE INDEX IF NOT EXISTS email_aliases_owner_idx ON email_aliases(owner_id, account_id);`);
+export type EmailAlias = { id: string; accountId: string; alias: string; label: string; active: boolean; createdAt: string };
+export function listEmailAliases(ownerId: string, accountId: string): EmailAlias[] {
+  return (db.prepare("SELECT * FROM email_aliases WHERE owner_id = ? AND account_id = ? ORDER BY created_at DESC").all(ownerId, accountId) as any[])
+    .map(row => ({ id: row.id, accountId: row.account_id, alias: row.alias, label: row.label, active: !!row.active, createdAt: row.created_at }));
+}
+export function createEmailAlias(ownerId: string, accountId: string, alias: string, label: string): EmailAlias {
+  const item = { id: randomUUID(), accountId, alias, label, active: true, createdAt: new Date().toISOString() };
+  db.prepare("INSERT INTO email_aliases (id, owner_id, account_id, alias, label, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)")
+    .run(item.id, ownerId, accountId, item.alias, item.label, item.createdAt);
+  return item;
+}
+export function deactivateEmailAlias(ownerId: string, accountId: string, id: string): boolean {
+  return db.prepare("UPDATE email_aliases SET active = 0 WHERE id = ? AND owner_id = ? AND account_id = ? AND active = 1").run(id, ownerId, accountId).changes > 0;
+}
