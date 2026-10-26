@@ -1,6 +1,6 @@
 "use client";
 
-import { MailOpen, Trash2, Loader2 } from "lucide-react";
+import { Archive, Mail, MailOpen, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Thread } from "@/types/email";
 import { formatEmailDate, getInitials, getAvatarColor, getLabelInfo } from "@/lib/utils";
@@ -11,6 +11,7 @@ interface EmailListProps {
   onSelect: (thread: Thread) => void;
   folder: string;
   onTrash?: (thread: Thread) => Promise<void>;
+  onQuickAction?: (thread: Thread, action: "archive" | "read" | "unread") => Promise<void>;
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -25,6 +26,7 @@ export default function EmailList({
   onSelect,
   folder,
   onTrash,
+  onQuickAction,
   onLoadMore,
   hasMore = false,
   loadingMore = false,
@@ -138,6 +140,7 @@ export default function EmailList({
 
         return (
           <SwipeEmailRow key={thread.id} thread={thread} onSelect={onSelect} onTrash={onTrash}>
+          <div className="relative group/mail">
           <button
             onClick={() => onSelect(thread)}
             className={`w-full flex items-start gap-3 px-4 py-3.5 border-b border-nexus-border/40 bg-nexus-bg transition-[background-color,opacity,transform] duration-[250ms] ease-out active:opacity-80 active:scale-[0.99] active:bg-white/10 text-left hover:bg-nexus-surface-hover ${isSelected ? "border-l-2 border-l-nexus-primary" : "border-l-2 border-l-transparent"}`}
@@ -194,6 +197,14 @@ export default function EmailList({
               </div>
             </div>
           </button>
+          {(onQuickAction || onTrash) && (
+            <div className="absolute right-3 top-2 hidden items-center gap-0.5 rounded-lg border border-nexus-border bg-nexus-surface px-1 py-0.5 shadow-lg group-hover/mail:flex group-focus-within/mail:flex max-lg:hidden" role="group" aria-label="Actions rapides">
+              {onQuickAction && <button type="button" title="Archiver" aria-label="Archiver" className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onQuickAction(thread, "archive"); }}><Archive size={17} /></button>}
+              {onTrash && <button type="button" title="Supprimer" aria-label="Mettre à la corbeille" className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onTrash(thread).catch(() => {}); }}><Trash2 size={17} /></button>}
+              {onQuickAction && <button type="button" title={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} aria-label={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onQuickAction(thread, thread.isUnread ? "read" : "unread"); }}>{thread.isUnread ? <MailOpen size={17} /> : <Mail size={17} />}</button>}
+            </div>
+          )}
+          </div>
           </SwipeEmailRow>
         );
       })}
