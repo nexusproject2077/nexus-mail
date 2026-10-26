@@ -383,16 +383,6 @@ export default function NexusMail() {
                 : mail.accounts.find((a) => a.id === mail.activeAccountId)?.email ?? "Comptes"}
             </span>
           </button>
-          <button
-            type="button"
-            onClick={() => liveInbox ? void mail.refreshMessages() : setAccountsOpen(true)}
-            disabled={mail.loading || mail.loadingMore}
-            title={liveInbox ? "Actualiser les e-mails" : "Connecter un compte"}
-            aria-label={liveInbox ? "Actualiser les e-mails" : "Connecter un compte"}
-            className="hidden md:inline-flex items-center justify-center p-2 rounded-lg hover:bg-nexus-surface-hover text-nexus-text-muted hover:text-nexus-text transition-colors disabled:opacity-40"
-          >
-            {mail.loading || mail.loadingMore ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-          </button>
           <button className="relative hidden sm:block p-2 rounded-lg hover:bg-nexus-surface-hover transition-colors text-nexus-text-muted hover:text-nexus-text" aria-label="Notifications">
             <Bell size={18} />
             {unreadCount > 0 && (
@@ -463,6 +453,16 @@ export default function NexusMail() {
                 <span className="text-xs text-nexus-text-dim bg-nexus-surface-hover px-2 py-0.5 rounded-xl">
                   {filteredThreads.length}{activeFolder === "inbox" && mail.category !== "ALL" ? ` / ${mail.threads.length}` : ""}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => liveInbox ? void mail.refreshMessages() : setAccountsOpen(true)}
+                  disabled={mail.loading || mail.loadingMore}
+                  title={liveInbox ? "Synchroniser les e-mails" : "Connecter un compte"}
+                  aria-label={liveInbox ? "Synchroniser les e-mails" : "Connecter un compte"}
+                  className="hidden lg:inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-nexus-text-muted transition-colors hover:bg-nexus-surface-hover hover:text-nexus-text disabled:opacity-40"
+                >
+                  {mail.loading || mail.loadingMore ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
+                </button>
               </div>
               <div className="hidden sm:flex items-center gap-1 text-xs text-nexus-text-dim">
                 <span>Plus récent</span>
