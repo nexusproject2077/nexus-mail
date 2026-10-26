@@ -167,9 +167,9 @@ export function getMessage(accountId: string, uid: string, mailbox = "INBOX") {
 
 export function sendViaAccount(
   accountId: string,
-  message: { to: string; subject: string; text: string; html?: string; attachments?: Array<{ filename: string; contentType: string; data: string }> },
+  message: { to: string; subject: string; text: string; html?: string; attachments?: Array<{ filename: string; contentType: string; data: string }>; undoDelaySeconds: 5 | 10 | 20 | 30 },
 ) {
-  return req<{ messageId: string }>(`/api/accounts/${accountId}/send`, {
+  return req<{ message: QueuedMail }>(`/api/accounts/${accountId}/send`, {
     method: "POST",
     body: JSON.stringify(message),
   });
@@ -193,7 +193,7 @@ export function getQueuedMail(accountId: string) {
   return req<{ messages: QueuedMail[] }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox`).then(r => r.messages);
 }
 export function cancelQueuedMail(accountId: string, id: string) {
-  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox/${encodeURIComponent(id)}/cancel`, { method: "POST" });
+  return req<{ ok: boolean; draft: { to: string; subject: string; text: string; html?: string } }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox/${encodeURIComponent(id)}/cancel`, { method: "POST" });
 }
 
 export function markMessageRead(accountId: string, uid: string, mailbox = "INBOX") {

@@ -21,7 +21,7 @@ import {
   ImagePlus,
   Link2,
 } from "lucide-react";
-import { sendViaAccount, scheduleViaAccount, downloadAttachment } from "@/lib/api";
+import { sendViaAccount, scheduleViaAccount, downloadAttachment, type QueuedMail } from "@/lib/api";
 import { encryptToKey, encryptConfidential } from "@/lib/crypto";
 import { useVault, addVaultMessage } from "@/lib/vault";
 import type { Thread } from "@/types/email";
@@ -34,6 +34,7 @@ interface ComposeModalProps {
   onNeedUnlock: () => void;
   activeAccountId?: string | null;
   onSent?: () => void;
+  onQueued?: (message: QueuedMail) => void;
 }
 
 type Mode = "standard" | "pgp" | "confidential";
@@ -53,6 +54,7 @@ export default function ComposeModal({
   onNeedUnlock,
   activeAccountId,
   onSent,
+  onQueued,
 }: ComposeModalProps) {
   const { identity, isUnlocked, passphrase } = useVault();
 
@@ -67,6 +69,7 @@ export default function ComposeModal({
   const [isMinimized, setIsMinimized] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
+  const [undoDelaySeconds, setUndoDelaySeconds] = useState<5 | 10 | 20 | 30>(5);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -222,7 +225,8 @@ export default function ComposeModal({
           }
           await scheduleViaAccount(activeAccountId, messagePayload, new Date(timestamp).toISOString());
         } else {
-          await sendViaAccount(activeAccountId, messagePayload);
+          const { message } = await sendViaAccount(activeAccountId, { ...messagePayload, undoDelaySeconds });
+          onQueued?.(message);
         }
         if (draftKey) { try { window.localStorage.removeItem(draftKey); } catch {} }
         onSent?.();
@@ -379,6 +383,9 @@ export default function ComposeModal({
                 <input type="datetime-local" aria-label="Programmer l'envoi" value={scheduleAt}
                   onChange={event => setScheduleAt(event.target.value)}
                   className="max-w-[145px] rounded-lg border border-nexus-border bg-black px-1 py-1 text-[11px] text-white" />
+                {!scheduleAt && <select aria-label="Délai pour annuler l'envoi" value={undoDelaySeconds} onChange={event => setUndoDelaySeconds(Number(event.target.value) as 5 | 10 | 20 | 30)} className="max-w-[88px] rounded-lg border border-nexus-border bg-black px-1 py-1 text-[11px] text-white">
+                  {[5, 10, 20, 30].map(seconds => <option key={seconds} value={seconds}>Annuler {seconds}s</option>)}
+                </select>}
               </label>
             )}
             <button type="button" onClick={handleSend} disabled={isSending || !to.trim() || attachmentsLoading} aria-label="Envoyer le message" title="Envoyer"

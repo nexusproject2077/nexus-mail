@@ -2,8 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { getAccountWithSecret, blockSender, listBlockedSenders } from "../db.js";
 import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapLabels, updateImapFlags, searchImap, fetchImapAttachment } from "../imap.js";
-import { sendMessage } from "../smtp.js";
-import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailAttachmentMetadata, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
+import { fetchGmailDetail, fetchGmailSummaries, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailAttachmentMetadata, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
 import { enqueue, listQueued, cancelQueued } from "../outgoing-queue.js";
@@ -109,10 +108,11 @@ messagesRouter.post("/:id/outbox", requireCsrf, (req, res) => {
 messagesRouter.post("/:id/outbox/:queueId/cancel", requireCsrf, (req, res) => {
   const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
   if (!account) { res.status(404).json({ error: "Account not found" }); return; }
-  if (!cancelQueued(req.auth!.ownerId, account.id, req.params.queueId)) {
+  const draft = cancelQueued(req.auth!.ownerId, account.id, req.params.queueId);
+  if (!draft) {
     res.status(409).json({ error: "Impossible d'annuler : envoi déjà commencé ou message absent" }); return;
   }
-  res.json({ ok: true });
+  res.json({ ok: true, draft });
 });
 
 /** POST /api/accounts/:id/send */
@@ -122,18 +122,14 @@ messagesRouter.post("/:id/send", requireCsrf, async (req, res) => {
     res.status(404).json({ error: "Account not found" });
     return;
   }
-  const parsed = sendSchema.safeParse(req.body);
+  const parsed = sendSchema.extend({ undoDelaySeconds: z.union([z.literal(5), z.literal(10), z.literal(20), z.literal(30)]).default(5) }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid message", details: parsed.error.issues });
     return;
   }
-  if ((parsed.data.attachments ?? []).reduce((total, item) => total + Buffer.byteLength(item.data, "base64"), 0) > 10 * 1024 * 1024) { res.status(413).json({ error: "Pièces jointes limitées à 10 Mo au total" }); return; }
-  try {
-    const result = account.authType === "google_oauth" ? await sendGmailMessage(account, parsed.data) : await sendMessage(account, parsed.data);
-    res.status(201).json(result);
-  } catch (e) {
-    res.status(502).json({ error: "Mail send failed", message: (e as Error).message });
-  }
+  const { undoDelaySeconds, ...message } = parsed.data;
+  if ((message.attachments ?? []).reduce((total, item) => total + Buffer.byteLength(item.data, "base64"), 0) > 10 * 1024 * 1024) { res.status(413).json({ error: "Pièces jointes limitées à 10 Mo au total" }); return; }
+  res.status(202).json({ message: enqueue(req.auth!.ownerId, account.id, message, Date.now() + undoDelaySeconds * 1000) });
 });
 
 /** POST /api/accounts/:id/messages/:uid/read */

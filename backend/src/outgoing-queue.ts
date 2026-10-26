@@ -42,9 +42,14 @@ export function enqueue(ownerId: string, accountId: string, payload: OutgoingMes
     .run(id, ownerId, accountId, JSON.stringify(payload), scheduledAt, now, now);
   return publicRow(db.prepare("SELECT * FROM outgoing_queue WHERE id = ?").get(id) as QueueRow);
 }
-export function cancelQueued(ownerId: string, accountId: string, id: string) {
-  return db.prepare("UPDATE outgoing_queue SET status = 'cancelled', updated_at = ? WHERE id = ? AND owner_id = ? AND account_id = ? AND status = 'pending'")
-    .run(Date.now(), id, ownerId, accountId).changes > 0;
+export function cancelQueued(ownerId: string, accountId: string, id: string): OutgoingMessage | null {
+  // The conditional update is the claim boundary: once a worker switches to
+  // sending, cancellation can never restore a message that may be delivered.
+  const changed = db.prepare("UPDATE outgoing_queue SET status = 'cancelled', updated_at = ? WHERE id = ? AND owner_id = ? AND account_id = ? AND status = 'pending'")
+    .run(Date.now(), id, ownerId, accountId).changes;
+  if (!changed) return null;
+  const row = db.prepare("SELECT payload FROM outgoing_queue WHERE id = ?").get(id) as { payload: string };
+  return JSON.parse(row.payload) as OutgoingMessage;
 }
 let running = false;
 export async function processQueue() {

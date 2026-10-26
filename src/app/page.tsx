@@ -28,7 +28,7 @@ import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/component
 
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId, summaryToThread } from "@/lib/useMail";
-import { blockMailSender, changeMailCategory, getMessages, searchAccountMessages } from "@/lib/api";
+import { blockMailSender, cancelQueuedMail, changeMailCategory, getMessages, searchAccountMessages, type QueuedMail } from "@/lib/api";
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
@@ -48,6 +48,8 @@ export default function NexusMail() {
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [queuedMessage, setQueuedMessage] = useState<QueuedMail | null>(null);
+  const [undoDraft, setUndoDraft] = useState<{ to: string; subject: string; body: string; html?: string } | null>(null);
   const [composeFabCompact, setComposeFabCompact] = useState(false);
 
   const clampDesktopListWidth = (width: number) => {
@@ -659,18 +661,37 @@ export default function NexusMail() {
       )}
 
       <ComposeModal
+        key={undoDraft ? "restored-compose" : "compose"}
         isOpen={composeOpen}
         onClose={() => {
           setComposeOpen(false);
           setMailtoDraft(null);
           setReplyTo(null);
+          setUndoDraft(null);
         }}
         replyTo={replyTo || undefined}
-        initialDraft={mailtoDraft || undefined}
+        initialDraft={undoDraft || mailtoDraft || undefined}
         onNeedUnlock={() => setSecurityOpen(true)}
         activeAccountId={mail.activeAccountId === "all" ? mail.accounts[0]?.id ?? null : mail.activeAccountId}
         onSent={() => void mail.refreshMessages()}
+        onQueued={message => setQueuedMessage(message)}
       />
+
+      {queuedMessage && (
+        <div role="status" className="fixed bottom-5 left-1/2 z-[150] flex w-[min(92vw,500px)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-white/15 bg-[#171717] px-4 py-3 text-sm text-white shadow-2xl">
+          <span className="min-w-0 flex-1">Message programmé. Appuyez sur Annuler avant son envoi.</span>
+          <button type="button" className="shrink-0 font-semibold text-nexus-primary-light" onClick={async () => {
+            const accountId = queuedMessage.accountId;
+            try {
+              const { draft } = await cancelQueuedMail(accountId, queuedMessage.id);
+              setQueuedMessage(null);
+              setUndoDraft({ to: draft.to, subject: draft.subject, body: draft.text, html: draft.html });
+              setComposeOpen(true);
+            } catch { setQueuedMessage(null); }
+          }}>Annuler</button>
+          <button type="button" aria-label="Masquer la notification" className="text-white/60" onClick={() => setQueuedMessage(null)}>×</button>
+        </div>
+      )}
 
       <SecurityPanel
         isOpen={securityOpen}
