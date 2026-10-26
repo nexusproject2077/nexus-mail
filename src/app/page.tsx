@@ -32,14 +32,74 @@ import { blockMailSender, changeMailCategory, getMessages, searchAccountMessages
 import type { Thread, Folder } from "@/types/email";
 
 export default function NexusMail() {
+  const DEFAULT_DESKTOP_LIST_WIDTH = 380;
+  const MIN_DESKTOP_LIST_WIDTH = 300;
+  const MAX_DESKTOP_LIST_WIDTH = 620;
+  const MIN_DESKTOP_READING_WIDTH = 360;
+  const DESKTOP_LIST_WIDTH_STORAGE_KEY = "nexus-mail.desktop-list-width";
   const [activeFolder, setActiveFolder] = useState<Folder>("inbox");
 
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const [desktopListWidth, setDesktopListWidth] = useState(DEFAULT_DESKTOP_LIST_WIDTH);
+  const [resizingDesktopList, setResizingDesktopList] = useState(false);
+  const mailPanelsRef = useRef<HTMLDivElement>(null);
+  const listResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Thread[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeFabCompact, setComposeFabCompact] = useState(false);
+
+  const clampDesktopListWidth = (width: number) => {
+    const availableWidth = (mailPanelsRef.current?.clientWidth ?? window.innerWidth) - MIN_DESKTOP_READING_WIDTH;
+    const maximum = Math.max(MIN_DESKTOP_LIST_WIDTH, Math.min(MAX_DESKTOP_LIST_WIDTH, availableWidth));
+    return Math.max(MIN_DESKTOP_LIST_WIDTH, Math.min(width, maximum));
+  };
+
+  useEffect(() => {
+    const savedWidth = Number(window.localStorage.getItem(DESKTOP_LIST_WIDTH_STORAGE_KEY));
+    if (Number.isFinite(savedWidth) && savedWidth > 0) {
+      setDesktopListWidth(clampDesktopListWidth(savedWidth));
+    }
+
+    const handleResize = () => setDesktopListWidth(currentWidth => clampDesktopListWidth(currentWidth));
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  // The constraints are fixed for the lifetime of this component.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startDesktopListResize = (event: import("react").PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    listResizeRef.current = { startX: event.clientX, startWidth: desktopListWidth };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setResizingDesktopList(true);
+  };
+
+  const moveDesktopListResize = (event: import("react").PointerEvent<HTMLDivElement>) => {
+    const resize = listResizeRef.current;
+    if (!resize) return;
+    setDesktopListWidth(clampDesktopListWidth(resize.startWidth + event.clientX - resize.startX));
+  };
+
+  const finishDesktopListResize = (event: import("react").PointerEvent<HTMLDivElement>) => {
+    if (!listResizeRef.current) return;
+    listResizeRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    setResizingDesktopList(false);
+    setDesktopListWidth(width => {
+      const constrainedWidth = clampDesktopListWidth(width);
+      window.localStorage.setItem(DESKTOP_LIST_WIDTH_STORAGE_KEY, String(constrainedWidth));
+      return constrainedWidth;
+    });
+  };
+
+  const resetDesktopListWidth = () => {
+    const resetWidth = clampDesktopListWidth(DEFAULT_DESKTOP_LIST_WIDTH);
+    window.localStorage.removeItem(DESKTOP_LIST_WIDTH_STORAGE_KEY);
+    setDesktopListWidth(resetWidth);
+  };
   const [mailtoDraft, setMailtoDraft] = useState<{ to: string; subject: string; body: string; html?: string; quotedText?: string; forwardAttachments?: { accountId: string; uid: string; mailbox: string; items: { id: string; filename: string; contentType: string }[] } } | null>(null);
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -424,7 +484,7 @@ export default function NexusMail() {
             <Sidebar compact={!desktopSidebarOpen && !desktopSidebarHovered} activeFolder={activeFolder} onFolderChange={(f) => { setActiveFolder(f); mail.selectLabel(null); setSelectedThread(null); }} onOpenSecurity={() => setSecurityOpen(true)} onOpenSettings={() => setSettingsOpen(true)} unreadCount={unreadCount} vaultCount={vaultMessages.length} labels={mail.labels} activeAccountId={mail.activeAccountId} selectedLabel={mail.selectedLabel} onSelectLabel={(label) => { mail.selectLabel(label); setActiveFolder("inbox"); setSelectedThread(null); }} />
           </div>
         </div>
-        <div className="flex-1 flex min-w-0 min-h-0">
+        <div ref={mailPanelsRef} className={`flex-1 flex min-w-0 min-h-0 ${resizingDesktopList ? "select-none" : ""}`}>
           {activeFolder === "deliveries" && !selectedThread ? (
             <DeliveriesPanel threads={liveInbox ? mail.threads : []} onOpen={(thread) => void handleSelectThread(thread)} />
           ) : (
@@ -432,8 +492,9 @@ export default function NexusMail() {
           {/* Email List Panel */}
           <div
             className={`min-w-0 min-h-0 flex-col bg-nexus-bg lg:border-r lg:border-nexus-border ${
-              selectedThread ? "hidden lg:flex lg:w-[clamp(300px,32vw,420px)] lg:shrink-0" : "flex flex-1"
+              selectedThread ? "hidden lg:flex lg:shrink-0" : "flex flex-1"
             }`}
+            style={selectedThread ? { width: desktopListWidth } : undefined}
           >
             <div className="flex min-w-0 items-center justify-between gap-2 px-3 sm:px-4 py-3 border-b border-nexus-border">
               <div className="flex items-center gap-3">
@@ -519,6 +580,23 @@ export default function NexusMail() {
               onLoadMore={() => void mail.loadMore()}
             />}
           </div>
+
+          {selectedThread && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Redimensionner la liste des e-mails"
+              title="Glissez pour redimensionner la liste · double-cliquez pour réinitialiser"
+              onPointerDown={startDesktopListResize}
+              onPointerMove={moveDesktopListResize}
+              onPointerUp={finishDesktopListResize}
+              onPointerCancel={finishDesktopListResize}
+              onDoubleClick={resetDesktopListWidth}
+              className={`relative z-20 hidden w-3 shrink-0 touch-none cursor-col-resize lg:block ${resizingDesktopList ? "bg-nexus-primary/10" : "hover:bg-nexus-primary/10"}`}
+            >
+              <span aria-hidden="true" className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 ${resizingDesktopList ? "bg-nexus-primary" : "bg-nexus-border"}`} />
+            </div>
+          )}
 
           {/* Email View Panel */}
           {selectedThread ? (
