@@ -236,8 +236,15 @@ export function searchAccountMessages(accountId: string, query: string) {
 }
 export async function downloadAttachment(accountId: string, uid: string, attachmentId: string, mailbox = "INBOX"): Promise<Blob> {
   if (!session && !(await restoreSession())) throw new Error("Connexion requise.");
-  const res = await fetch(`${BASE}/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/attachments/${encodeURIComponent(attachmentId)}?${new URLSearchParams({ mailbox })}`, { credentials: "include" });
+  const url = `${BASE}/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/attachments/${encodeURIComponent(attachmentId)}?${new URLSearchParams({ mailbox })}`;
+  const settings = (() => { try { return JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}"); } catch { return {}; } })();
+  const shouldCache = settings.attachments === "always" && "caches" in window;
+  const cache = shouldCache ? await caches.open("nexus-mail-attachments-v1") : null;
+  const cached = cache ? await cache.match(url) : undefined;
+  if (cached) return cached.blob();
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error(`Téléchargement impossible (HTTP ${res.status})`);
+  if (cache) await cache.put(url, res.clone());
   return res.blob();
 }
 

@@ -14,6 +14,9 @@ interface EmailListProps {
   onTrash?: (thread: Thread) => Promise<void>;
   onQuickAction?: (thread: Thread, action: "archive" | "read" | "unread") => Promise<void>;
   onSnooze?: (thread: Thread, snoozedUntil: string) => Promise<void>;
+  swipeLeft?: SwipeAction;
+  swipeRight?: SwipeAction;
+  onSwipeAction?: (thread: Thread, action: Exclude<SwipeAction, "trash">) => Promise<void>;
   onLoadMore?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -21,6 +24,7 @@ interface EmailListProps {
   onRefresh?: () => Promise<void>;
   onScrollDirection?: (direction: "up" | "down") => void;
 }
+type SwipeAction = "trash" | "archive" | "read" | "snooze";
 
 export default function EmailList({
   threads,
@@ -30,6 +34,9 @@ export default function EmailList({
   onTrash,
   onQuickAction,
   onSnooze,
+  swipeLeft,
+  swipeRight,
+  onSwipeAction,
   onLoadMore,
   hasMore = false,
   loadingMore = false,
@@ -48,6 +55,7 @@ export default function EmailList({
   const [refreshing, setRefreshing] = useState(false);
   const [snoozingThreadId, setSnoozingThreadId] = useState<string | null>(null);
   const [snoozeValue, setSnoozeValue] = useState("");
+  const [snoozeMin, setSnoozeMin] = useState("");
   const [snoozeBusy, setSnoozeBusy] = useState(false);
   const [snoozePosition, setSnoozePosition] = useState({ top: 0, left: 0 });
   const defaultSnoozeValue = () => {
@@ -62,6 +70,7 @@ export default function EmailList({
     setSnoozePosition({ top: rect.bottom + 310 > window.innerHeight ? Math.max(12, rect.top - 240) : rect.bottom + 8, left: Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12)) });
     setSnoozingThreadId(threadId);
     setSnoozeValue(defaultSnoozeValue());
+    setSnoozeMin(new Date(Date.now() + 60_000).toISOString().slice(0, 16));
   };
   const finishPull = () => {
     const shouldRefresh = distance.current >= 64;
@@ -159,7 +168,7 @@ export default function EmailList({
         const labelInfo = userLabel ? getLabelInfo(userLabel) : null;
 
         return (
-          <SwipeEmailRow key={thread.id} thread={thread} onSelect={onSelect} onTrash={onTrash}>
+          <SwipeEmailRow key={thread.id} thread={thread} onTrash={onTrash} leftAction={swipeLeft} rightAction={swipeRight} onAction={onSwipeAction}>
           <div className="relative group/mail">
           <button
             onClick={() => onSelect(thread)}
@@ -232,7 +241,7 @@ export default function EmailList({
                   void onSnooze(thread, date.toISOString()).then(() => setSnoozingThreadId(null)).catch(() => {}).finally(() => setSnoozeBusy(false));
                 }} onClick={event => event.stopPropagation()}>
                   <label className="block text-xs font-medium text-nexus-text" htmlFor={`snooze-${thread.id}`}>Réapparaître le</label>
-                  <input id={`snooze-${thread.id}`} required min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)} type="datetime-local" value={snoozeValue} onChange={event => setSnoozeValue(event.target.value)} className="mt-2 w-full rounded-lg border border-nexus-border bg-nexus-bg px-2 py-2 text-sm text-nexus-text" />
+                  <input id={`snooze-${thread.id}`} required min={snoozeMin} type="datetime-local" value={snoozeValue} onChange={event => setSnoozeValue(event.target.value)} className="mt-2 w-full rounded-lg border border-nexus-border bg-nexus-bg px-2 py-2 text-sm text-nexus-text" />
                   <div className="mt-3 flex justify-end gap-2"><button type="button" className="rounded-lg px-2 py-1.5 text-xs text-nexus-text-muted hover:bg-nexus-surface-hover" onClick={() => setSnoozingThreadId(null)}>Annuler</button><button type="submit" disabled={snoozeBusy} className="rounded-lg bg-nexus-primary px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-50">{snoozeBusy ? "Patientez…" : "Mettre en attente"}</button></div>
                 </form></>, document.body
               )}
@@ -248,10 +257,12 @@ export default function EmailList({
   );
 }
 
-function SwipeEmailRow({ thread, onTrash, children }: {
+function SwipeEmailRow({ thread, onTrash, leftAction, rightAction, onAction, children }: {
   thread: Thread;
-  onSelect: (thread: Thread) => void;
   onTrash?: (thread: Thread) => Promise<void>;
+  leftAction?: SwipeAction;
+  rightAction?: SwipeAction;
+  onAction?: (thread: Thread, action: Exclude<SwipeAction, "trash">) => Promise<void>;
   children: React.ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -265,24 +276,32 @@ function SwipeEmailRow({ thread, onTrash, children }: {
   const revealWidth = 112;
   const moveTo = (value: number) => { offsetRef.current = value; setOffset(value); };
   const reset = () => { moveTo(0); setDragging(false); gesture.current = null; };
-  const remove = async () => {
-    if (!onTrash || busy) return;
+  const actionInfo = (action: SwipeAction) => action === "trash" ? { label: "Corbeille", color: "bg-[#db766d]", icon: <Trash2 size={23} /> } : action === "archive" ? { label: "Archiver", color: "bg-[#6a8dce]", icon: <Archive size={23} /> } : action === "read" ? { label: "Marquer comme lu", color: "bg-[#7b728a]", icon: <MailOpen size={23} /> } : { label: "En attente", color: "bg-[#9674c9]", icon: <Clock3 size={23} /> };
+  const execute = async (action?: SwipeAction) => {
+    if (!action || busy || (action === "trash" && !onTrash) || (action !== "trash" && !onAction)) return;
     setBusy(true);
     setDragging(false);
-    moveTo(-(rowRef.current?.offsetWidth ?? window.innerWidth));
-    // The provider request starts in parallel with the exit animation.
-    const deletion = onTrash(thread);
-    await new Promise<void>(resolve => window.setTimeout(resolve, 250));
-    setExiting(true);
-    try { await deletion; }
+    const removesRow = action !== "read";
+    const direction = action === leftAction ? -1 : 1;
+    if (removesRow) moveTo(direction * (rowRef.current?.offsetWidth ?? window.innerWidth));
+    try {
+      if (action === "trash") await onTrash!(thread);
+      else await onAction!(thread, action);
+      if (removesRow) { await new Promise<void>(resolve => window.setTimeout(resolve, 180)); setExiting(true); }
+      else reset();
+    }
     catch { setExiting(false); reset(); }
     finally { setBusy(false); }
   };
+  const leftInfo = leftAction ? actionInfo(leftAction) : null;
+  const rightInfo = rightAction ? actionInfo(rightAction) : null;
   return (
     <div ref={rowRef} className="relative overflow-hidden select-none md:select-text" style={{ WebkitUserSelect: "none", maxHeight: exiting ? 0 : 140, opacity: exiting ? 0 : 1, transition: exiting ? "max-height 250ms ease-out, opacity 250ms ease-out" : "none" }}>
-      {onTrash && <button type="button" disabled={busy} aria-label="Mettre à la corbeille" onClick={() => void remove()} className="absolute inset-0 w-full bg-[#db766d] flex flex-col gap-1 items-center justify-center text-white transition-[opacity] duration-[250ms] ease-out">
-        <Trash2 size={23} aria-hidden="true" />
-        <span className="text-xs font-medium">Corbeille</span>
+      {leftInfo && <button type="button" disabled={busy} aria-label={leftInfo.label} onClick={() => void execute(leftAction)} className={`absolute inset-y-0 right-0 flex w-28 flex-col items-center justify-center gap-1 text-white ${leftInfo.color}`}>
+        {leftInfo.icon}<span className="text-xs font-medium">{leftInfo.label}</span>
+      </button>}
+      {rightInfo && <button type="button" disabled={busy} aria-label={rightInfo.label} onClick={() => void execute(rightAction)} className={`absolute inset-y-0 left-0 flex w-28 flex-col items-center justify-center gap-1 text-white ${rightInfo.color}`}>
+        {rightInfo.icon}<span className="text-xs font-medium">{rightInfo.label}</span>
       </button>}
       <div
         className="nexus-mail-row relative bg-nexus-bg will-change-transform"
@@ -294,13 +313,13 @@ function SwipeEmailRow({ thread, onTrash, children }: {
             : "transform 250ms ease-out",
         }}
         onTouchStart={event => {
-          if (!onTrash || busy || event.touches.length !== 1) return;
+          if ((!leftAction && !rightAction) || busy || event.touches.length !== 1) return;
           const touch = event.touches[0];
           gesture.current = { x: touch.clientX, y: touch.clientY, initial: offsetRef.current, horizontal: null };
         }}
         onTouchMove={event => {
           const g = gesture.current;
-          if (!g || !onTrash || busy) return;
+          if (!g || busy) return;
           const touch = event.touches[0];
           const dx = touch.clientX - g.x;
           const dy = touch.clientY - g.y;
@@ -308,7 +327,9 @@ function SwipeEmailRow({ thread, onTrash, children }: {
           if (!g.horizontal) return;
           suppressClick.current = true;
           setDragging(true);
-          moveTo(Math.max(-(rowRef.current?.offsetWidth ?? window.innerWidth), Math.min(0, g.initial + dx)));
+          const width = rowRef.current?.offsetWidth ?? window.innerWidth;
+          const next = g.initial + dx;
+          moveTo(Math.max(leftAction ? -width : 0, Math.min(rightAction ? width : 0, next)));
         }}
         onTouchEnd={() => {
           const g = gesture.current;
@@ -318,20 +339,21 @@ function SwipeEmailRow({ thread, onTrash, children }: {
           if (!g.horizontal) return;
           const distance = Math.abs(offsetRef.current);
           const width = rowRef.current?.offsetWidth ?? window.innerWidth;
-          if (distance > width / 2) { void remove(); return; }
-          moveTo(distance > revealWidth / 2 ? -revealWidth : 0);
+          const action = offsetRef.current < 0 ? leftAction : rightAction;
+          if (distance > width / 2) { void execute(action); return; }
+          moveTo(distance > revealWidth / 2 ? (offsetRef.current < 0 ? -revealWidth : revealWidth) : 0);
         }}
         onTouchCancel={() => {
           gesture.current = null;
           setDragging(false);
-          moveTo(Math.abs(offsetRef.current) > revealWidth / 2 ? -revealWidth : 0);
+          moveTo(Math.abs(offsetRef.current) > revealWidth / 2 ? (offsetRef.current < 0 ? -revealWidth : revealWidth) : 0);
         }}
         onClickCapture={event => {
-          if (suppressClick.current || offsetRef.current < 0) {
+          if (suppressClick.current || offsetRef.current !== 0) {
             event.preventDefault();
             event.stopPropagation();
             suppressClick.current = false;
-            if (offsetRef.current < 0) reset();
+            if (offsetRef.current !== 0) reset();
           }
         }}
       >{children}</div>

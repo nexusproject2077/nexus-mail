@@ -14,6 +14,7 @@ import {
   type AccountLabel,
   markMessageRead,
   trashMessage,
+  downloadAttachment,
   snoozeMessage,
   type PublicAccount,
   type MessageSummary,
@@ -35,7 +36,11 @@ export function parseLiveId(
 }
 
 export function summaryToThread(accountId: string, s: MessageSummary, mailbox = "INBOX"): Thread {
-  const id = liveId(accountId, s.threadId ?? s.inReplyTo ?? s.messageId ?? s.uid);
+  // The setting is deliberately read at conversion time so changing the
+  // conversation view applies to the next refresh without server state.
+  let threaded = true;
+  try { threaded = JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").threads !== false; } catch { /* default */ }
+  const id = liveId(accountId, threaded ? (s.threadId ?? s.inReplyTo ?? s.messageId ?? s.uid) : s.uid);
   const email: Email = {
     id: liveId(accountId, s.uid),
     threadId: id,
@@ -137,6 +142,27 @@ export function useMail(): UseMail {
   const requestId = useRef(0);
   const activeAccountRef = useRef<string | null>(null);
   const accountsRef = useRef<PublicAccount[]>([]);
+  const notifiedMessageIds = useRef(new Set<string>());
+  const notificationsSeeded = useRef(false);
+
+  const announceNewUnread = useCallback((items: Thread[]) => {
+    const unread = items.flatMap(thread => thread.messages.filter(message => message.isUnread));
+    if (!notificationsSeeded.current) {
+      unread.forEach(message => notifiedMessageIds.current.add(message.id));
+      notificationsSeeded.current = true;
+      return;
+    }
+    let settings: { notifications?: boolean; categories?: Record<string, boolean> } = {};
+    try { settings = JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}"); } catch { /* disabled */ }
+    const categoryFor = (labels: string[]) => labels.includes("CATEGORY_PROMOTIONS") ? "Promotions" : labels.includes("CATEGORY_SOCIAL") ? "Réseaux" : labels.includes("CATEGORY_UPDATES") ? "Notifications" : "Principale";
+    const available = typeof Notification !== "undefined" && Notification.permission === "granted" && settings.notifications;
+    for (const message of unread) {
+      if (notifiedMessageIds.current.has(message.id)) continue;
+      notifiedMessageIds.current.add(message.id);
+      if (!available || !settings.categories?.[categoryFor(message.labelIds)]) continue;
+      try { new Notification(message.senderName || "Nexus Mail", { body: message.subject || message.snippet, tag: message.id }); } catch { /* browser may reject a foreground notification */ }
+    }
+  }, []);
 
   const refreshAccounts = useCallback(async () => {
     if (!configured) return;
@@ -239,6 +265,7 @@ export function useMail(): UseMail {
           }
           if (requestId.current !== currentRequest || activeAccountRef.current !== activeAccountId) return;
           storeRef.current = mergeThreads(storeRef.current, [...allMessages.values()]);
+          announceNewUnread(storeRef.current);
           setThreads(storeRef.current);
           cursorsRef.current = { ...next };
           setCursors({ ...next });
@@ -255,7 +282,7 @@ export function useMail(): UseMail {
     } finally {
       if (requestId.current === currentRequest) { setLoading(false); setCategoryLoading(false); }
     }
-  }, [configured, activeAccountId, selectedLabel, category, refreshCategoryCounts]);
+  }, [configured, activeAccountId, selectedLabel, category, refreshCategoryCounts, announceNewUnread]);
 
   const loadMore = useCallback(async () => {
     if (!configured || !activeAccountId || moreBusy.current || loading) return;
@@ -322,13 +349,14 @@ export function useMail(): UseMail {
       if (frequency !== "manual") timer = window.setInterval(sync, frequency === "push" ? 30000 : Number(frequency) * 60000);
     };
     schedule();
-    window.addEventListener("nexus-settings-change", schedule);
+    const onSettingsChange = () => { schedule(); void refreshMessages(); };
+    window.addEventListener("nexus-settings-change", onSettingsChange);
     if (getFrequency() !== "manual") document.addEventListener("visibilitychange", sync);
     if (getFrequency() !== "manual") window.addEventListener("focus", sync);
     if (getFrequency() !== "manual") window.addEventListener("online", sync);
     return () => {
       if (timer) window.clearInterval(timer);
-      window.removeEventListener("nexus-settings-change", schedule);
+      window.removeEventListener("nexus-settings-change", onSettingsChange);
       document.removeEventListener("visibilitychange", sync);
       window.removeEventListener("online", sync);
     };
@@ -343,6 +371,15 @@ export function useMail(): UseMail {
         return messageId ? getMessage(messageId.accountId, messageId.uid, thread.mailbox ?? "INBOX") : Promise.resolve(null);
       }));
       if (!details.some(Boolean)) return thread;
+      // "Pré-télécharger" stores every attachment of an opened message in the
+      // browser Cache API. Failed downloads remain non-fatal for message view.
+      try {
+        const attachmentMode = JSON.parse(window.localStorage.getItem("nexus-mail:settings:v1") || "{}").attachments;
+        if (attachmentMode === "always") void Promise.allSettled(details.flatMap((item, index) => item?.attachments?.map(attachment => {
+          const id = parseLiveId(thread.messages[index].id);
+          return id ? downloadAttachment(id.accountId, id.uid, attachment.id, thread.mailbox ?? "INBOX") : Promise.resolve();
+        }) ?? []));
+      } catch { /* use on-demand downloads */ }
       // Never block opening an email on the separate "mark as read" API call.
       if (thread.isUnread) {
         void Promise.allSettled(thread.messages.filter(m => m.isUnread).map(m => {

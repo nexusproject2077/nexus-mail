@@ -24,8 +24,9 @@ import OutboxPanel from "@/components/OutboxPanel";
 import SubscriptionsPanel from "@/components/SubscriptionsPanel";
 import SecurityPanel from "@/components/SecurityPanel";
 import AccountsPanel from "@/components/AccountsPanel";
-import SettingsPanel, { DEFAULT_SETTINGS, type NexusSettings } from "@/components/SettingsPanel";
+import SettingsPanel, { DEFAULT_SETTINGS, readSettings, type NexusSettings } from "@/components/SettingsPanel";
 import AliasesPanel from "@/components/AliasesPanel";
+import { hasBiometricCredential, verifyBiometric } from "@/lib/biometric";
 
 import { useVault } from "@/lib/vault";
 import { useMail, parseLiveId, summaryToThread } from "@/lib/useMail";
@@ -151,10 +152,24 @@ export default function NexusMail() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [aliasesOpen, setAliasesOpen] = useState(false);
   const [settings, setSettings] = useState<NexusSettings>(DEFAULT_SETTINGS);
+  const [biometricLocked, setBiometricLocked] = useState(false);
+  const [biometricError, setBiometricError] = useState("");
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
   const [trashBusy, setTrashBusy] = useState(false);
   const { identity, isUnlocked, messages: vaultMessages } = useVault();
   const mail = useMail();
+  const unlockWithBiometric = async () => {
+    setBiometricError("");
+    try { await verifyBiometric(); setBiometricLocked(false); }
+    catch (error) { setBiometricError((error as Error).message); }
+  };
+  useEffect(() => {
+    if (!readSettings().biometric || !hasBiometricCredential()) return;
+    setBiometricLocked(true);
+    void unlockWithBiometric();
+  // Run only at application entry; enabling the setting protects the next session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const tabListRef = useRef<HTMLDivElement>(null);
   const [tabIndicator, setTabIndicator] = useState<{left: number; width: number} | null>(null);
   useEffect(() => {
@@ -170,14 +185,6 @@ export default function NexusMail() {
 
   // A live IMAP account replaces the sample inbox with real mail.
   const liveInbox = mail.configured && !!mail.activeAccountId;
-
-  // The backend releases snoozes without a browser, while this lightweight
-  // visible-tab refresh makes a due message reappear promptly for an open inbox.
-  useEffect(() => {
-    if (!liveInbox || activeFolder !== "inbox") return;
-    const timer = window.setInterval(() => { void mail.refreshMessages(); }, 60_000);
-    return () => window.clearInterval(timer);
-  }, [activeFolder, liveInbox, mail.refreshMessages]);
 
   useEffect(() => {
     if (!liveInbox || searchQuery.trim().length < 2) return;
@@ -613,6 +620,24 @@ export default function NexusMail() {
                   throw error;
                 }
               } : undefined}
+              swipeLeft={liveInbox && activeFolder === "inbox" ? settings.swipeLeft : undefined}
+              swipeRight={liveInbox && activeFolder === "inbox" ? settings.swipeRight : undefined}
+              onSwipeAction={liveInbox && activeFolder === "inbox" ? async (thread, action) => {
+                setMessageActionError(null);
+                try {
+                  if (action === "snooze") {
+                    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                    tomorrow.setHours(8, 0, 0, 0);
+                    await mail.snoozeThread(thread, tomorrow.toISOString());
+                  } else {
+                    await mail.actionThread(thread, action === "read" ? "read" : "archive");
+                  }
+                  if (selectedThread?.id === thread.id && action !== "read") setSelectedThread(null);
+                } catch (error) {
+                  setMessageActionError((error as Error).message);
+                  throw error;
+                }
+              } : undefined}
               onScrollDirection={(direction) => setComposeFabCompact(direction === "down")}
               hasMore={!searchQuery.trim() && mail.hasMore}
               loadingMore={mail.loadingMore}
@@ -748,6 +773,17 @@ export default function NexusMail() {
         }}
         onChanged={mail.refreshAccounts}
       />
+      {biometricLocked && (
+        <div role="dialog" aria-modal="true" aria-labelledby="biometric-title" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 px-5 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#171717] p-6 text-center shadow-2xl">
+            <ShieldCheck className="mx-auto text-nexus-primary-light" size={34} />
+            <h2 id="biometric-title" className="mt-4 text-xl font-semibold text-white">Nexus Mail est verrouillé</h2>
+            <p className="mt-2 text-sm text-nexus-text-muted">Utilisez Face ID, Touch ID ou le verrouillage de cet appareil pour continuer.</p>
+            {biometricError && <p role="alert" className="mt-3 text-sm text-red-300">{biometricError}</p>}
+            <button type="button" onClick={() => void unlockWithBiometric()} className="mt-5 min-h-11 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black">Déverrouiller</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
