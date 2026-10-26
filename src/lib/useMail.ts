@@ -340,7 +340,13 @@ export function useMail(): UseMail {
         return messageId ? getMessage(messageId.accountId, messageId.uid, thread.mailbox ?? "INBOX") : Promise.resolve(null);
       }));
       if (!details.some(Boolean)) return thread;
-      if (thread.isUnread) await Promise.all(thread.messages.filter(m => m.isUnread).map(m => { const id = parseLiveId(m.id); return id ? markMessageRead(id.accountId, id.uid, thread.mailbox ?? "INBOX") : Promise.resolve(); }));
+      // Never block opening an email on the separate "mark as read" API call.
+      if (thread.isUnread) {
+        void Promise.allSettled(thread.messages.filter(m => m.isUnread).map(m => {
+          const id = parseLiveId(m.id);
+          return id ? markMessageRead(id.accountId, id.uid, thread.mailbox ?? "INBOX") : Promise.resolve();
+        }));
+      }
       setThreads((current) => current.map((item) => item.id === thread.id
         ? { ...item, isUnread: false, labels: item.labels.filter((label) => label !== "UNREAD"),
             messages: item.messages.map((message) => ({ ...message, isUnread: false, labelIds: message.labelIds.filter((label) => label !== "UNREAD") })) }
