@@ -302,11 +302,14 @@ export function useMail(): UseMail {
     void refreshMessages();
   }, [refreshMessages]);
 
+  // Avoid refetching hundreds of messages whenever the browser regains focus.
+  const lastAutoSyncRef = useRef(0);
   // Synchronize periodically while the tab is visible and when connectivity returns.
   useEffect(() => {
     if (!configured || !activeAccountId) return;
     const sync = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) {
+      if (document.visibilityState === "visible" && navigator.onLine && !loading && !loadingMore && Date.now() - lastAutoSyncRef.current > 5 * 60_000) {
+        lastAutoSyncRef.current = Date.now();
         void refreshMessages();
       }
     };
@@ -326,10 +329,9 @@ export function useMail(): UseMail {
       if (timer) window.clearInterval(timer);
       window.removeEventListener("nexus-settings-change", schedule);
       document.removeEventListener("visibilitychange", sync);
-      window.removeEventListener("focus", sync);
       window.removeEventListener("online", sync);
     };
-  }, [configured, activeAccountId, refreshMessages]);
+  }, [configured, activeAccountId, refreshMessages, loading, loadingMore]);
 
   const loadDetail = useCallback(
     async (thread: Thread): Promise<Thread> => {
