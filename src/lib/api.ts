@@ -175,6 +175,27 @@ export function sendViaAccount(
   });
 }
 
+export interface QueuedMail {
+  id: string; accountId: string; to: string; subject: string; scheduledAt: string;
+  status: "pending" | "sending" | "sent" | "failed" | "cancelled";
+  createdAt: string; sentAt: string | null; error: string | null;
+}
+export function scheduleViaAccount(
+  accountId: string,
+  message: { to: string; subject: string; text: string; html?: string; attachments?: Array<{ filename: string; contentType: string; data: string }> },
+  scheduledAt: string,
+) {
+  return req<{ message: QueuedMail }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox`, {
+    method: "POST", body: JSON.stringify({ ...message, scheduledAt }),
+  });
+}
+export function getQueuedMail(accountId: string) {
+  return req<{ messages: QueuedMail[] }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox`).then(r => r.messages);
+}
+export function cancelQueuedMail(accountId: string, id: string) {
+  return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox/${encodeURIComponent(id)}/cancel`, { method: "POST" });
+}
+
 export function markMessageRead(accountId: string, uid: string, mailbox = "INBOX") {
   return req<{ ok: boolean }>(`/api/accounts/${encodeURIComponent(accountId)}/messages/${encodeURIComponent(uid)}/read?${new URLSearchParams({ mailbox })}`, { method: "POST" });
 }
