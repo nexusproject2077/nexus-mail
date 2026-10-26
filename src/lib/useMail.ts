@@ -210,7 +210,7 @@ export function useMail(): UseMail {
       setLoadingMore(true);
       try {
         while (pending.length && loadedMessages < messageLimit && requestId.current === currentRequest && activeAccountRef.current === activeAccountId) {
-          const perAccountLimit = Math.min(firstPage ? 20 : 100, Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length)));
+          const perAccountLimit = Math.min(firstPage ? 8 : 50, Math.max(1, Math.floor((messageLimit - loadedMessages) / pending.length)));
           const batch = await Promise.allSettled(pending.map(async ({ id, cursor }) => ({
             id, page: await getMessages(id, mailbox, perAccountLimit, cursor ?? undefined, gmailCategory && accountsRef.current.find(a => a.id === id)?.authType === "google_oauth" ? gmailCategory : undefined),
           })));
