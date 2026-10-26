@@ -86,7 +86,7 @@ export default function Sidebar({
   selectedLabel,
   onSelectLabel,
 }: SidebarProps) {
-  const folders: Folder[] = ["inbox", "starred", "snoozed", "important", "purchases", "sent", "scheduled", "outbox", "drafts", "all", "spam", "trash", "subscriptions", "deliveries", "vault"];
+  const folders: Folder[] = ["inbox", "starred", "snoozed", "deliveries", "important", "purchases", "sent", "scheduled", "outbox", "drafts", "all", "spam", "trash", "subscriptions", "vault"];
   const userLabels = labels;
 
   return (
