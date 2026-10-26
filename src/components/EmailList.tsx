@@ -2,6 +2,7 @@
 
 import { Archive, Clock3, Mail, MailOpen, Trash2, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Thread } from "@/types/email";
 import { formatEmailDate, getInitials, getAvatarColor, getLabelInfo } from "@/lib/utils";
 
@@ -48,13 +49,17 @@ export default function EmailList({
   const [snoozingThreadId, setSnoozingThreadId] = useState<string | null>(null);
   const [snoozeValue, setSnoozeValue] = useState("");
   const [snoozeBusy, setSnoozeBusy] = useState(false);
+  const [snoozePosition, setSnoozePosition] = useState({ top: 0, left: 0 });
   const defaultSnoozeValue = () => {
     const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
     date.setHours(8, 0, 0, 0);
     const offset = date.getTimezoneOffset();
     return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
   };
-  const openSnooze = (threadId: string) => {
+  const openSnooze = (threadId: string, anchor: HTMLElement) => {
+    const rect = anchor.getBoundingClientRect();
+    const menuWidth = Math.min(288, window.innerWidth - 24);
+    setSnoozePosition({ top: rect.bottom + 310 > window.innerHeight ? Math.max(12, rect.top - 240) : rect.bottom + 8, left: Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12)) });
     setSnoozingThreadId(threadId);
     setSnoozeValue(defaultSnoozeValue());
   };
@@ -217,9 +222,9 @@ export default function EmailList({
               {onQuickAction && <button type="button" title="Archiver" aria-label="Archiver" className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onQuickAction(thread, "archive"); }}><Archive size={17} /></button>}
               {onTrash && <button type="button" title="Supprimer" aria-label="Mettre à la corbeille" className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onTrash(thread).catch(() => {}); }}><Trash2 size={17} /></button>}
               {onQuickAction && <button type="button" title={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} aria-label={thread.isUnread ? "Marquer comme lu" : "Marquer comme non lu"} className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); void onQuickAction(thread, thread.isUnread ? "read" : "unread"); }}>{thread.isUnread ? <MailOpen size={17} /> : <Mail size={17} />}</button>}
-              {onSnooze && <button type="button" title="Mettre en attente" aria-label="Mettre en attente" aria-expanded={snoozingThreadId === thread.id} className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); openSnooze(thread.id); }}><Clock3 size={17} /></button>}
-              {onSnooze && snoozingThreadId === thread.id && (
-                <form className="absolute right-0 top-full z-30 mt-2 w-72 rounded-xl border border-nexus-border bg-nexus-surface p-3 shadow-2xl" onSubmit={(event) => {
+              {onSnooze && <button type="button" title="Mettre en attente" aria-label="Mettre en attente" aria-expanded={snoozingThreadId === thread.id} className="rounded-md p-2 hover:bg-nexus-surface-hover" onClick={(event) => { event.stopPropagation(); openSnooze(thread.id, event.currentTarget); }}><Clock3 size={17} /></button>}
+              {onSnooze && snoozingThreadId === thread.id && createPortal(
+                <><div className="fixed inset-0 z-[99]" onClick={() => setSnoozingThreadId(null)} aria-hidden="true" /><form role="dialog" aria-label="Mettre en attente" className="fixed z-[100] w-72 max-w-[calc(100vw-24px)] rounded-xl border border-nexus-border bg-nexus-surface p-3 shadow-2xl" style={{ top: snoozePosition.top, left: snoozePosition.left }}" onSubmit={(event) => {
                   event.preventDefault();
                   const date = new Date(snoozeValue);
                   if (Number.isNaN(date.valueOf()) || date.valueOf() < Date.now() + 60_000 || snoozeBusy) return;
@@ -229,7 +234,7 @@ export default function EmailList({
                   <label className="block text-xs font-medium text-nexus-text" htmlFor={`snooze-${thread.id}`}>Réapparaître le</label>
                   <input id={`snooze-${thread.id}`} required min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)} type="datetime-local" value={snoozeValue} onChange={event => setSnoozeValue(event.target.value)} className="mt-2 w-full rounded-lg border border-nexus-border bg-nexus-bg px-2 py-2 text-sm text-nexus-text" />
                   <div className="mt-3 flex justify-end gap-2"><button type="button" className="rounded-lg px-2 py-1.5 text-xs text-nexus-text-muted hover:bg-nexus-surface-hover" onClick={() => setSnoozingThreadId(null)}>Annuler</button><button type="submit" disabled={snoozeBusy} className="rounded-lg bg-nexus-primary px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-50">{snoozeBusy ? "Patientez…" : "Mettre en attente"}</button></div>
-                </form>
+                </form></>, document.body
               )}
             </div>
           )}
