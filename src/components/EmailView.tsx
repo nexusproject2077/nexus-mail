@@ -443,7 +443,7 @@ export default function EmailView({
                 <div className="pl-3 pr-3 sm:pl-14 sm:pr-0 mb-4 flex flex-wrap gap-2">
                   {msg.attachments.map(attachment => (
                     <button key={attachment.id} type="button" className="flex items-center gap-2 rounded-lg border border-nexus-border px-3 py-2 text-xs hover:bg-nexus-surface-hover" onClick={async () => {
-                      const parsed = parseLiveId(thread.id);
+                      const parsed = parseLiveId(msg.id);
                       if (!parsed) return;
                       try {
                         const blob = await downloadAttachment(parsed.accountId, parsed.uid, attachment.id, thread.mailbox ?? "INBOX");
