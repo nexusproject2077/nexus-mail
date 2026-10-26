@@ -5,7 +5,7 @@ import { requireAuth } from "../auth.js";
 import { consumeOAuthState, createOAuthState, insertGoogleAccount } from "../db.js";
 
 export const googleOAuthRouter = Router();
-const scopes = ["openid", "email", "profile", "https://www.googleapis.com/auth/gmail.modify", "https://www.googleapis.com/auth/gmail.send"];
+const scopes = ["openid", "email", "profile", "https://www.googleapis.com/auth/gmail.modify", "https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/gmail.settings.basic"];
 function configured() { return Boolean(config.googleClientId && config.googleClientSecret && config.googleRedirectUri && config.oauthSuccessRedirect); }
 
 googleOAuthRouter.get("/google/start", requireAuth, (req, res) => {

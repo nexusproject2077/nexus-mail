@@ -1,15 +1,16 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
   listAccounts,
   insertAccount,
   deleteAccount,
   getAccountWithSecret,
-  listEmailAliases, createEmailAlias, deactivateEmailAlias,
+  listEmailAliases, createEmailAlias, deactivateEmailAlias, getActiveEmailAlias,
 } from "../db.js";
 import { testConnection } from "../imap.js";
 import { requireAuth, requireCsrf } from "../auth.js";
-import { revokeGoogleAccess } from "../gmail.js";
+import { revokeGoogleAccess, trashGmailAlias } from "../gmail.js";
 
 export const accountsRouter = Router();
 accountsRouter.use(requireAuth);
@@ -43,12 +44,20 @@ accountsRouter.post("/:id/aliases", requireCsrf, (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid alias label" }); return; }
   const at = account.email.lastIndexOf("@");
   if (at <= 0) { res.status(400).json({ error: "Cette adresse ne prend pas en charge les alias" }); return; }
-  const alias = `${account.email.slice(0, at).replace(/\+.*/, "")}+nexus-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}${account.email.slice(at)}`;
+  const alias = `${account.email.slice(0, at).replace(/\+.*/, "")}+nexus-${randomUUID().replace(/-/g, "").slice(0, 10)}${account.email.slice(at)}`;
   res.status(201).json({ alias: createEmailAlias(req.auth!.ownerId, account.id, alias, parsed.data.label) });
 });
 accountsRouter.post("/:id/aliases/:aliasId/deactivate", requireCsrf, (req, res) => {
-  if (!deactivateEmailAlias(req.auth!.ownerId, req.params.id, req.params.aliasId)) { res.status(404).json({ error: "Alias not found or already disabled" }); return; }
-  res.json({ ok: true });
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  const alias = getActiveEmailAlias(req.auth!.ownerId, req.params.id, req.params.aliasId);
+  if (!account || !alias) { res.status(404).json({ error: "Alias not found or already disabled" }); return; }
+  void (async () => {
+    try {
+      const filterId = account.authType === "google_oauth" ? await trashGmailAlias(account, alias.alias) : undefined;
+      if (!deactivateEmailAlias(req.auth!.ownerId, req.params.id, req.params.aliasId, filterId)) throw new Error("L'alias a changé d'état.");
+      res.json({ ok: true, gmailFilterCreated: Boolean(filterId) });
+    } catch (error) { res.status(502).json({ error: "Impossible d'activer le filtre anti-spam", message: (error as Error).message }); }
+  })();
 });
 
 accountsRouter.post("/", requireCsrf, async (req, res) => {

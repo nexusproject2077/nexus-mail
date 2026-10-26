@@ -215,8 +215,9 @@ export function listBlockedSenders(ownerId: string): string[] {
 
 db.exec(`CREATE TABLE IF NOT EXISTS email_aliases (
   id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, account_id TEXT NOT NULL, alias TEXT NOT NULL UNIQUE,
-  label TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL
+  label TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, gmail_filter_id TEXT, created_at TEXT NOT NULL
 ); CREATE INDEX IF NOT EXISTS email_aliases_owner_idx ON email_aliases(owner_id, account_id);`);
+if (!(db.prepare("PRAGMA table_info(email_aliases)").all() as { name: string }[]).some(column => column.name === "gmail_filter_id")) db.exec("ALTER TABLE email_aliases ADD COLUMN gmail_filter_id TEXT");
 export type EmailAlias = { id: string; accountId: string; alias: string; label: string; active: boolean; createdAt: string };
 export function listEmailAliases(ownerId: string, accountId: string): EmailAlias[] {
   return (db.prepare("SELECT * FROM email_aliases WHERE owner_id = ? AND account_id = ? ORDER BY created_at DESC").all(ownerId, accountId) as any[])
@@ -228,6 +229,10 @@ export function createEmailAlias(ownerId: string, accountId: string, alias: stri
     .run(item.id, ownerId, accountId, item.alias, item.label, item.createdAt);
   return item;
 }
-export function deactivateEmailAlias(ownerId: string, accountId: string, id: string): boolean {
-  return db.prepare("UPDATE email_aliases SET active = 0 WHERE id = ? AND owner_id = ? AND account_id = ? AND active = 1").run(id, ownerId, accountId).changes > 0;
+export function getActiveEmailAlias(ownerId: string, accountId: string, id: string): EmailAlias | null {
+  const row = db.prepare("SELECT * FROM email_aliases WHERE id = ? AND owner_id = ? AND account_id = ? AND active = 1").get(id, ownerId, accountId) as any;
+  return row ? { id: row.id, accountId: row.account_id, alias: row.alias, label: row.label, active: true, createdAt: row.created_at } : null;
+}
+export function deactivateEmailAlias(ownerId: string, accountId: string, id: string, gmailFilterId?: string): boolean {
+  return db.prepare("UPDATE email_aliases SET active = 0, gmail_filter_id = ? WHERE id = ? AND owner_id = ? AND account_id = ? AND active = 1").run(gmailFilterId ?? null, id, ownerId, accountId).changes > 0;
 }

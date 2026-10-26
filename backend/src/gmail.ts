@@ -88,6 +88,16 @@ async function gmail(account: Account, path: string, init?: RequestInit) {
   }
 }
 
+/** Route future mail addressed to a retired plus-alias directly to Gmail Trash. */
+export async function trashGmailAlias(account: Account, alias: string): Promise<string> {
+  const result = await gmail(account, "/settings/filters", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ criteria: { to: alias }, action: { addLabelIds: ["TRASH"] } }),
+  }) as { id?: string };
+  if (!result.id) throw new Error("Gmail n'a pas confirmé la création du filtre.");
+  return result.id;
+}
+
 function header(headers: Array<{ name: string; value: string }> | undefined, name: string) {
   return headers?.find((item) => item.name.toLowerCase() === name.toLowerCase())?.value ?? "";
 }
