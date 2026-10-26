@@ -6,6 +6,8 @@ import { sendMessage } from "../smtp.js";
 import { fetchGmailDetail, fetchGmailSummaries, sendGmailMessage, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailAttachmentMetadata, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
+import { enqueue, listQueued, cancelQueued } from "../outgoing-queue.js";
+
 export const messagesRouter = Router();
 messagesRouter.use(requireAuth);
 
@@ -72,6 +74,36 @@ const sendSchema = z.object({
   text: z.string().default(""),
   html: z.string().optional(),
   attachments: z.array(z.object({ filename: z.string().min(1).max(255), contentType: z.string().max(150), data: z.string().max(14_000_000) })).max(5).optional(),
+});
+
+/** Persisted scheduled messages; no browser tab needs to remain open. */
+messagesRouter.get("/:id/outbox", (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  res.json({ messages: listQueued(req.auth!.ownerId, account.id) });
+});
+messagesRouter.post("/:id/outbox", requireCsrf, (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const parsed = sendSchema.extend({ scheduledAt: z.string().datetime({ offset: true }) }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid scheduled message", details: parsed.error.issues }); return; }
+  const { scheduledAt, ...message } = parsed.data;
+  const when = Date.parse(scheduledAt);
+  if (!Number.isFinite(when) || when < Date.now() + 60_000 || when > Date.now() + 365 * 86400_000) {
+    res.status(400).json({ error: "Programmer entre 1 minute et 1 an dans le futur" }); return;
+  }
+  if ((message.attachments ?? []).reduce((n, a) => n + Buffer.byteLength(a.data, "base64"), 0) > 10 * 1024 * 1024) {
+    res.status(413).json({ error: "Pièces jointes limitées à 10 Mo" }); return;
+  }
+  res.status(201).json({ message: enqueue(req.auth!.ownerId, account.id, message, when) });
+});
+messagesRouter.post("/:id/outbox/:queueId/cancel", requireCsrf, (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  if (!cancelQueued(req.auth!.ownerId, account.id, req.params.queueId)) {
+    res.status(409).json({ error: "Impossible d'annuler : envoi déjà commencé ou message absent" }); return;
+  }
+  res.json({ ok: true });
 });
 
 /** POST /api/accounts/:id/send */
