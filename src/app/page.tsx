@@ -156,20 +156,50 @@ export default function NexusMail() {
   const [settings, setSettings] = useState<NexusSettings>(DEFAULT_SETTINGS);
   const [biometricLocked, setBiometricLocked] = useState(false);
   const [biometricError, setBiometricError] = useState("");
+  const biometricBackgroundAt = useRef<number | null>(null);
+  const biometricUnlocking = useRef(false);
+  const biometricLockedRef = useRef(false);
+
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
   const [trashBusy, setTrashBusy] = useState(false);
   const { identity, isUnlocked, messages: vaultMessages } = useVault();
   const mail = useMail();
   const unlockWithBiometric = async () => {
+    if (biometricUnlocking.current) return;
+    biometricUnlocking.current = true;
     setBiometricError("");
-    try { await verifyBiometric(); setBiometricLocked(false); }
-    catch (error) { setBiometricError((error as Error).message); }
+    try {
+      await verifyBiometric();
+      biometricLockedRef.current = false;
+      biometricBackgroundAt.current = null;
+      setBiometricLocked(false);
+    } catch (error) { setBiometricError((error as Error).message); }
+    finally { biometricUnlocking.current = false; }
   };
   useEffect(() => {
-    if (!readSettings().biometric || !hasBiometricCredential()) return;
-    setBiometricLocked(true);
-    void unlockWithBiometric();
-  // Run only at application entry; enabling the setting protects the next session.
+    const enabled = () => readSettings().biometric && hasBiometricCredential();
+    const lock = () => {
+      if (!enabled() || biometricLockedRef.current) return;
+      biometricLockedRef.current = true;
+      setBiometricLocked(true);
+      void unlockWithBiometric();
+    };
+    // A newly opened session starts locked; switching away briefly does not.
+    if (enabled()) lock();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        biometricBackgroundAt.current = Date.now();
+        return;
+      }
+      const backgroundAt = biometricBackgroundAt.current;
+      biometricBackgroundAt.current = null;
+      if (backgroundAt === null || !enabled()) return;
+      const timeout = readSettings().biometricTimeout ?? 120;
+      if (Date.now() - backgroundAt >= timeout * 1000) lock();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  // Install once; settings are read fresh on every visibility change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const tabListRef = useRef<HTMLDivElement>(null);
