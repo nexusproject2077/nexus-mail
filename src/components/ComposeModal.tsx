@@ -372,10 +372,10 @@ export default function ComposeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] w-screen h-[100dvh] sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] ">
+    <div className="nexus-pwa-overlay fixed inset-0 z-[100] w-screen sm:inset-auto sm:bottom-0 sm:right-6 sm:z-50 sm:h-auto sm:w-[min(520px,calc(100vw-3rem))] ">
       <div className={`bg-black border-0 sm:border sm:border-nexus-border rounded-none sm:rounded-t-xl shadow-2xl shadow-black/50 flex flex-col h-full sm:h-auto sm:max-h-[80dvh] min-w-0 overflow-hidden transform-gpu transition-[transform,opacity] duration-[250ms] ease-out motion-reduce:transition-none ${visible && isOpen ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"}`}>
-        <div className="relative z-[120] shrink-0 flex items-center justify-between pl-4 pr-3 py-3 bg-[#000000] border-b border-white/10 sm:rounded-t-xl">
-          <span className="flex items-center gap-2 text-base font-semibold">
+        <div className="nexus-pwa-header relative z-[120] shrink-0 flex items-center justify-between gap-2 pl-4 pr-3 pb-3 bg-[#000000] border-b border-white/10 sm:rounded-t-xl">
+          <span className="flex min-w-0 shrink-0 items-center gap-2 whitespace-nowrap text-sm sm:text-base font-semibold">
             {mode !== "standard" && <Lock size={13} className="text-nexus-primary-light" />}
             {replyTo ? "Répondre" : "Nouveau message"}
           </span>
@@ -557,7 +557,8 @@ export default function ComposeModal({
         )}
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
-        <div className="relative shrink-0 flex items-center justify-end gap-3 px-4 sm:px-5 py-2 pb-[max(12px,env(safe-area-inset-bottom))] bg-black border-t border-white/10">
+        <div className="nexus-pwa-footer relative shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-2 bg-black border-t border-white/10">
+          <button type="button" onClick={handleSend} disabled={isSending || !to.trim() || attachmentsLoading} aria-label="Envoyer" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-30 sm:hidden">{isSending ? <Loader2 size={21} className="animate-spin"/> : <Send size={21}/>}</button>
           <div className="flex items-center justify-end gap-2 sm:gap-3">
             <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.zip,.csv,.xlsx,.pptx" aria-label="Sélectionner des photos, PDF ou fichiers" className="hidden" onChange={event => {
               const files = Array.from(event.target.files ?? []);
