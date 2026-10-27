@@ -51,6 +51,8 @@ export default function NexusMail() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [queuedMessage, setQueuedMessage] = useState<QueuedMail | null>(null);
+  const [undoNow, setUndoNow] = useState(() => Date.now());
+  useEffect(() => { if (!queuedMessage) return; const timer = window.setInterval(() => { const now = Date.now(); setUndoNow(now); if (now >= Date.parse(queuedMessage.scheduledAt)) { window.clearInterval(timer); setQueuedMessage(current => current?.id === queuedMessage.id ? null : current); } }, 100); return () => window.clearInterval(timer); }, [queuedMessage]);
   const [undoDraft, setUndoDraft] = useState<{ to: string; subject: string; body: string; html?: string } | null>(null);
   const [composeFabCompact, setComposeFabCompact] = useState(false);
 
@@ -741,7 +743,10 @@ export default function NexusMail() {
 
       {queuedMessage && (
         <div role="status" className="fixed bottom-5 left-1/2 z-[150] flex w-[min(92vw,500px)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-white/15 bg-[#171717] px-4 py-3 text-sm text-white shadow-2xl">
-          <span className="min-w-0 flex-1">Message programmé. Appuyez sur Annuler avant son envoi.</span>
+          <div className="relative h-12 w-12 shrink-0" aria-label="Compte à rebours">
+          <svg viewBox="0 0 48 48" className="h-12 w-12 -rotate-90" aria-hidden="true"><circle cx="24" cy="24" r="20" fill="none" stroke="#555" strokeWidth="3"/><circle cx="24" cy="24" r="20" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray={125.66} strokeDashoffset={125.66 * (1 - Math.max(0, Math.min(1, (Date.parse(queuedMessage.scheduledAt) - undoNow) / Math.max(1, Date.parse(queuedMessage.scheduledAt) - Date.parse(queuedMessage.createdAt)))))}/></svg>
+          <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums">{Math.max(0, Math.ceil((Date.parse(queuedMessage.scheduledAt) - undoNow) / 1000))}</span>
+        </div><span className="min-w-0 flex-1">Envoi en attente…</span>
           <button type="button" className="shrink-0 font-semibold text-nexus-primary-light" onClick={async () => {
             const accountId = queuedMessage.accountId;
             try {
