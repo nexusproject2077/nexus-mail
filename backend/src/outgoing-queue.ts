@@ -42,6 +42,14 @@ export function enqueue(ownerId: string, accountId: string, payload: OutgoingMes
     .run(id, ownerId, accountId, JSON.stringify(payload), scheduledAt, now, now);
   return publicRow(db.prepare("SELECT * FROM outgoing_queue WHERE id = ?").get(id) as QueueRow);
 }
+/** Reschedule only while pending; the conditional update prevents races with the worker. */
+export function rescheduleQueued(ownerId: string, accountId: string, id: string, scheduledAt: number) {
+  const now = Date.now();
+  const changed = db.prepare("UPDATE outgoing_queue SET scheduled_at = ?, updated_at = ? WHERE id = ? AND owner_id = ? AND account_id = ? AND status = 'pending'")
+    .run(scheduledAt, now, id, ownerId, accountId).changes;
+  if (!changed) return null;
+  return publicRow(db.prepare("SELECT * FROM outgoing_queue WHERE id = ?").get(id) as QueueRow);
+}
 export function cancelQueued(ownerId: string, accountId: string, id: string): OutgoingMessage | null {
   // The conditional update is the claim boundary: once a worker switches to
   // sending, cancellation can never restore a message that may be delivered.
