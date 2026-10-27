@@ -5,7 +5,7 @@ import { fetchSummaries, fetchDetail, markImapRead, trashImapMessage, fetchImapL
 import { fetchGmailDetail, fetchGmailSummaries, markGmailRead, trashGmailMessage, fetchGmailLabels, updateGmailFlags, searchGmail, fetchGmailAttachment, fetchGmailAttachmentMetadata, fetchGmailCategoryCounts, setGmailCategory } from "../gmail.js";
 import { requireAuth, requireCsrf } from "../auth.js";
 
-import { enqueue, listQueued, cancelQueued } from "../outgoing-queue.js";
+import { enqueue, listQueued, cancelQueued, rescheduleQueued } from "../outgoing-queue.js";
 import { discoverSubscriptions } from "../subscriptions.js";
 
 export const messagesRouter = Router();
@@ -150,6 +150,19 @@ messagesRouter.post("/:id/outbox", requireCsrf, (req, res) => {
     res.status(413).json({ error: "Pièces jointes limitées à 10 Mo" }); return;
   }
   res.status(201).json({ message: enqueue(req.auth!.ownerId, account.id, message, when) });
+});
+messagesRouter.patch("/:id/outbox/:queueId", requireCsrf, (req, res) => {
+  const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
+  if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+  const parsed = z.object({ scheduledAt: z.string().datetime({ offset: true }) }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Date et heure invalides" }); return; }
+  const when = Date.parse(parsed.data.scheduledAt);
+  if (!Number.isFinite(when) || when < Date.now() + 60_000 || when > Date.now() + 365 * 86400_000) {
+    res.status(400).json({ error: "Programmer entre 1 minute et 1 an dans le futur" }); return;
+  }
+  const message = rescheduleQueued(req.auth!.ownerId, account.id, req.params.queueId, when);
+  if (!message) { res.status(409).json({ error: "Modification impossible : envoi déjà commencé, annulé ou message absent" }); return; }
+  res.json({ message });
 });
 messagesRouter.post("/:id/outbox/:queueId/cancel", requireCsrf, (req, res) => {
   const account = getAccountWithSecret(req.params.id, req.auth!.ownerId);
