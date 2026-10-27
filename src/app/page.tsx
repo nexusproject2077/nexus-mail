@@ -397,7 +397,7 @@ export default function NexusMail() {
   };
 
   return (
-    <div className="h-dvh min-w-0 flex flex-col overflow-hidden bg-nexus-bg">
+    <div className="nexus-pwa-screen min-w-0 flex flex-col bg-nexus-bg">
       {/* Keep an opaque, viewport-fixed layer behind the iOS status bar, like the hamburger drawer. */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[90] bg-black" style={{ height: "env(safe-area-inset-top, 0px)", transform: "translateZ(0)", WebkitTransform: "translateZ(0)" }} />
       {/* Header */}
