@@ -12,12 +12,13 @@ export type NexusSettings = {
   swipeRight: "archive" | "snooze" | "read";
   threads: boolean;
   biometric: boolean;
+  biometricTimeout: 0 | 30 | 60 | 120 | 300;
   attachments: "on-demand" | "always";
 };
 export const DEFAULT_SETTINGS: NexusSettings = {
   sync: "30", signatures: {}, notifications: false,
   categories: { Principale: true, Promotions: false, Réseaux: false, Notifications: false },
-  swipeLeft: "trash", swipeRight: "archive", threads: true, biometric: false, attachments: "on-demand",
+  swipeLeft: "trash", swipeRight: "archive", threads: true, biometric: false, biometricTimeout: 120, attachments: "on-demand",
 };
 export const SETTINGS_KEY = "nexus-mail:settings:v1";
 export function readSettings(): NexusSettings {
@@ -87,6 +88,9 @@ export default function SettingsPanel({ open, onClose, onAccounts, onAliases, on
       {group("Sécurité & chiffrement", <>
         <button onClick={onSecurity} className="flex min-h-16 w-full items-center justify-between gap-4 px-4 py-4 text-left text-sm transition-colors hover:bg-nexus-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-nexus-primary sm:px-5"><span>Clés de chiffrement E2EE</span><ChevronRight className="shrink-0" size={18}/></button>
         {line("Face ID / Touch ID", toggle(settings.biometric,setBiometric))}
+        {settings.biometric && line("Demander Face ID après une absence de", select(String(settings.biometricTimeout), [["0","Immédiatement"],["30","30 secondes"],["60","1 minute"],["120","2 minutes"],["300","5 minutes"]], value => change({ ...settings, biometricTimeout: Number(value) as NexusSettings["biometricTimeout"] })))}
+        {settings.biometric && <p className="px-4 py-3 text-xs text-nexus-text-muted">Le délai commence quand Nexus Mail passe en arrière-plan. Un retour rapide depuis un lien ne redemande pas Face ID.</p>}
+
         <p className="px-4 py-3 text-xs text-nexus-text-muted">À l’activation, Nexus Mail crée une clé WebAuthn protégée par Face ID, Touch ID ou le verrouillage de l’appareil. Elle reste uniquement sur cet appareil.</p>
       </>, "lg:col-span-5")}
       {group("Interface & gestes", <>
