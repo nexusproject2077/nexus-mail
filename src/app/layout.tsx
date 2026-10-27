@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased`}>
-      <body className="h-screen overflow-hidden">{children}</body>
+      <body className="min-h-dvh overflow-hidden">{children}</body>
     </html>
   );
 }
