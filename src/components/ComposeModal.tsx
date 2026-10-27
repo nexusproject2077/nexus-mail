@@ -558,7 +558,6 @@ export default function ComposeModal({
 
         {attachments.length > 0 && <div className="px-4 py-2 text-xs text-nexus-text-muted flex flex-wrap gap-2">{attachments.map((file, i) => <button key={i} type="button" onClick={() => setAttachments(old => old.filter((_, j) => i !== j))} className="rounded-lg border border-nexus-border px-2 py-1">{file.name} ×</button>)}</div>}
         <div className="nexus-pwa-footer relative shrink-0 flex items-center justify-between gap-3 px-4 sm:px-5 py-2 bg-black border-t border-white/10">
-          <button type="button" onClick={handleSend} disabled={isSending || !to.trim() || attachmentsLoading} aria-label="Envoyer" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-30 sm:hidden">{isSending ? <Loader2 size={21} className="animate-spin"/> : <Send size={21}/>}</button>
           <div className="flex items-center justify-end gap-2 sm:gap-3">
             <input ref={fileInputRef} type="file" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.zip,.csv,.xlsx,.pptx" aria-label="Sélectionner des photos, PDF ou fichiers" className="hidden" onChange={event => {
               const files = Array.from(event.target.files ?? []);
