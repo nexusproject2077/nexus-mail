@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   KeyRound,
   Timer,
+  MoreHorizontal,
+  CalendarClock,
   Loader2,
   Bold,
   Italic,
@@ -69,6 +71,8 @@ export default function ComposeModal({
   const [isMinimized, setIsMinimized] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [undoDelaySeconds, setUndoDelaySeconds] = useState<5 | 10 | 20 | 30>(5);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
@@ -376,18 +380,16 @@ export default function ComposeModal({
             {replyTo ? "Répondre" : "Nouveau message"}
           </span>
           <div className="flex items-center gap-1">
-            {mode === "standard" && (
-              <label className="flex items-center gap-1 text-[11px] text-nexus-text-muted">
-                <Timer size={15} aria-hidden="true" />
-                <span className="sr-only">Programmer l'envoi (facultatif)</span>
-                <input type="datetime-local" aria-label="Programmer l'envoi" value={scheduleAt}
-                  onChange={event => setScheduleAt(event.target.value)}
-                  className="max-w-[145px] rounded-lg border border-nexus-border bg-black px-1 py-1 text-[11px] text-white" />
-                {!scheduleAt && <select aria-label="Délai pour annuler l'envoi" value={undoDelaySeconds} onChange={event => setUndoDelaySeconds(Number(event.target.value) as 5 | 10 | 20 | 30)} className="max-w-[88px] rounded-lg border border-nexus-border bg-black px-1 py-1 text-[11px] text-white">
-                  {[5, 10, 20, 30].map(seconds => <option key={seconds} value={seconds}>Annuler {seconds}s</option>)}
-                </select>}
-              </label>
-            )}
+            {mode === "standard" && <div className="relative">
+              <button type="button" aria-label="Options d'envoi" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-white/10"><MoreHorizontal size={23}/></button>
+              {menuOpen && <div className="absolute right-0 top-11 z-[150] w-60 rounded-xl border border-nexus-border bg-[#242424] p-2 shadow-2xl">
+                <button type="button" className="flex w-full items-center gap-2 rounded-lg p-3 text-left text-sm hover:bg-white/10" onClick={() => {setMenuOpen(false);setScheduleOpen(true);}}><CalendarClock size={18}/> Programmer l'envoi</button>
+                <button type="button" className="flex w-full items-center gap-2 rounded-lg p-3 text-left text-sm hover:bg-white/10" onClick={() => {setMenuOpen(false);setShowComposeOptions(true);setMode("confidential");}}><Lock size={18}/> Mode confidentiel</button>
+                <label className="block px-3 pt-2 text-xs text-nexus-text-muted">Annuler l'envoi</label>
+                <select aria-label="Délai pour annuler l'envoi" value={undoDelaySeconds} onChange={event => setUndoDelaySeconds(Number(event.target.value) as 5 | 10 | 20 | 30)} className="m-2 w-[calc(100%-16px)] rounded-lg bg-black p-2 text-sm">{[5,10,20,30].map(seconds => <option key={seconds} value={seconds}>{seconds} secondes</option>)}</select>
+                <button type="button" className="flex w-full items-center gap-2 rounded-lg p-3 text-left text-sm text-red-400 hover:bg-white/10" onClick={() => {setMenuOpen(false);if(draftKey)window.localStorage.removeItem(draftKey);onClose();reset();}}><Trash2 size={18}/> Supprimer le brouillon</button>
+              </div>}
+            </div>}
             <button type="button" onClick={handleSend} disabled={isSending || !to.trim() || attachmentsLoading} aria-label="Envoyer le message" title="Envoyer"
               className="flex h-10 w-10 items-center justify-center rounded-xl text-nexus-primary-light hover:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed">
               {isSending ? <Loader2 size={21} className="animate-spin" /> : mode === "standard" ? <Send size={21} /> : <Lock size={21} />}
@@ -401,6 +403,25 @@ export default function ComposeModal({
           </div>
         </div>
 
+        {scheduleOpen && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4" onClick={() => setScheduleOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Programmer l'envoi" className="w-full max-w-sm rounded-2xl border border-nexus-border bg-[#202020] p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between"><h3 className="font-semibold">Programmer l'envoi</h3><button type="button" aria-label="Fermer" onClick={() => setScheduleOpen(false)}><X size={20}/></button></div>
+            <div className="grid grid-cols-2 gap-3">
+              {["Demain matin","Cet après-midi","Lundi matin"].map((label,index) => {
+                const date = new Date();
+                if(index===0){date.setDate(date.getDate()+1);date.setHours(8,0,0,0);}
+                if(index===1){date.setHours(13,0,0,0);if(date.getTime()<=Date.now())date.setDate(date.getDate()+1);}
+                if(index===2){date.setDate(date.getDate()+((8-date.getDay())%7||7));date.setHours(8,0,0,0);}
+                return <button key={label} type="button" className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl bg-white/5 p-3 hover:bg-white/10" onClick={() => {setScheduleAt(new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16));setScheduleOpen(false);}}><CalendarClock size={23}/><span className="text-sm font-medium">{label}</span><span className="text-xs text-nexus-text-muted">{date.toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</span></button>;
+              })}
+              <button type="button" className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl bg-white/5 p-3 hover:bg-white/10" onClick={() => {const input=document.getElementById("custom-schedule");input?.focus();}}><CalendarClock size={23}/><span className="text-sm font-medium">Choisir date/heure</span></button>
+            </div>
+            <input id="custom-schedule" type="datetime-local" aria-label="Choisir une date et une heure" value={scheduleAt} onChange={event => setScheduleAt(event.target.value)} className="mt-4 w-full rounded-lg border border-nexus-border bg-black p-2 text-sm"/>
+            <button type="button" onClick={() => setScheduleOpen(false)} className="mt-3 w-full rounded-lg bg-white p-2 font-semibold text-black">Valider</button>
+            <p className="mt-3 text-center text-xs text-nexus-text-muted">Heure locale de votre appareil</p>
+          </div>
+        </div>}
+        {scheduleAt && mode === "standard" && <div className="flex items-center justify-between gap-2 px-4 py-2 text-xs text-nexus-text-muted"><span>Envoi programmé : {new Date(scheduleAt).toLocaleString("fr-FR")}</span><button type="button" onClick={() => setScheduleAt("")} className="underline">Retirer</button></div>}
         <div className="relative z-10 shrink-0 px-4 pt-3 pb-2 space-y-0 bg-black">
           <div className="flex items-center gap-3 border-b border-white/10 px-2 py-3">
             <span className="text-sm text-nexus-text-dim w-10">À</span>
