@@ -196,6 +196,11 @@ export function scheduleViaAccount(
 export function getQueuedMail(accountId: string) {
   return req<{ messages: QueuedMail[] }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox`).then(r => r.messages);
 }
+export function rescheduleQueuedMail(accountId: string, id: string, scheduledAt: string) {
+  return req<{ message: QueuedMail }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox/${encodeURIComponent(id)}`, {
+    method: "PATCH", body: JSON.stringify({ scheduledAt }),
+  }).then(r => r.message);
+}
 export function cancelQueuedMail(accountId: string, id: string) {
   return req<{ ok: boolean; draft: { to: string; subject: string; text: string; html?: string } }>(`/api/accounts/${encodeURIComponent(accountId)}/outbox/${encodeURIComponent(id)}/cancel`, { method: "POST" });
 }
