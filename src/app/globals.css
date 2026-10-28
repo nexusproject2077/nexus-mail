@@ -151,3 +151,20 @@ body { min-height: 100dvh; }
 .nexus-pwa-footer { padding-bottom: max(12px, var(--nexus-safe-bottom)); }
 .nexus-pwa-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 @media (max-width: 639px) { input, textarea, select { font-size: 16px; } }
+
+/* Landscape phones: keep interactive UI out of the notch / Dynamic Island.
+   Applies to iOS and Android devices reporting viewport cutout insets.
+   Desktop and portrait layouts remain unchanged. */
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .nexus-pwa-screen {
+    padding-inline-start: env(safe-area-inset-left, 0px);
+    padding-inline-end: env(safe-area-inset-right, 0px);
+  }
+  .nexus-pwa-overlay {
+    padding-inline-start: max(12px, env(safe-area-inset-left, 0px));
+    padding-inline-end: max(12px, env(safe-area-inset-right, 0px));
+  }
+  .nexus-pwa-screen > header {
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+  }
+}
