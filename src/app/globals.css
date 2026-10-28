@@ -177,3 +177,14 @@ body { min-height: 100dvh; }
     padding-right: env(safe-area-inset-right, 0px);
   }
 }
+
+/* A rotated phone must retain the mobile header even at tablet CSS widths. */
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .nexus-responsive-header .nexus-desktop-brand,
+  .nexus-responsive-header .nexus-desktop-account,
+  .nexus-desktop-sidebar { display: none !important; }
+  .nexus-responsive-header .nexus-mobile-profile { display: block !important; }
+  .nexus-responsive-header { gap: 8px; }
+  .nexus-responsive-header > div:has(> input) { min-width: 0; }
+  .nexus-mobile-drawer { display: block !important; }
+}
