@@ -372,7 +372,7 @@ export default function EmailView({
 
 
   return (
-    <div className="flex-1 min-w-0 min-h-0 flex flex-col animate-slide-in">
+    <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden animate-slide-in">
       <div className="flex min-w-0 items-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] lg:pt-3 border-b border-nexus-border">
         <button
           onClick={onBack}
@@ -472,7 +472,7 @@ export default function EmailView({
         </section>
       )}
 
-      <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-0 py-3 sm:p-6">
+      <div className="min-w-0 shrink-0 px-0 py-3 sm:p-6">
         {thread.messages.map((msg, idx) => {
           const avatarColor = getAvatarColor(msg.senderEmail);
           const userLabel = msg.labelIds.find((l) => l.startsWith("Label_"));
