@@ -6,14 +6,17 @@ import type { Thread } from "@/types/email";
 type Status = "ordered" | "shipped" | "out" | "ready" | "delivered" | "issue";
 type Parcel = { thread: Thread; status: Status; carrier: string | null; tracking: string | null; date: string | null; trackingKey: string | null; orderKey: string | null; relatedCount: number };
 
-const deliveryTerms = /\b(colis|livraison|expédié|expédiée|expédition|transporteur|suivi de commande|tracking|point relais|livré|livrée|en cours d.acheminement|out for delivery|shipped|delivered|parcel|package)\b/i;
+// Only show transactional order/shipping emails, never promotions mentioning delivery.
 const carrierTerms = /colissimo|chronopost|mondial relay|dhl|ups|fedex|dpd|gls|la poste/i;
+const promotionTerms = /(?:\\bpromo(?:tion)?s?\\b|\\boffres?\\b|\\bréduction\\b|\\bcode promo\\b|\\bbon de réduction\\b|\\bcoupon\\b|\\bdiscount\\b|\\bdeal\\b|\\bsoldes\\b|\\bnewsletter\\b|\\bremise\\b|\\bprofitez\\b|\\bjusqu.à -?\\d+\\s*%|\\d+\\s*[€$]\\s*de réduction)/i;
+const transactionalTerms = /(?:votre commande (?:n[°o.]?\\s*|#\\s*)?[A-Z0-9-]{5,}|commande (?:n[°o.]?\\s*|#\\s*)[A-Z0-9-]{5,}|commande (?:confirmée|expédiée|livrée)|confirmation de (?:votre )?commande|nous avons (?:reçu|expédié) votre commande|votre colis (?:a été|est|sera)|colis (?:expédié|livré|en transit)|votre livraison (?:est|a été|arrivera)|suivez votre (?:colis|commande)|numéro de suivi|tracking number|order (?:confirmation|#\\s*[A-Z0-9-]{5,})|your order (?:has been|is|#)|your package (?:has been|is)|out for delivery|shipment confirmation)/i;
 function parseParcel(thread: Thread): Parcel | null {
   const message = thread.messages[thread.messages.length - 1];
-  const text = [thread.subject, thread.snippet, message?.body ?? ""].join(" ").replace(/<[^>]*>/g, " ");
-  if (!deliveryTerms.test(text) && !carrierTerms.test(text)) return null;
-  // Avoid treating generic marketing messages as real parcels.
-  if (!/colis|livraison|expédi|expédition|transporteur|tracking|suivi|point relais|livré|shipped|delivered|parcel|package/i.test(text)) return null;
+  const subject = thread.subject ?? "";
+  const text = [subject, thread.snippet, message?.body ?? ""].join(" ").replace(/<[^>]*>/g, " ").replace(/&(?:nbsp|amp);/g, " ");
+  // Promotional subjects are excluded even if a footer mentions shipping.
+  if (promotionTerms.test(subject)) return null;
+  if (!transactionalTerms.test(text)) return null;
   const status: Status = /échec de livraison|livraison impossible|delivery failed|incident de livraison/i.test(text) ? "issue"
     : /disponible (?:en|au) point relais|prêt à être retiré|ready for pickup/i.test(text) ? "ready"
     : /a été livré|est livré|colis livré|livraison effectuée|delivered/i.test(text) ? "delivered"
