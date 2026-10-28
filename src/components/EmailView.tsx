@@ -104,6 +104,7 @@ function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: 
   const [height, setHeight] = useState(1);
   const [frameWidth, setFrameWidth] = useState(0);
   const [scale, setScale] = useState(1);
+  const [contentWidth, setContentWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -130,8 +131,9 @@ function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: 
       const next = Math.max(body.scrollHeight, body.offsetHeight, root.scrollHeight, root.offsetHeight, 1);
       setHeight(previous => previous === next ? previous : next);
       const available = containerRef.current?.clientWidth ?? frameWidth;
-      const contentWidth = Math.max(body.scrollWidth, root.scrollWidth, available);
-      const ratio = available > 0 ? Math.min(1, available / contentWidth) : 1;
+      const measuredWidth = Math.max(body.scrollWidth, root.scrollWidth, available);
+      setContentWidth(previous => previous === measuredWidth ? previous : measuredWidth);
+      const ratio = available > 0 ? Math.min(1, available / measuredWidth) : 1;
       setScale(previous => Math.abs(previous - ratio) < 0.005 ? previous : ratio);
     };
     const onLoad = () => {
@@ -154,7 +156,7 @@ function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: 
   }, [html, frameWidth]);
 
   return (
-    <div ref={containerRef} className="w-full min-w-0 overflow-hidden bg-white" style={{ height: Math.ceil(height * scale) }}>
+    <div ref={containerRef} className="w-full min-w-0 overflow-hidden rounded-2xl bg-white" style={{ height: Math.ceil(height * scale) }}>
       <iframe
         ref={frameRef}
         title={title}
@@ -162,8 +164,8 @@ function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: 
         referrerPolicy="no-referrer"
         srcDoc={prepareEmailHtml(html, blockLinks)}
         scrolling="no"
-        style={{ height: height + "px" }}
-        className="block w-full border-0 bg-white"
+        style={{ height: height + "px", width: contentWidth > 0 ? contentWidth + "px" : "100%", transform: `scale(${scale})`, transformOrigin: "top left" }}
+        className="block border-0 bg-white"
       />
     </div>
   );
