@@ -6,28 +6,37 @@ import type { Thread } from "@/types/email";
 type Status = "ordered" | "shipped" | "out" | "ready" | "delivered" | "issue";
 type Parcel = { thread: Thread; status: Status; carrier: string | null; tracking: string | null; date: string | null; trackingKey: string | null; orderKey: string | null; relatedCount: number };
 
-// Only show transactional order/shipping emails, never promotions mentioning delivery.
-const carrierTerms = /colissimo|chronopost|mondial relay|dhl|ups|fedex|dpd|gls|la poste/i;
-const promotionTerms = /(?:\\bpromo(?:tion)?s?\\b|\\boffres?\\b|\\bréduction\\b|\\bcode promo\\b|\\bbon de réduction\\b|\\bcoupon\\b|\\bdiscount\\b|\\bdeal\\b|\\bsoldes\\b|\\bnewsletter\\b|\\bremise\\b|\\bprofitez\\b|\\bjusqu.à -?\\d+\\s*%|\\d+\\s*[€$]\\s*de réduction)/i;
-const transactionalTerms = /(?:votre commande (?:n[°o.]?\\s*|#\\s*)?[A-Z0-9-]{5,}|commande (?:n[°o.]?\\s*|#\\s*)[A-Z0-9-]{5,}|commande (?:confirmée|expédiée|livrée)|confirmation de (?:votre )?commande|nous avons (?:reçu|expédié) votre commande|votre colis (?:a été|est|sera)|colis (?:expédié|livré|en transit)|votre livraison (?:est|a été|arrivera)|suivez votre (?:colis|commande)|numéro de suivi|tracking number|order (?:confirmation|#\\s*[A-Z0-9-]{5,})|your order (?:has been|is|#)|your package (?:has been|is)|out for delivery|shipment confirmation)/i;
+// Require transaction-specific evidence, not marketing language or generic delivery terms.
+const carrierTerms = /\b(?:colissimo|chronopost|mondial relay|dhl|ups|fedex|dpd|gls|la poste)\b/i;
+const promotionalTerms = /\b(?:promo(?:tion)?s?|offres?|réductions?|remises?|codes? promo|coupons?|discounts?|deals?|soldes|newsletter|profitez|économisez|livraison gratuite|free delivery|special offer|save \d+|off \d+%|bons? plans?)\b|\d+\s*[€$]\s*de réduction|\d+\s*%\s*de réduction/i;
+const explicitOrder = /\b(?:commande|order)\s*(?:n[°o.]?\s*|#\s*|:\s*)([A-Z0-9][A-Z0-9-]{5,24})\b/i;
+const explicitTracking = /\b(?:numéro|n°|référence|number|tracking)\s*(?:de\s*)?(?:suivi|colis|tracking)?\s*[:#-]\s*([A-Z0-9][A-Z0-9 -]{7,28})\b/i;
+const transactionalSubject = /\b(?:confirmation de (?:votre )?commande|commande (?:confirmée|expédiée|livrée)|votre commande (?:est|a été)|votre colis (?:est|a été)|colis (?:expédié|livré|en transit)|expédition de votre commande|livraison de votre commande|shipment confirmation|order confirmation|your order (?:has been|is)|your package (?:has been|is)|out for delivery|ready for pickup)\b/i;
+const transactionalBody = /\b(?:nous avons (?:reçu|expédié) votre commande|votre commande (?:a été confirmée|a été expédiée|est en route)|votre colis (?:a été expédié|est en route|a été livré)|your order (?:has shipped|has been confirmed)|your package (?:has shipped|is on its way))\b/i;
+
 function parseParcel(thread: Thread): Parcel | null {
   const message = thread.messages[thread.messages.length - 1];
   const subject = thread.subject ?? "";
-  const text = [subject, thread.snippet, message?.body ?? ""].join(" ").replace(/<[^>]*>/g, " ").replace(/&(?:nbsp|amp);/g, " ");
-  // Promotional subjects are excluded even if a footer mentions shipping.
-  if (promotionTerms.test(subject)) return null;
-  if (!transactionalTerms.test(text)) return null;
+  const sender = [message?.senderEmail ?? "", message?.senderName ?? ""].join(" ");
+  const text = [subject, thread.snippet, message?.body ?? ""].join(" ").replace(/<[^>]*>/g, " ").replace(/&(?:nbsp|amp);/gi, " ");
+  const orderMatch = text.match(explicitOrder);
+  const trackingMatch = text.match(explicitTracking);
+  const tracking = trackingMatch?.[1]?.trim() ?? null;
+  const trackingKey = tracking?.replace(/[^A-Z0-9]/gi, "").toUpperCase() ?? null;
+  const orderKey = orderMatch?.[1]?.toUpperCase() ?? null;
+  const isPromotion = promotionalTerms.test(subject) || (promotionalTerms.test(text) && !transactionalSubject.test(subject));
+  if (isPromotion) return null;
+  // Sender recognition helps explain a shipment but is never sufficient by itself.
+  const carrierSender = carrierTerms.test(sender);
+  const evidence = Boolean(orderKey || (trackingKey && trackingKey.length >= 8) || transactionalSubject.test(subject) || (carrierSender && transactionalBody.test(text)));
+  if (!evidence) return null;
   const status: Status = /échec de livraison|livraison impossible|delivery failed|incident de livraison/i.test(text) ? "issue"
     : /disponible (?:en|au) point relais|prêt à être retiré|ready for pickup/i.test(text) ? "ready"
     : /a été livré|est livré|colis livré|livraison effectuée|delivered/i.test(text) ? "delivered"
     : /en cours de livraison|livraison aujourd.hui|out for delivery/i.test(text) ? "out"
     : /expédi|en transit|acheminement|shipped|pris en charge/i.test(text) ? "shipped" : "ordered";
-  const carrier = text.match(carrierTerms)?.[0] ?? null;
-  const tracking = text.match(/(?:numéro|n°|référence|number|tracking)(?:\s+de)?\s+(?:suivi|colis|tracking)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9 -]{7,28})/i)?.[1]?.trim() ?? null;
+  const carrier = text.match(carrierTerms)?.[0] ?? (carrierSender ? sender.match(carrierTerms)?.[0] ?? null : null);
   const date = text.match(/(?:livraison (?:prévue|estimée|attendue)|arrivée prévue)\s*(?:le|pour le|:)?\s*(\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?)/i)?.[1] ?? null;
-  const trackingKey = tracking?.replace(/[^A-Z0-9]/gi, "").toUpperCase() ?? null;
-  const orderMatch = text.match(/(?:commande|order)\s*(?:n[°o.]?\s*|#\s*|:?\s*)([A-Z0-9][A-Z0-9-]{5,24})/i);
-  const orderKey = orderMatch ? orderMatch[1].toUpperCase() : null;
   return { thread, status, carrier, tracking, date, trackingKey: trackingKey && trackingKey.length >= 8 ? trackingKey : null, orderKey, relatedCount: 1 };
 }
 
