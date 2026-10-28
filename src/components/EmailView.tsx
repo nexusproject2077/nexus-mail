@@ -102,6 +102,18 @@ function InlineImagePreview({ accountId, uid, mailbox, attachment }: {
 function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: string; blockLinks: boolean }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(1);
+  const [frameWidth, setFrameWidth] = useState(0);
+  const [scale, setScale] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => setFrameWidth(container.clientWidth));
+    observer.observe(container);
+    setFrameWidth(container.clientWidth);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const frame = frameRef.current;
@@ -117,6 +129,10 @@ function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: 
       if (!body || !root) return;
       const next = Math.max(body.scrollHeight, body.offsetHeight, root.scrollHeight, root.offsetHeight, 1);
       setHeight(previous => previous === next ? previous : next);
+      const available = containerRef.current?.clientWidth ?? frameWidth;
+      const contentWidth = Math.max(body.scrollWidth, root.scrollWidth, available);
+      const ratio = available > 0 ? Math.min(1, available / contentWidth) : 1;
+      setScale(previous => Math.abs(previous - ratio) < 0.005 ? previous : ratio);
     };
     const onLoad = () => {
       observer?.disconnect();
@@ -135,10 +151,10 @@ function AdaptiveEmailFrame({ html, title, blockLinks }: { html: string; title: 
     frame.addEventListener("load", onLoad);
     if (frame.contentDocument?.readyState === "complete") onLoad();
     return () => { disposed = true; frame.removeEventListener("load", onLoad); observer?.disconnect(); };
-  }, [html]);
+  }, [html, frameWidth]);
 
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-[28px] bg-white">
+    <div ref={containerRef} className="w-full min-w-0 overflow-hidden bg-white" style={{ height: Math.ceil(height * scale) }}>
       <iframe
         ref={frameRef}
         title={title}
