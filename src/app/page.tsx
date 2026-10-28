@@ -431,15 +431,15 @@ export default function NexusMail() {
       {/* Keep an opaque, viewport-fixed layer behind the iOS status bar, like the hamburger drawer. */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[90] bg-black" style={{ height: "env(safe-area-inset-top, 0px)", transform: "translateZ(0)", WebkitTransform: "translateZ(0)" }} />
       {/* Header */}
-      <header className={`${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-16 items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2 pt-[max(8px,env(safe-area-inset-top))] border-b border-nexus-border bg-black flex-shrink-0`}>
+      <header className={`nexus-responsive-header ${selectedThread ? "hidden lg:flex" : "flex"} relative z-20 min-h-16 items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2 pt-[max(8px,env(safe-area-inset-top))] border-b border-nexus-border bg-black flex-shrink-0`}>
         <button
-          onClick={() => { if (window.matchMedia("(min-width: 1024px)").matches) setDesktopSidebarOpen(value => !value); else { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); } }}
+          onClick={() => { if (window.matchMedia("(min-width: 1024px) and (min-height: 601px)").matches) setDesktopSidebarOpen(value => !value); else { setDrawerDragX(0); setSidebarOpen(!sidebarOpen); } }}
           className="nexus-interactive flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1a1a1a] hover:bg-[#252525] transition-colors text-white"
         >
           <Menu size={23} />
         </button>
 
-        <div className="hidden sm:flex shrink-0 items-center gap-0 pr-1" aria-label="Nexus Mail">
+        <div className="nexus-desktop-brand hidden sm:flex shrink-0 items-center gap-0 pr-1" aria-label="Nexus Mail">
           <svg aria-hidden="true" viewBox="0 0 64 64" className="h-11 w-11 shrink-0 text-white" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M 33 11 L 16 27 L 33 43" />
             <path d="M 35 25 L 51 41 L 35 57" />
@@ -449,7 +449,7 @@ export default function NexusMail() {
 
         <div className="min-w-0 flex-1 max-w-3xl lg:mx-2"><SearchBar value={searchQuery} onChange={setSearchQuery} /></div>
 
-        <div className="relative shrink-0 sm:hidden">
+        <div className="nexus-mobile-profile relative shrink-0 sm:hidden">
           <button type="button" onClick={() => setProfileMenuOpen(value => !value)} aria-label="Compte et sécurité" aria-expanded={profileMenuOpen}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/10">
             <CircleUserRound size={26} />
@@ -462,7 +462,7 @@ export default function NexusMail() {
             </div>
           )}
         </div>
-        <div className="hidden sm:flex shrink-0 items-center rounded-xl border border-white/10 bg-[#111] p-1 shadow-sm ml-auto">
+        <div className="nexus-desktop-account hidden sm:flex shrink-0 items-center rounded-xl border border-white/10 bg-[#111] p-1 shadow-sm ml-auto">
           <button
             onClick={() => setSecurityOpen(true)}
             title="Chiffrement & clés"
@@ -502,7 +502,7 @@ export default function NexusMail() {
 
       {/* Main Content */}
       <div className="relative flex-1 flex min-h-0 min-w-0 overflow-hidden">
-        <div className={`fixed inset-0 z-[80] lg:hidden transition-[visibility] duration-[250ms] ${sidebarOpen ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!sidebarOpen}>
+        <div className={`nexus-mobile-drawer fixed inset-0 z-[80] lg:hidden transition-[visibility] duration-[250ms] ${sidebarOpen ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!sidebarOpen}>
           <button type="button" aria-label="Fermer le menu" onClick={closeDrawer} className={`absolute inset-0 bg-black/50 transition-opacity duration-[250ms] ease-out ${sidebarOpen ? "opacity-100" : "opacity-0"}`} />
           <div ref={drawerRef} onTouchStart={onDrawerTouchStart} onTouchMove={onDrawerTouchMove} onTouchEnd={onDrawerTouchEnd} onTouchCancel={onDrawerTouchEnd} style={{ transform: sidebarOpen ? `translate3d(${drawerDragX}px,0,0)` : "translate3d(-100%,0,0)", transition: drawerDragging ? "none" : drawerDragX < 0 ? "transform 350ms cubic-bezier(0.2, 1.25, 0.3, 1)" : "transform 250ms ease-out" }} className="nexus-landscape-drawer absolute inset-y-0 left-0 w-[80vw] max-w-[360px] h-full overflow-hidden rounded-r-[40px] shadow-2xl will-change-transform motion-reduce:transition-none">
           <Sidebar
@@ -531,7 +531,7 @@ export default function NexusMail() {
         </div>
 
         <div
-          className={`relative hidden lg:block shrink-0 min-h-0 transition-[width] duration-200 ${desktopSidebarOpen ? "w-[280px]" : "w-[72px]"} ${desktopSidebarHovered && !desktopSidebarOpen ? "z-50" : "z-10"}`}
+          className={`nexus-desktop-sidebar relative hidden lg:block shrink-0 min-h-0 transition-[width] duration-200 ${desktopSidebarOpen ? "w-[280px]" : "w-[72px]"} ${desktopSidebarHovered && !desktopSidebarOpen ? "z-50" : "z-10"}`}
           onMouseEnter={() => setDesktopSidebarHovered(true)}
           onMouseLeave={() => setDesktopSidebarHovered(false)}
         >
