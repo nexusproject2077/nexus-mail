@@ -34,6 +34,7 @@ export default function SettingsPanel({ open, onClose, onAccounts, onAliases, on
 }) {
   const [settings, setSettings] = useState<NexusSettings>(DEFAULT_SETTINGS);
   const [notificationError, setNotificationError] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   useEffect(() => { if (open) setSettings(readSettings()); }, [open]);
   const change = (next: NexusSettings) => {
     setSettings(next);
@@ -72,12 +73,12 @@ export default function SettingsPanel({ open, onClose, onAccounts, onAliases, on
       {group("Comptes & synchronisation", <>
         <button className="flex min-h-16 w-full items-center justify-between gap-4 px-4 py-4 text-left text-sm transition-colors hover:bg-nexus-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-nexus-primary sm:px-5" onClick={onAccounts}><span>Gérer les comptes ({accounts.length})</span><ChevronRight className="shrink-0" size={18}/></button>
         <button className="flex min-h-16 w-full items-center justify-between gap-4 px-4 py-4 text-left text-sm transition-colors hover:bg-nexus-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-nexus-primary sm:px-5" onClick={onAliases}><span>Adresses protégées et jetables</span><ChevronRight className="shrink-0" size={18}/></button>
-        {line("Fréquence de synchronisation", select(settings.sync, [["push","Temps réel (actualisation 30 s)"],["15","15 minutes"],["30","30 minutes"],["60","60 minutes"],["manual","Manuelle"]], v => change({...settings,sync:v as NexusSettings["sync"]})) )}
-        {accounts.map(account => <div key={account.id} className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(11rem,0.8fr)_minmax(0,1.65fr)] sm:items-start sm:gap-5 sm:px-5"><label htmlFor={`sig-${account.id}`} className="pt-1 text-sm font-medium text-nexus-text"><span className="block truncate" title={account.email}>{account.email}</span><span className="mt-0.5 block text-xs font-normal text-nexus-text-muted">Signature</span></label><textarea id={`sig-${account.id}`} rows={3} placeholder="Envoyé depuis Nexus Mail" value={settings.signatures[account.id] || ""} onChange={e=>change({...settings,signatures:{...settings.signatures,[account.id]:e.target.value}})} className="min-h-24 w-full resize-y rounded-xl border border-nexus-border bg-nexus-bg p-3 text-sm outline-none transition-colors placeholder:text-nexus-text-dim focus:border-nexus-primary focus:ring-2 focus:ring-nexus-primary/30"/></div>)}
+        {advancedOpen && line("Fréquence de synchronisation", select(settings.sync, [["push","Temps réel (actualisation 30 s)"],["15","15 minutes"],["30","30 minutes"],["60","60 minutes"],["manual","Manuelle"]], v => change({...settings,sync:v as NexusSettings["sync"]})) )}
+        {advancedOpen && accounts.map(account => <div key={account.id} className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(11rem,0.8fr)_minmax(0,1.65fr)] sm:items-start sm:gap-5 sm:px-5"><label htmlFor={`sig-${account.id}`} className="pt-1 text-sm font-medium text-nexus-text"><span className="block truncate" title={account.email}>{account.email}</span><span className="mt-0.5 block text-xs font-normal text-nexus-text-muted">Signature</span></label><textarea id={`sig-${account.id}`} rows={3} placeholder="Envoyé depuis Nexus Mail" value={settings.signatures[account.id] || ""} onChange={e=>change({...settings,signatures:{...settings.signatures,[account.id]:e.target.value}})} className="min-h-24 w-full resize-y rounded-xl border border-nexus-border bg-nexus-bg p-3 text-sm outline-none transition-colors placeholder:text-nexus-text-dim focus:border-nexus-primary focus:ring-2 focus:ring-nexus-primary/30"/></div>)}
       </>, "lg:col-span-7")}
       {group("Notifications", <>
         {line("Alertes générales", toggle(settings.notifications,setNotifications))}
-        {Object.entries(settings.categories).map(([category,enabled]) => <div key={category}>{line(category,toggle(enabled,v=>change({...settings,categories:{...settings.categories,[category]:v}})))}</div>)}
+        {advancedOpen && Object.entries(settings.categories).map(([category,enabled]) => <div key={category}>{line(category,toggle(enabled,v=>change({...settings,categories:{...settings.categories,[category]:v}})))}</div>)}
         <div className="px-4 py-3 space-y-2 text-xs text-nexus-text-muted">
           {notificationError && <p role="alert" className="font-medium text-red-300">{notificationError}</p>}
           <p>Les alertes utilisent les notifications du navigateur pour les nouveaux messages reçus pendant que Nexus Mail est ouvert.</p>
@@ -85,20 +86,21 @@ export default function SettingsPanel({ open, onClose, onAccounts, onAliases, on
           <p>Sur iPhone, autorise les notifications après avoir ajouté Nexus Mail à l’écran d’accueil.</p>
         </div>
       </>, "lg:col-span-5")}
-      {group("Sécurité & chiffrement", <>
-        <button onClick={onSecurity} className="flex min-h-16 w-full items-center justify-between gap-4 px-4 py-4 text-left text-sm transition-colors hover:bg-nexus-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-nexus-primary sm:px-5"><span>Clés de chiffrement E2EE</span><ChevronRight className="shrink-0" size={18}/></button>
+      {group("Confidentialité & sécurité", <>
+        {advancedOpen && <button onClick={onSecurity} className="flex min-h-16 w-full items-center justify-between gap-4 px-4 py-4 text-left text-sm transition-colors hover:bg-nexus-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-nexus-primary sm:px-5"><span>Clés de chiffrement E2EE</span><ChevronRight className="shrink-0" size={18}/></button>}
         {line("Face ID / Touch ID", toggle(settings.biometric,setBiometric))}
-        {settings.biometric && line("Demander Face ID après une absence de", select(String(settings.biometricTimeout), [["0","Immédiatement"],["30","30 secondes"],["60","1 minute"],["120","2 minutes"],["300","5 minutes"]], value => change({ ...settings, biometricTimeout: Number(value) as NexusSettings["biometricTimeout"] })))}
-        {settings.biometric && <p className="px-4 py-3 text-xs text-nexus-text-muted">Le délai commence quand Nexus Mail passe en arrière-plan. Un retour rapide depuis un lien ne redemande pas Face ID.</p>}
+        {advancedOpen && settings.biometric && line("Demander Face ID après une absence de", select(String(settings.biometricTimeout), [["0","Immédiatement"],["30","30 secondes"],["60","1 minute"],["120","2 minutes"],["300","5 minutes"]], value => change({ ...settings, biometricTimeout: Number(value) as NexusSettings["biometricTimeout"] })))}
+        {advancedOpen && settings.biometric && <p className="px-4 py-3 text-xs text-nexus-text-muted">Le délai commence quand Nexus Mail passe en arrière-plan. Un retour rapide depuis un lien ne redemande pas Face ID.</p>}
 
-        <p className="px-4 py-3 text-xs text-nexus-text-muted">À l’activation, Nexus Mail crée une clé WebAuthn protégée par Face ID, Touch ID ou le verrouillage de l’appareil. Elle reste uniquement sur cet appareil.</p>
+        {advancedOpen && <p className="px-4 py-3 text-xs text-nexus-text-muted">À l’activation, Nexus Mail crée une clé WebAuthn protégée par Face ID, Touch ID ou le verrouillage de l’appareil. Elle reste uniquement sur cet appareil.</p>}
       </>, "lg:col-span-5")}
-      {group("Interface & gestes", <>
+      <div className="lg:col-span-12"><button type="button" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen(value => !value)} className="w-full rounded-xl border border-nexus-border/50 bg-nexus-surface px-4 py-3 text-left text-sm text-nexus-text-muted hover:text-nexus-text">{advancedOpen ? "Masquer les options avancées" : "Afficher les options avancées"}</button></div>
+      {advancedOpen && group("Interface & gestes", <>
         {line("Balayage gauche",select(settings.swipeLeft,[["trash","Corbeille"],["archive","Archiver"],["read","Marquer comme lu"]],v=>change({...settings,swipeLeft:v as NexusSettings["swipeLeft"]})))}
         {line("Balayage droit",select(settings.swipeRight,[["archive","Archiver"],["snooze","Mettre en attente"],["read","Marquer comme lu"]],v=>change({...settings,swipeRight:v as NexusSettings["swipeRight"]})))}
         {line("Regrouper par conversation",toggle(settings.threads,v=>change({...settings,threads:v})))}
       </>, "lg:col-span-7")}
-      {group("Stockage & cache", <>
+      {advancedOpen && group("Stockage & cache", <>
         {line("Pièces jointes",select(settings.attachments,[["on-demand","À l'ouverture"],["always","Pré-télécharger"]],v=>change({...settings,attachments:v as NexusSettings["attachments"]})))}
         <button onClick={async()=>{if(!window.confirm("Effacer les fichiers temporaires en cache ?"))return; if("caches" in window){for(const key of await caches.keys()) await caches.delete(key);} window.alert("Cache navigateur supprimé. Les brouillons sont conservés.");}} className="flex min-h-16 w-full items-center gap-3 px-4 py-4 text-left text-sm text-red-400 transition-colors hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-400 sm:px-5"><Trash2 className="shrink-0" size={18}/> Vider le cache temporaire</button>
       </>, "lg:col-span-5")}
