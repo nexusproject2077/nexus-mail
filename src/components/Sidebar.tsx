@@ -178,18 +178,6 @@ export default function Sidebar({
       </nav>
 
       <div className="px-2 pb-2">
-        <button
-          onClick={onOpenSecurity}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-all ${compact ? "justify-center" : ""}`}
-        >
-          <span className="text-nexus-primary-light">
-            <ShieldCheck size={18} />
-          </span>
-          {!compact && <span className="flex-1 text-left">Sécurité &amp; clés</span>}
-        </button>
-      </div>
-
-      <div className="px-2 pb-2">
         <button type="button" onClick={onOpenSettings} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-nexus-text-muted hover:bg-nexus-surface-hover hover:text-nexus-text transition-colors ${compact ? "justify-center" : ""}`}>
           <Settings size={18} aria-hidden="true" />
           {!compact && <span className="flex-1 text-left">Paramètres</span>}
